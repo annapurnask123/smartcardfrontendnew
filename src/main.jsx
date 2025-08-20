@@ -11,6 +11,12 @@ import { store } from './store/store'
 import { hydrateFromStorage } from './slices/authSlice'
 import { initRealtime } from './realtime/socket'
 
+// Expose store globally for non-hook access where needed
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line no-undef
+  window.store = window.store || store
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
