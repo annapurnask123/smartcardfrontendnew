@@ -18,7 +18,7 @@ function PlansPage() {
     try {
       const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
       // 1) Create subscription first (backend expects a Subscription document id)
-      const createSubRes = await subscriptionAPI.createSubscription({ subscriptionPlanId: plan.id || plan._id, userId: user?.id || user?._id })
+      const createSubRes = await subscriptionAPI.createSubscription({ planId: plan.id || plan._id, planName: plan.name, userId: user?.id || user?._id })
       const subscription = createSubRes?.data || {}
       const subscriptionId = subscription?.id || subscription?._id
       // 2) Create payment order with subscription id
