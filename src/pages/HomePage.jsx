@@ -42,19 +42,7 @@ function HomePage() {
         <div className="col-12">
           <h2 className="mb-4">Welcome, <span>{user?.name || 'User'}</span>!</h2>
 
-          <div className="card mb-4">
-            <div className="card-header bg-primary text-white">
-              <h5><i className="fas fa-search me-2"></i>Find Stations</h5>
-            </div>
-            <div className="card-body">
-              <form className="input-group" onSubmit={e => e.preventDefault()}>
-                <input type="text" className="form-control" placeholder="Search stations..." value={search} onChange={handleSearch} />
-                <button className="btn btn-outline-primary" type="submit">
-                  <i className="fas fa-search"></i>
-                </button>
-              </form>
-            </div>
-          </div>
+          {/* Search moved to header */}
 
           {loading && <div>Loading...</div>}
           {error && <div className="text-danger">{error}</div>}

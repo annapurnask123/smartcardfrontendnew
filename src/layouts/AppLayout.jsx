@@ -1,11 +1,13 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../slices/authSlice'
 import { useEffect, useState } from 'react'
+import { setSearch } from '../slices/stationSlice'
 
 function AppLayout({ children }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useSelector(s => s.auth.user)
   const notifications = useSelector(s => s.data.notifications)
   const [query, setQuery] = useState('')
@@ -18,8 +20,14 @@ function AppLayout({ children }) {
 
   function onGlobalSearch(e) {
     e.preventDefault()
-    if (!query.trim()) return
-    navigate(`/home?search=${encodeURIComponent(query.trim())}`)
+    const q = query.trim()
+    if (!q) {
+      dispatch(setSearch(''))
+      navigate('/home')
+      return
+    }
+    dispatch(setSearch(q))
+    navigate(`/home?search=${encodeURIComponent(q)}`)
   }
   useEffect(() => {
     const saved = localStorage.getItem('pref_theme')
