@@ -213,7 +213,7 @@ export const paymentAPI = {
   deletePaymentMethod: (methodId) => api.delete(`/payment-methods/${methodId}`),
 
   // Payment Processing
-  createPaymentOrder: ({ amount, currency = 'INR', purpose, meta = {}, receipt, notes = {}, type, id, userId, paymentMethod }) => {
+  createPaymentOrder: async ({ amount, currency = 'INR', purpose, meta = {}, receipt, notes = {}, type, id, userId, paymentMethod }) => {
     const integerAmount = Math.max(1, Math.trunc(Number(amount || 0)))
     const payload = {
       amount: integerAmount,
@@ -225,9 +225,29 @@ export const paymentAPI = {
       userId,
       paymentMethod,
     }
-    return api.post("/payments/create-order", payload)
+    const preferredPath = import.meta?.env?.VITE_PAYMENTS_CREATE_ORDER_PATH || "/payments/create-order"
+    const fallbacks = [
+      preferredPath,
+      "/payment/create-order",
+      "/payments/order",
+      "/payment/order",
+      "/razorpay/create-order",
+    ]
+    let lastError
+    for (const path of fallbacks) {
+      try { return await api.post(path, payload) } catch (e) { lastError = e }
+    }
+    throw lastError
   },
-  verifyPayment: (data) => api.post("/payments/verify", data),
+  verifyPayment: async (data) => {
+    const preferredPath = import.meta?.env?.VITE_PAYMENTS_VERIFY_PATH || "/payments/verify"
+    const fallbacks = [preferredPath, "/payment/verify", "/razorpay/verify"]
+    let lastError
+    for (const path of fallbacks) {
+      try { return await api.post(path, data) } catch (e) { lastError = e }
+    }
+    throw lastError
+  },
   handleWebhook: (data) => api.post("/payments/webhook", data),
 };
 
