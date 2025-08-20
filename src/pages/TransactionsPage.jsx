@@ -1,7 +1,21 @@
-import { useSelector } from 'react-redux'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { setTransactions } from '../slices/dataSlice'
+import { transactionAPI } from '../api/api'
 
 function TransactionsPage() {
+  const dispatch = useDispatch()
   const transactions = useSelector(s => s.data.transactions)
+  const user = useSelector(s => s.auth.user)
+  useEffect(() => {
+    (async () => {
+      if (!user?.id && !user?._id) return
+      try {
+        const { data } = await transactionAPI.getUserTransactions(user.id || user._id)
+        dispatch(setTransactions(Array.isArray(data) ? data : data?.items || []))
+      } catch {}
+    })()
+  }, [dispatch, user])
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">

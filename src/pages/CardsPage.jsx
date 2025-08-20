@@ -1,10 +1,23 @@
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { cardAPI } from '../api/api'
+import { cardAPI, stationAPI } from '../api/api'
 import { setJourney } from '../slices/dataSlice'
 
 function CardsPage() {
   const dispatch = useDispatch()
   const { primaryCardBalance, cards } = useSelector(s => s.data)
+  const [stations, setStations] = useState([])
+  const [tapInStation, setTapInStation] = useState('')
+  const [tapOutStation, setTapOutStation] = useState('')
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await stationAPI.getAllStations()
+        setStations(Array.isArray(data) ? data : data.items || [])
+      } catch {}
+    })()
+  }, [])
 
   return (
     <div className="container mt-5 pt-5">
@@ -42,22 +55,48 @@ function CardsPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <button className="btn btn-light btn-sm me-2" onClick={async () => {
-                  try {
-                    const { data } = await cardAPI.tapIn('primary', { timestamp: new Date().toISOString() })
-                    dispatch(setJourney(data?.journey || null))
-                  } catch {}
-                }}>
-                  <i className="fas fa-sign-in-alt me-1"></i>Tap In
-                </button>
-                <button className="btn btn-light btn-sm" onClick={async () => {
-                  try {
-                    const { data } = await cardAPI.tapOut('primary', { timestamp: new Date().toISOString() })
-                    dispatch(setJourney(data?.journey || null))
-                  } catch {}
-                }}>
-                  <i className="fas fa-sign-out-alt me-1"></i>Tap Out
-                </button>
+                <div className="row g-2 align-items-center">
+                  <div className="col-md-5">
+                    <select className="form-select form-select-sm" value={tapInStation} onChange={e=>setTapInStation(e.target.value)}>
+                      <option value="">Select Tap-In Station</option>
+                      {stations.map(st => (
+                        <option key={st.id || st._id} value={st.id || st._id}>{st.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-3 d-grid">
+                    <button className="btn btn-light btn-sm" onClick={async () => {
+                      if (!tapInStation) return
+                      try {
+                        const { data } = await cardAPI.tapIn('primary', { stationId: tapInStation, timestamp: new Date().toISOString() })
+                        dispatch(setJourney(data?.journey || null))
+                      } catch {}
+                    }}>
+                      <i className="fas fa-sign-in-alt me-1"></i>Tap In
+                    </button>
+                  </div>
+                </div>
+                <div className="row g-2 align-items-center mt-2">
+                  <div className="col-md-5">
+                    <select className="form-select form-select-sm" value={tapOutStation} onChange={e=>setTapOutStation(e.target.value)}>
+                      <option value="">Select Tap-Out Station</option>
+                      {stations.map(st => (
+                        <option key={st.id || st._id} value={st.id || st._id}>{st.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-3 d-grid">
+                    <button className="btn btn-light btn-sm" onClick={async () => {
+                      if (!tapOutStation) return
+                      try {
+                        const { data } = await cardAPI.tapOut('primary', { stationId: tapOutStation, timestamp: new Date().toISOString() })
+                        dispatch(setJourney(data?.journey || null))
+                      } catch {}
+                    }}>
+                      <i className="fas fa-sign-out-alt me-1"></i>Tap Out
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

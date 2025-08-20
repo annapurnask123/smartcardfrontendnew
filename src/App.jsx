@@ -17,8 +17,10 @@ import TransactionsPage from './pages/TransactionsPage.jsx'
 import SchedulesPage from './pages/SchedulesPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import RoutesPage from './pages/RoutesPage.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import TicketDetailPage from './pages/TicketDetailPage.jsx'
 
 function App() {
   return (
@@ -32,6 +34,7 @@ function App() {
         <Route path="/pay" element={<RequireAuth><PaymentPage /></RequireAuth>} />
         <Route path="/plans" element={<RequireAuth><PlansPage /></RequireAuth>} />
         <Route path="/tickets" element={<RequireAuth><TicketsPage /></RequireAuth>} />
+        <Route path="/tickets/:ticketId" element={<RequireAuth><TicketDetailPage /></RequireAuth>} />
         <Route path="/my-plans" element={<RequireAuth><MyPlansPage /></RequireAuth>} />
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
@@ -39,6 +42,7 @@ function App() {
         <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
         <Route path="/schedules" element={<RequireAuth><SchedulesPage /></RequireAuth>} />
+        <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
       </Route>

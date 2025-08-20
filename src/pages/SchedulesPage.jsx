@@ -1,18 +1,25 @@
-import { useSelector } from 'react-redux'
+import { useEffect, useState } from 'react'
+import { scheduleAPI } from '../api/api'
 
 function SchedulesPage() {
-  const stations = useSelector(s => s.data.stations)
-  const schedules = [
-    { trainNumber: 'M101', trainName: 'Blue Express', station: 'Central Station', platform: '1', scheduledTime: '10:30 AM', actualTime: '10:32 AM', status: 'delayed' },
-    { trainNumber: 'M205', trainName: 'Red Line Local', station: 'City Center', platform: '2', scheduledTime: '10:45 AM', actualTime: '10:45 AM', status: 'on-time' },
-    { trainNumber: 'M308', trainName: 'Green Express', station: 'Park Avenue', platform: '3', scheduledTime: '11:00 AM', actualTime: 'Cancelled', status: 'cancelled' },
-  ]
+  const [schedules, setSchedules] = useState([])
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true)
+        const { data } = await scheduleAPI.getSchedules()
+        setSchedules(Array.isArray(data) ? data : data?.items || [])
+      } catch {} finally { setLoading(false) }
+    })()
+  }, [])
 
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-clock me-2"></i>Train Schedules</h2>
       </div>
+      {loading && <div>Loading...</div>}
       <div className="row">
         {schedules.map(s => (
           <div className="col-12 mb-3" key={s.trainNumber}>

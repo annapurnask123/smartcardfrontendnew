@@ -1,9 +1,22 @@
+import { useEffect, useState } from 'react'
+import { userAPI } from '../api/api'
+
 function HistoryPage() {
-  const items = [
-    { date: '2024-08-20', station: 'Central Station - City Center', amount: '₹45', status: 'Completed' },
-    { date: '2024-08-19', station: 'Park Avenue - Tech Hub', amount: '₹35', status: 'Completed' },
-    { date: '2024-08-18', station: 'Mall Junction - University', amount: '₹40', status: 'Completed' },
-  ]
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await userAPI.getUserJourneys()
+        const arr = Array.isArray(data) ? data : data?.items || []
+        setItems(arr.map(j => ({
+          date: j.endedAt || j.startedAt || j.date,
+          station: `${j.sourceName || j.source} - ${j.destinationName || j.destination}`,
+          amount: j.fare ? `₹${j.fare}` : '—',
+          status: (j.status || 'completed').toString().charAt(0).toUpperCase() + (j.status || 'completed').toString().slice(1)
+        })))
+      } catch {}
+    })()
+  }, [])
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">

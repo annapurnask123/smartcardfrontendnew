@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setTickets } from '../slices/dataSlice'
 import { ticketAPI } from '../api/api'
+import { useNavigate } from 'react-router-dom'
 
 function TicketsPage() {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const tickets = useSelector(state => state.data.tickets)
   const user = useSelector(state => state.auth.user)
 
@@ -34,6 +36,9 @@ function TicketsPage() {
                 </div>
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <strong>{t.amount}</strong>
+                  <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/tickets/${encodeURIComponent(t.id)}`)}>
+                    <i className="fas fa-qrcode me-1"></i> View Ticket
+                  </button>
                 </div>
               </div>
             </div>
