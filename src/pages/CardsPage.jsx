@@ -39,6 +39,14 @@ function CardsPage() {
     } catch {}
   }
 
+  async function setPrimary(cardId) {
+    try {
+      await cardAPI.updateCard ? cardAPI.updateCard(cardId, { primary: true }) : Promise.resolve()
+      const updated = (cards || []).map(c => ((c.id||c._id) === cardId) ? { ...c, type: 'primary' } : { ...c, type: (c.type==='primary'?'secondary':c.type) })
+      dispatch(setCards(updated))
+    } catch {}
+  }
+
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -142,6 +150,9 @@ function CardsPage() {
                     <div className="d-flex gap-2">
                       <button className="btn btn-outline-secondary btn-sm" onClick={() => checkBalance(card.id || card._id)}>
                         <i className="fas fa-wallet me-1"></i>Balance
+                      </button>
+                      <button className="btn btn-outline-dark btn-sm" onClick={() => setPrimary(card.id || card._id)}>
+                        Set Primary
                       </button>
                       <button className="btn btn-outline-primary btn-sm" disabled={card.status !== 'active'}>
                         Use Card
