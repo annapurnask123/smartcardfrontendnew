@@ -1,7 +1,7 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { stationAPI, ticketAPI } from '../api/api'
+import { stationAPI } from '../api/api'
 
 function useQuery() {
   const { search } = useLocation()
@@ -24,6 +24,7 @@ function TicketBookingPage() {
   const destination = stations.find(s => (s.id || s._id || String(s.code)) === destinationId)
 
   const [fareQuote, setFareQuote] = useState({ base: 0, total: 0 })
+  const [routeInfo, setRouteInfo] = useState(null)
 
   useEffect(() => {
     async function quote() {
@@ -33,6 +34,11 @@ function TicketBookingPage() {
         const base = 25
         const total = journeyType === 'return' ? base * passengers * 1.8 : base * passengers
         setFareQuote({ base, total })
+        // Load route with timings for indirect route suggestions
+        try {
+          const { data } = await stationAPI.getRouteWithTimings(sourceId, destinationId)
+          setRouteInfo(data)
+        } catch { setRouteInfo(null) }
       } catch {
         setFareQuote({ base: 0, total: 0 })
       }
@@ -119,6 +125,25 @@ function TicketBookingPage() {
                         <span>Total Amount:</span>
                         <strong>₹{Number.isFinite(fareQuote.total) ? fareQuote.total : 0}</strong>
                       </div>
+                      {routeInfo && Array.isArray(routeInfo?.legs) && routeInfo.legs.length > 0 && (
+                        <div className="mt-3">
+                          <h6 className="mb-2"><i className="fas fa-random me-2"></i>Suggested Route</h6>
+                          <ul className="list-group">
+                            {routeInfo.legs.map((leg, idx) => (
+                              <li key={idx} className="list-group-item">
+                                <div className="d-flex justify-content-between">
+                                  <div>
+                                    <strong>{leg.from}</strong> → <strong>{leg.to}</strong>
+                                  </div>
+                                  <div className="text-end">
+                                    <small className="text-muted">{(leg.trains||[]).map(t=>`${t.name||t.code} ${t.time?`(${t.time})`:''}`).join(', ')}</small>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

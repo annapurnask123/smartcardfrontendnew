@@ -58,6 +58,31 @@ function PaymentPage() {
     }
   }
 
+  async function payWithWallet() {
+    try {
+      const amount = Number(String(booking.total).replace(/[^0-9.]/g,''))
+      const { data: ticket } = await ticketAPI.bookTicket({
+        sourceId: booking.sourceId,
+        destinationId: booking.destinationId,
+        passengerCount: booking.passengerCount,
+        journeyType: booking.journeyType,
+        amount,
+        paymentMethod: 'wallet',
+      })
+      dispatch(addTicket({
+        id: ticket?.id || ticket?._id || `TKT${Date.now()}`,
+        source: booking.sourceName,
+        destination: booking.destinationName,
+        date: new Date().toLocaleDateString(),
+        status: ticket?.status || 'active',
+        amount: booking.total,
+      }))
+      navigate('/tickets')
+    } catch (e) {
+      // show error toast
+    }
+  }
+
   if (!booking) return <div className="container mt-5 pt-5">Invalid booking.</div>
 
   return (
@@ -88,7 +113,10 @@ function PaymentPage() {
                   </div>
                 </div>
               </div>
-              <button className="btn btn-success w-100" onClick={pay}><i className="fas fa-lock me-2"></i>Pay {booking.total}</button>
+              <div className="d-grid gap-2 d-md-flex">
+                <button className="btn btn-success flex-fill" onClick={pay}><i className="fas fa-lock me-2"></i>Pay {booking.total}</button>
+                <button className="btn btn-outline-primary flex-fill" onClick={payWithWallet}><i className="fas fa-wallet me-2"></i>Pay with Wallet</button>
+              </div>
             </div>
           </div>
         </div>
@@ -98,4 +126,3 @@ function PaymentPage() {
 }
 
 export default PaymentPage
-
