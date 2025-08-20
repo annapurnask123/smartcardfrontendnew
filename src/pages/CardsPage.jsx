@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { cardAPI, stationAPI, paymentAPI } from '../api/api'
+import { openRazorpayCheckout } from '../utils/razorpay'
 import { setJourney, setCards } from '../slices/dataSlice'
 
 function CardsPage() {
@@ -143,13 +144,37 @@ function CardsPage() {
                   <div className="col-md-3 d-grid">
                     <button className="btn btn-outline-success btn-sm" onClick={async () => {
                       const input = document.getElementById('recharge-amount')
-                      const amount = Number(input?.value || 0)
-                      if (!amount) return
+                      const amountRupees = Number(input?.value || 0)
+                      if (!amountRupees) return
                       try {
                         const userId = user?.id || user?._id
-                        const { data: order } = await paymentAPI.createPaymentOrder({ amount: Math.round(amount * 100), currency: 'INR', purpose: 'recharge', type: 'recharge', id: 'primary', userId, paymentMethod: 'card' })
-                        // You can route to a dedicated recharge payment page or use shared flow
-                        alert('Recharge order created. Proceed to payment.')
+                        const primary = (cards || []).find(c => c.type === 'primary' || c.isPrimary)
+                        if (!primary) { alert('Primary card not found'); return }
+                        // Backend expects amount in rupees for recharge
+                        const { data: order } = await paymentAPI.createPaymentOrder({ amount: Math.round(amountRupees), currency: 'INR', purpose: 'recharge', type: 'recharge', id: (primary.id || primary._id), userId, paymentMethod: 'card' })
+                        await openRazorpayCheckout({
+                          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
+                          amount: Math.round((order.amount || amountRupees) * 100),
+                          name: 'SmartMetroCard',
+                          description: 'Card Recharge',
+                          orderId: order.order_id || order.id,
+                          handler: async (response) => {
+                            try {
+                              await paymentAPI.verifyPayment({
+                                razorpay_order_id: response.razorpay_order_id || order.order_id || order.id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                              })
+                              // Refresh balance display
+                              try {
+                                const { data: bal } = await cardAPI.getBalance(primary.id || primary._id)
+                                alert(`Recharge successful. New balance: ₹${bal.balance}`)
+                              } catch {}
+                            } catch (err) {
+                              alert(err.response?.data?.error || 'Recharge verification failed')
+                            }
+                          },
+                        })
                       } catch (e) { alert(e.response?.data?.error || 'Recharge failed') }
                     }}>
                       <i className="fas fa-bolt me-1"></i>Recharge
