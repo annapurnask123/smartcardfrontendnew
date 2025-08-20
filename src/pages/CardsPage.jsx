@@ -147,23 +147,42 @@ function CardsPage() {
           <h5>Secondary Cards</h5>
           <div className="row">
             {cards.filter(c => c.type === 'secondary').map(card => (
-              <div className="col-md-4 mb-3" key={card.id}>
-                <div className={`card ${card.status === 'inactive' ? 'text-muted' : ''}`}>
-                  <div className="card-body">
-                    <h6>{card.name}</h6>
-                    <p>Balance: ₹{card.balance}</p>
-                    <p>Status: <span className={`badge ${card.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>{card.status}</span></p>
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-outline-secondary btn-sm" onClick={() => checkBalance(card.id || card._id)}>
-                        <i className="fas fa-wallet me-1"></i>Balance
-                      </button>
-                      <button className="btn btn-outline-dark btn-sm" onClick={() => setPrimary(card.id || card._id)}>
-                        Set Primary
-                      </button>
-                      <button className="btn btn-outline-primary btn-sm" disabled={card.status !== 'active'}>
-                        Use Card
-                      </button>
+              <div className="col-md-4 mb-3" key={card.id || card._id}>
+                <div className={`credit-card ${card.status === 'inactive' ? 'opacity-75' : ''}`}>
+                  <div className="credit-row mb-3">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="credit-chip"></div>
+                      <div className="credit-brand">SMART METRO</div>
                     </div>
+                    <i className="fas fa-wifi credit-nfc"></i>
+                  </div>
+                  <div className="credit-row mb-2">
+                    <div className="credit-number">**** **** **** {(card.last4 || '5678')}</div>
+                    <div className="text-end">
+                      <div className="credit-label">STATUS</div>
+                      <span className={`badge ${card.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>{card.status}</span>
+                    </div>
+                  </div>
+                  <div className="credit-row">
+                    <div>
+                      <div className="credit-label">CARD HOLDER</div>
+                      <div className="credit-name">{card.name || 'Secondary Card'}</div>
+                    </div>
+                    <div className="text-end">
+                      <div className="credit-label">BALANCE</div>
+                      <div className="fw-bold">₹{Number(card.balance||0).toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 d-flex gap-2">
+                    <button className="btn btn-outline-secondary btn-sm" onClick={() => checkBalance(card.id || card._id)}>
+                      <i className="fas fa-wallet me-1"></i>Balance
+                    </button>
+                    <button className="btn btn-outline-dark btn-sm" onClick={() => setPrimary(card.id || card._id)}>
+                      Set Primary
+                    </button>
+                    <button className="btn btn-outline-primary btn-sm" disabled={card.status !== 'active'}>
+                      Use Card
+                    </button>
                   </div>
                 </div>
               </div>
