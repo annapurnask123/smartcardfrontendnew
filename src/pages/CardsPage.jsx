@@ -8,8 +8,8 @@ function CardsPage() {
   const { primaryCardBalance, cards } = useSelector(s => s.data)
   const user = useSelector(s => s.auth.user)
   const [stations, setStations] = useState([])
-  const [tapInStation, setTapInStation] = useState('')
-  const [tapOutStation, setTapOutStation] = useState('')
+  const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '')
+  const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '')
 
   useEffect(() => {
     (async () => {
@@ -24,6 +24,9 @@ function CardsPage() {
       } catch {}
     })()
   }, [])
+
+  useEffect(() => { localStorage.setItem('tap_in_station', tapInStation) }, [tapInStation])
+  useEffect(() => { localStorage.setItem('tap_out_station', tapOutStation) }, [tapOutStation])
 
   async function createNewCard() {
     try {

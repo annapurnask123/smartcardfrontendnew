@@ -22,7 +22,12 @@ function AppLayout({ children }) {
     navigate(`/home?search=${encodeURIComponent(query.trim())}`)
   }
   useEffect(() => {
+    const saved = localStorage.getItem('pref_theme')
+    if (saved) setDark(saved === 'dark')
+  }, [])
+  useEffect(() => {
     document.body.dataset.bsTheme = dark ? 'dark' : 'light'
+    localStorage.setItem('pref_theme', dark ? 'dark' : 'light')
   }, [dark])
   return (
     <div>
@@ -74,6 +79,16 @@ function AppLayout({ children }) {
           </div>
         </div>
       </nav>
+
+      {/* Toast container */}
+      <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 1080 }}>
+        <div id="global-toast" className="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div className="d-flex">
+            <div className="toast-body" id="global-toast-body">Action completed.</div>
+            <button type="button" className="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+      </div>
 
       <div className="offcanvas offcanvas-start" tabIndex="-1" id="sidebar">
         <div className="offcanvas-header bg-primary text-white">

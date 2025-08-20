@@ -27,6 +27,25 @@ function TicketBookingPage() {
   const [routeInfo, setRouteInfo] = useState(null)
 
   useEffect(() => {
+    // hydrate from localStorage
+    try {
+      const cached = JSON.parse(localStorage.getItem('booking_draft') || 'null')
+      if (cached) {
+        setSourceId(cached.sourceId || '')
+        setDestinationId(cached.destinationId || '')
+        setPassengers(cached.passengers || 1)
+        setJourneyType(cached.journeyType || 'single')
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    // persist booking draft
+    const draft = { sourceId, destinationId, passengers, journeyType }
+    localStorage.setItem('booking_draft', JSON.stringify(draft))
+  }, [sourceId, destinationId, passengers, journeyType])
+
+  useEffect(() => {
     async function quote() {
       if (!sourceId || !destinationId) return setFareQuote({ base: 0, total: 0 })
       try {

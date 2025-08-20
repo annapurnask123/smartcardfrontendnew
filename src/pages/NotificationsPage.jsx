@@ -14,11 +14,15 @@ function NotificationsPage() {
       } catch {}
     })()
   }, [dispatch])
+  function markAll() {
+    try { notificationAPI.markAllAsRead() } catch {}
+    dispatch(markAllNotificationsRead())
+  }
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-bell me-2"></i>Notifications</h2>
-        <button className="btn btn-outline-primary" onClick={() => dispatch(markAllNotificationsRead())}><i className="fas fa-check-double me-2"></i>Mark All Read</button>
+        <button className="btn btn-outline-primary" onClick={markAll}><i className="fas fa-check-double me-2"></i>Mark All Read</button>
       </div>
       <div>
         {notifications.map(n => (
