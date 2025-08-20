@@ -1,0 +1,101 @@
+/* Custom Styles for SmartMetroCard (migrated) */
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+.welcome-page { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+.bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+
+.metro-icon { font-size: 6rem; color: white; text-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+.metro-image-container { animation: float 3s ease-in-out infinite; }
+@keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px);} 100% { transform: translateY(0px);} }
+
+.navbar-brand { font-weight: bold; font-size: 1.5rem; }
+.offcanvas .nav-link { padding: 15px 20px; color: #333; border-bottom: 1px solid #eee; transition: all 0.3s ease; }
+.offcanvas .nav-link:hover { background-color: #f8f9fa; color: var(--primary-color); transform: translateX(5px); }
+.offcanvas .nav-link i { width: 20px; text-align: center; }
+
+.card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+.station-card { cursor: pointer; border-left: 4px solid var(--primary-color); }
+.station-card:hover { border-left-color: var(--success-color); }
+
+.btn { border-radius: 8px; font-weight: 500; transition: all 0.3s ease; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+.registration-step { animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateX(20px);} to { opacity: 1; transform: translateX(0);} }
+
+.journey-timeline { position: relative; padding-left: 30px; }
+.journey-timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: var(--primary-color); }
+.journey-step { position: relative; padding: 20px 0; }
+.journey-step::before { content: ''; position: absolute; left: -23px; top: 25px; width: 16px; height: 16px; border-radius: 50%; background: var(--primary-color); border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.journey-step.completed::before { background: var(--success-color); }
+.journey-step.current::before { background: var(--warning-color); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,193,7,0.7);} 70% { box-shadow: 0 0 0 10px rgba(255,193,7,0);} 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0);} }
+
+.metro-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white; padding: 25px; position: relative; overflow: hidden; }
+.metro-card::before { content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 100%; background: rgba(255,255,255,0.1); border-radius: 50%; transform: rotate(45deg); }
+.card-chip { width: 40px; height: 30px; background: linear-gradient(45deg, #ffd700, #ffed4a); border-radius: 4px; position: relative; }
+.card-chip::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 15px; background: rgba(0,0,0,0.2); border-radius: 2px; }
+
+.qr-code-container { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
+.notification-item { border-left: 4px solid var(--info-color); transition: all 0.3s ease; }
+.notification-item:hover { background-color: #f8f9fa; transform: translateX(5px); }
+.notification-item.unread { background-color: #e3f2fd; border-left-color: var(--primary-color); }
+
+.balance-card { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+.transaction-item { border-bottom: 1px solid #eee; transition: background-color 0.3s ease; }
+.transaction-item:hover { background-color: #f8f9fa; }
+.transaction-amount.credit { color: var(--success-color); }
+.transaction-amount.debit { color: var(--danger-color); }
+
+.plan-card { border: 2px solid #e9ecef; transition: all 0.3s ease; }
+.plan-card.popular { border-color: var(--primary-color); transform: scale(1.05); }
+.plan-card:hover { border-color: var(--primary-color); box-shadow: 0 8px 25px rgba(0,123,255,0.15); }
+.plan-badge { position: absolute; top: -10px; right: 20px; background: var(--primary-color); color: white; padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
+
+@media (max-width: 768px) {
+    .metro-icon { font-size: 4rem; }
+    .display-4 { font-size: 2rem; }
+    .card { margin-bottom: 1rem; }
+    .journey-timeline { padding-left: 20px; }
+    .journey-timeline::before { left: 10px; }
+    .journey-step::before { left: -18px; }
+}
+
+.loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.success-animation { animation: successPulse 0.6s ease-in-out; }
+@keyframes successPulse { 0% { transform: scale(1);} 50% { transform: scale(1.05);} 100% { transform: scale(1);} }
+
+.error-message { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0; }
+.success-message { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
+
+.train-card { border-left: 5px solid var(--primary-color); }
+.train-status.on-time { color: var(--success-color); }
+.train-status.delayed { color: var(--warning-color); }
+.train-status.cancelled { color: var(--danger-color); }
+
+.payment-method { border: 2px solid #e9ecef; border-radius: 10px; padding: 15px; cursor: pointer; transition: all 0.3s ease; }
+.payment-method:hover,
+.payment-method.selected { border-color: var(--primary-color); background-color: #f8f9ff; }
+.payment-method i { font-size: 2rem; margin-bottom: 10px; }
+
+.subscription-active { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+.subscription-expired { background: linear-gradient(135deg, #dc3545, #e83e8c); color: white; }
+.subscription-expiring { background: linear-gradient(135deg, #ffc107, #fd7e14); color: white; }
+
