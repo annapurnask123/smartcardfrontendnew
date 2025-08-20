@@ -48,15 +48,43 @@ api.interceptors.response.use(
   }
 );
 
+// Helpers
+function normalizePhoneFormats(input) {
+  const raw = String(input || '').trim()
+  const digits = raw.replace(/\D/g, '')
+  // derive e164 for India by default if 10 digits, or preserve if already has country code
+  let e164 = raw.startsWith('+') ? raw : ''
+  if (!e164) {
+    if (digits.length === 10) e164 = `+91${digits}`
+    else if (digits.length === 12 && digits.startsWith('91')) e164 = `+${digits}`
+    else e164 = raw // fallback
+  }
+  const phoneOnlyDigits = digits
+  const countryCode = e164.startsWith('+') ? `+${(e164.match(/^\+(\d{1,3})/) || [,''])[1]}` : '+91'
+  return { e164, digits: phoneOnlyDigits, countryCode }
+}
+
 // Auth API - Updated to match backend OTP flow
 export const authAPI = {
   // Registration flow
-  requestRegisterPhoneOtp: (phoneNumber) =>
-    api.post("/users/request-register-phone-otp", { phoneNumber }),
+  requestRegisterPhoneOtp: (phoneNumber) => {
+    const fmt = normalizePhoneFormats(phoneNumber)
+    return api.post("/users/request-register-phone-otp", {
+      phoneNumber: fmt.e164,
+      phone: fmt.digits,
+      countryCode: fmt.countryCode,
+    })
+  },
   verifyPhoneOtp: (phoneNumber, otp, otpHash) =>
-    api.post("/users/verify-phone-otp", { phoneNumber, otp, otpHash }),
+    api.post("/users/verify-phone-otp", (() => {
+      const fmt = normalizePhoneFormats(phoneNumber)
+      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, otp, otpHash }
+    })()),
   requestRegisterEmailOtp: (phoneNumber, email) =>
-    api.post("/users/request-register-email-otp", { phoneNumber, email }),
+    api.post("/users/request-register-email-otp", (() => {
+      const fmt = normalizePhoneFormats(phoneNumber)
+      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, email }
+    })()),
   verifyEmailOtp: (email, otp, otpHash) =>
     api.post("/users/verify-email-otp", { email, otp, otpHash }),
   setPassword: (userId, password, confirmPassword) =>
@@ -67,11 +95,19 @@ export const authAPI = {
 
   // Login flow
   loginWithPassword: (phoneNumber, password) =>
-    api.post("/users/login/password", { phoneNumber, password }),
-  requestLoginOtp: (phoneNumber) =>
-    api.post("/users/request-login-otp", { phoneNumber }),
+    api.post("/users/login/password", (() => {
+      const fmt = normalizePhoneFormats(phoneNumber)
+      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, password }
+    })()),
+  requestLoginOtp: (phoneNumber) => {
+    const fmt = normalizePhoneFormats(phoneNumber)
+    return api.post("/users/request-login-otp", { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode })
+  },
   verifyLoginOtp: (phoneNumber, otp, otpHash) =>
-    api.post("/users/verify-login-otp", { phoneNumber, otp, otpHash }),
+    api.post("/users/verify-login-otp", (() => {
+      const fmt = normalizePhoneFormats(phoneNumber)
+      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, otp, otpHash }
+    })()),
   // Profile and token verification
   verifyToken: () => api.get("/users/profile"),
   logout: () => api.post("/users/logout"),
