@@ -29,6 +29,14 @@ function AppLayout({ children }) {
     dispatch(setSearch(q))
     navigate(`/home?search=${encodeURIComponent(q)}`)
   }
+
+  // Sync header input with URL param and slice
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const q = params.get('search') || ''
+    setQuery(q)
+    dispatch(setSearch(q))
+  }, [location.search, dispatch])
   useEffect(() => {
     const saved = localStorage.getItem('pref_theme')
     if (saved) setDark(saved === 'dark')
@@ -62,7 +70,7 @@ function AppLayout({ children }) {
           <form className="d-none d-lg-flex me-2" onSubmit={onGlobalSearch} role="search">
             <div className="input-group">
               <span className="input-group-text"><i className="fas fa-search"></i></span>
-              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>setQuery(e.target.value)} />
+              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>{ const v = e.target.value; setQuery(v); dispatch(setSearch(v)); if (location.pathname !== '/home' || (new URLSearchParams(location.search).get('search')||'') !== v) { navigate(`/home?search=${encodeURIComponent(v)}`) } }} />
             </div>
           </form>
           <div className="d-flex align-items-center">
