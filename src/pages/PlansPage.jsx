@@ -3,12 +3,12 @@ import { useEffect } from "react";
 import { fetchSubscriptionPlans } from "../slices/subscriptionplanSlice";
 import { openRazorpayCheckout } from "../utils/razorpay";
 import { paymentAPI, subscriptionAPI } from "../api/api";
-import { useSelector as useReduxSelector } from 'react-redux'
 
 function PlansPage() {
   const dispatch = useDispatch();
   const { plans = [], loading, error } = useSelector(state => state.subscriptionplan);
   const q = useSelector(state => state.ui.query)
+  const user = useSelector(state => state.auth.user)
 
   useEffect(() => {
     dispatch(fetchSubscriptionPlans());
@@ -17,7 +17,7 @@ function PlansPage() {
   async function purchasePlan(plan) {
     try {
       const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
-      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'subscription', meta: { planId: plan.id || plan._id }, type: 'subscription', id: (plan.id || plan._id), userId: (window?.store?.getState?.()?.auth?.user?.id || window?.store?.getState?.()?.auth?.user?._id) })
+      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'subscription', meta: { subscriptionPlanId: plan.id || plan._id }, type: 'subscription', id: (plan.id || plan._id), userId: (user?.id || user?._id) })
       await openRazorpayCheckout({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
         amount: order.amount,
@@ -31,8 +31,14 @@ function PlansPage() {
             razorpayOrderId: response.razorpay_order_id,
             razorpaySignature: response.razorpay_signature,
           })
-          await subscriptionAPI.createSubscription({ planId: plan.id || plan._id, paymentOrderId: order.id })
-          // Optionally navigate to My Plans or show toast
+          // Create subscription and activate if required
+          const createRes = await subscriptionAPI.createSubscription({ subscriptionPlanId: plan.id || plan._id, userId: user?.id || user?._id, paymentOrderId: order.id })
+          const created = createRes?.data || createRes
+          const createdId = created?.id || created?._id || created?.subscriptionId
+          if (createdId && subscriptionAPI.activateSubscription) {
+            try { await subscriptionAPI.activateSubscription(createdId, { paymentOrderId: order.id }) } catch {}
+          }
+          window.location.href = '/my-plans?activated=1'
         },
       })
     } catch {}
