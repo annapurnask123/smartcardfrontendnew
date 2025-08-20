@@ -22,6 +22,9 @@ import AppLayout from './layouts/AppLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
 import TicketDetailPage from './pages/TicketDetailPage.jsx'
 import SearchPage from './pages/SearchPage.jsx'
+import AboutPage from './pages/AboutPage.jsx'
+import PrivacyPage from './pages/PrivacyPage.jsx'
+import TermsPage from './pages/TermsPage.jsx'
 
 function App() {
   return (
@@ -47,6 +50,9 @@ function App() {
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

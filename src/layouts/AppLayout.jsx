@@ -4,6 +4,7 @@ import { logout } from '../slices/authSlice'
 import { useEffect, useState } from 'react'
 import { setSearch } from '../slices/stationSlice'
 import { setQuery as setUiQuery } from '../slices/uiSlice'
+import Footer from '../components/Footer'
 
 function AppLayout({ children }) {
   const dispatch = useDispatch()
@@ -124,8 +125,9 @@ function AppLayout({ children }) {
         </div>
       </div>
 
-      <div className="page-bg" style={{ paddingTop: 70 }}>
+      <div className="page-bg d-flex flex-column" style={{ paddingTop: 70, minHeight: '100vh' }}>
         {children || <Outlet />}
+        <Footer />
       </div>
     </div>
   )
