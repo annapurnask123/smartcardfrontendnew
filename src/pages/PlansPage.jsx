@@ -18,7 +18,7 @@ function PlansPage() {
     try {
       const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
       // 1) Create subscription first (backend expects a Subscription document id)
-      const createSubRes = await subscriptionAPI.createSubscription({ planId: plan.id || plan._id, planName: plan.name, userId: user?.id || user?._id })
+      const createSubRes = await subscriptionAPI.createSubscription({ planId: plan.id || plan._id, subscriptionPlanId: plan.id || plan._id, planName: plan.name, userId: user?.id || user?._id })
       const subscription = createSubRes?.data || {}
       const subscriptionId = subscription?.id || subscription?._id
       // 2) Create payment order with subscription id
@@ -46,7 +46,9 @@ function PlansPage() {
           window.location.href = '/my-plans?activated=1'
         },
       })
-    } catch {}
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Subscription purchase failed')
+    }
   }
 
   return (
