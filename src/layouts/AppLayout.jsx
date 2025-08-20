@@ -124,7 +124,7 @@ function AppLayout({ children }) {
         </div>
       </div>
 
-      <div style={{ paddingTop: 70 }}>
+      <div className="page-bg" style={{ paddingTop: 70 }}>
         {children || <Outlet />}
       </div>
     </div>

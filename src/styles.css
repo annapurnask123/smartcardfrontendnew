@@ -7,3 +7,13 @@
     .balance-card h3 { font-size: 1.5rem; }
     .navbar .form-control { width: 160px; }
 }
+
+/* Page backgrounds */
+.page-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f0f4ff, #f8f9ff);
+}
+
+[data-bs-theme="dark"] .page-bg {
+    background: linear-gradient(135deg, #0b1020, #111827);
+}
