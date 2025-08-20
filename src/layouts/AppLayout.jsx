@@ -23,11 +23,11 @@ function AppLayout({ children }) {
     const q = query.trim()
     if (!q) {
       dispatch(setSearch(''))
-      navigate('/home')
+      navigate('/search')
       return
     }
     dispatch(setSearch(q))
-    navigate(`/home?search=${encodeURIComponent(q)}`)
+    navigate(`/search?q=${encodeURIComponent(q)}`)
   }
 
   // Sync header input with URL param and slice
@@ -70,7 +70,7 @@ function AppLayout({ children }) {
           <form className="d-none d-lg-flex me-2" onSubmit={onGlobalSearch} role="search">
             <div className="input-group">
               <span className="input-group-text"><i className="fas fa-search"></i></span>
-              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>{ const v = e.target.value; setQuery(v); dispatch(setSearch(v)); if (location.pathname !== '/home' || (new URLSearchParams(location.search).get('search')||'') !== v) { navigate(`/home?search=${encodeURIComponent(v)}`) } }} />
+              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>{ const v = e.target.value; setQuery(v); dispatch(setSearch(v)); const current = new URLSearchParams(location.search).get('q') || ''; if (location.pathname !== '/search' || current !== v) { navigate(`/search?q=${encodeURIComponent(v)}`) } }} />
             </div>
           </form>
           <div className="d-flex align-items-center">

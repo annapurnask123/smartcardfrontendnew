@@ -21,6 +21,7 @@ import RoutesPage from './pages/RoutesPage.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
 import TicketDetailPage from './pages/TicketDetailPage.jsx'
+import SearchPage from './pages/SearchPage.jsx'
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
         <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
         <Route path="/schedules" element={<RequireAuth><SchedulesPage /></RequireAuth>} />
         <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
+        <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
       </Route>
