@@ -1,6 +1,6 @@
 
 /* Toast theme and mobile tweaks */
-.toast { --bs-toast-bg: rgba(13,110,253,.95); }
+.toast { --bs-toast-bg: rgba(10,28,60,.95); }
 
 @media (max-width: 576px) {
     .metro-card { padding: 16px; border-radius: 12px; }
@@ -11,9 +11,21 @@
 /* Page backgrounds */
 .page-bg {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f0f4ff, #f8f9ff);
+    background: linear-gradient(135deg, #eaf1ff, #f5f8ff);
 }
 
 [data-bs-theme="dark"] .page-bg {
-    background: linear-gradient(135deg, #0b1020, #111827);
+    background: linear-gradient(135deg, #0a1c3c, #0f274f);
 }
+
+/* Navy theme accents */
+.navbar.bg-primary, .bg-primary { background-color: #0a1c3c !important; }
+.btn-primary { background-color: #0f274f; border-color: #0f274f; }
+.btn-outline-primary { color: #0f274f; border-color: #0f274f; }
+.btn-outline-primary:hover { background-color: #0f274f; color: #fff; }
+.link-primary { color: #0f274f !important; }
+.train-card { border-left-color: #0f274f; }
+.notification-item.unread { border-left-color: #0f274f; }
+.plan-card:hover { border-color: #0f274f; box-shadow: 0 8px 25px rgba(15,39,79,0.15); }
+.payment-method.selected { border-color: #0f274f; background-color: #eef3ff; }
+.metro-card { background: linear-gradient(135deg, #0f274f, #1b3b73); }
