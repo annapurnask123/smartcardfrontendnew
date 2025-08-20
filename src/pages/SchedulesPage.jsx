@@ -23,8 +23,11 @@ function SchedulesPage() {
       </div>
       {loading && <div>Loading...</div>}
       <div className="row">
-        {schedules.filter(s => !q || `${s.trainNumber} ${s.trainName} ${s.station}`.toLowerCase().includes(q.toLowerCase())).map(s => (
-          <div className="col-12 mb-3" key={s.trainNumber}>
+        {schedules.filter(s => {
+          const hay = `${s?.trainNumber || ''} ${s?.trainName || ''} ${s?.station || ''}`.toLowerCase()
+          return !q || hay.includes((q||'').toLowerCase())
+        }).map(s => (
+          <div className="col-12 mb-3" key={s.trainNumber || s._id || Math.random()}>
             <div className="card train-card">
               <div className="card-body">
                 <div className="row align-items-center">
@@ -45,7 +48,7 @@ function SchedulesPage() {
                     <small className="text-muted">Actual</small>
                   </div>
                   <div className="col-md-2">
-                    <span className={`badge bg-${s.status === 'on-time' ? 'success' : s.status === 'delayed' ? 'warning' : 'danger'} train-status ${s.status}`}>{s.status.replace('-', ' ').toUpperCase()}</span>
+                    <span className={`badge bg-${s?.status === 'on-time' ? 'success' : s?.status === 'delayed' ? 'warning' : 'danger'} train-status ${s?.status || ''}`}>{String(s?.status || '').replace('-', ' ').toUpperCase() || '—'}</span>
                   </div>
                 </div>
               </div>
