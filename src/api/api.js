@@ -143,6 +143,7 @@ export const cardAPI = {
   getAllCards: () => api.get("/virtualcards"),
   getUserCards: (userId) => api.get(`/virtualcards/user/${userId}`),
   createCard: (data) => api.post("/virtualcards", data),
+  updateCard: (cardId, data) => api.put(`/virtualcards/${cardId}`, data),
   getCard: (cardId) => api.get(`/virtualcards/${cardId}`),
   deleteCard: (cardId) => api.delete(`/virtualcards/${cardId}`),
   getBalance: (cardId) => api.get(`/virtualcards/${cardId}/balance`),
