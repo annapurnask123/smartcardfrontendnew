@@ -17,17 +17,16 @@ function PaymentPage() {
       const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'ticket', meta: { source: booking.sourceId, destination: booking.destinationId }, type: 'ticket', id: `${booking.sourceId}-${booking.destinationId}`, userId: user?.id || user?._id, paymentMethod: 'card' })
       await openRazorpayCheckout({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
-        amount: order.amount,
+        amount: Math.round((order.amount || 0) * 100),
         name: 'SmartMetroCard',
         description: 'Ticket Payment',
-        orderId: order.id,
+        orderId: order.order_id || order.id,
         handler: async (response) => {
           try {
             await paymentAPI.verifyPayment({
-              orderId: order.id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpaySignature: response.razorpay_signature,
+              razorpay_order_id: response.razorpay_order_id || order.order_id || order.id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
             })
             // Create ticket in backend after successful payment
             const createPayload = {

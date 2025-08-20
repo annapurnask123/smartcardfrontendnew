@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { cardAPI, stationAPI } from '../api/api'
+import { cardAPI, stationAPI, paymentAPI } from '../api/api'
 import { setJourney, setCards } from '../slices/dataSlice'
 
 function CardsPage() {
@@ -133,6 +133,26 @@ function CardsPage() {
                       } catch {}
                     }}>
                       <i className="fas fa-sign-out-alt me-1"></i>Tap Out
+                    </button>
+                  </div>
+                </div>
+                <div className="row g-2 align-items-center mt-2">
+                  <div className="col-md-5">
+                    <input type="number" min="1" className="form-control form-control-sm" placeholder="Recharge amount (₹)" id="recharge-amount" />
+                  </div>
+                  <div className="col-md-3 d-grid">
+                    <button className="btn btn-outline-success btn-sm" onClick={async () => {
+                      const input = document.getElementById('recharge-amount')
+                      const amount = Number(input?.value || 0)
+                      if (!amount) return
+                      try {
+                        const userId = user?.id || user?._id
+                        const { data: order } = await paymentAPI.createPaymentOrder({ amount: Math.round(amount * 100), currency: 'INR', purpose: 'recharge', type: 'recharge', id: 'primary', userId, paymentMethod: 'card' })
+                        // You can route to a dedicated recharge payment page or use shared flow
+                        alert('Recharge order created. Proceed to payment.')
+                      } catch (e) { alert(e.response?.data?.error || 'Recharge failed') }
+                    }}>
+                      <i className="fas fa-bolt me-1"></i>Recharge
                     </button>
                   </div>
                 </div>
