@@ -9,6 +9,7 @@ function TicketsPage() {
   const navigate = useNavigate()
   const tickets = useSelector(state => state.data.tickets)
   const user = useSelector(state => state.auth.user)
+  const q = useSelector(state => state.ui.query)
 
   useEffect(() => {
     (async () => {
@@ -23,7 +24,7 @@ function TicketsPage() {
     <div className="container mt-5 pt-5">
       <h2><i className="fas fa-ticket-alt me-2"></i>My Tickets</h2>
       <div className="row mt-3">
-        {tickets.map(t => (
+        {tickets.filter(t => !q || `${t.id} ${t.source} ${t.destination}`.toLowerCase().includes(q.toLowerCase())).map(t => (
           <div key={t.id} className="col-md-6 mb-3">
             <div className="card">
               <div className="card-body">

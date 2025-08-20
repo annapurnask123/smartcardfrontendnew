@@ -28,9 +28,7 @@ function HomePage() {
     navigate('/book?sourceId=' + encodeURIComponent(id))
   }
 
-  function handleSearch(e) {
-    dispatch(setSearch(e.target.value))
-  }
+  function handleSearch(e) { dispatch(setSearch(e.target.value)) }
 
   function handlePageChange(newPage) {
     dispatch(setPage(newPage))

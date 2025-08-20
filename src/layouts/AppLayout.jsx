@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../slices/authSlice'
 import { useEffect, useState } from 'react'
 import { setSearch } from '../slices/stationSlice'
+import { setQuery as setUiQuery } from '../slices/uiSlice'
 
 function AppLayout({ children }) {
   const dispatch = useDispatch()
@@ -21,21 +22,17 @@ function AppLayout({ children }) {
   function onGlobalSearch(e) {
     e.preventDefault()
     const q = query.trim()
-    if (!q) {
-      dispatch(setSearch(''))
-      navigate('/search')
-      return
-    }
     dispatch(setSearch(q))
-    navigate(`/search?q=${encodeURIComponent(q)}`)
+    dispatch(setUiQuery(q))
   }
 
   // Sync header input with URL param and slice
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    const q = params.get('search') || ''
+    const q = params.get('search') || params.get('q') || ''
     setQuery(q)
     dispatch(setSearch(q))
+    dispatch(setUiQuery(q))
   }, [location.search, dispatch])
   useEffect(() => {
     const saved = localStorage.getItem('pref_theme')
@@ -70,7 +67,7 @@ function AppLayout({ children }) {
           <form className="d-none d-lg-flex me-2" onSubmit={onGlobalSearch} role="search">
             <div className="input-group">
               <span className="input-group-text"><i className="fas fa-search"></i></span>
-              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>{ const v = e.target.value; setQuery(v); dispatch(setSearch(v)); const current = new URLSearchParams(location.search).get('q') || ''; if (location.pathname !== '/search' || current !== v) { navigate(`/search?q=${encodeURIComponent(v)}`) } }} />
+              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>{ const v = e.target.value; setQuery(v); dispatch(setSearch(v)); dispatch(setUiQuery(v)); }} />
             </div>
           </form>
           <div className="d-flex align-items-center">

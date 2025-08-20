@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { scheduleAPI } from '../api/api'
 
 function SchedulesPage() {
   const [schedules, setSchedules] = useState([])
   const [loading, setLoading] = useState(false)
+  const q = useSelector(s => s.ui.query)
   useEffect(() => {
     (async () => {
       try {
@@ -21,7 +23,7 @@ function SchedulesPage() {
       </div>
       {loading && <div>Loading...</div>}
       <div className="row">
-        {schedules.map(s => (
+        {schedules.filter(s => !q || `${s.trainNumber} ${s.trainName} ${s.station}`.toLowerCase().includes(q.toLowerCase())).map(s => (
           <div className="col-12 mb-3" key={s.trainNumber}>
             <div className="card train-card">
               <div className="card-body">

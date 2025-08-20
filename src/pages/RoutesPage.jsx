@@ -46,7 +46,7 @@ function RoutesPage() {
       {loading && <div>Loading...</div>}
       {error && <div className="text-danger">{error}</div>}
       <div className="row">
-        {routes.map(rt => (
+        {routes.filter(r => true /* optional: filter by global query if desired */).map(rt => (
           <div key={rt.id || rt._id} className="col-md-6 mb-4">
             <div className="card">
               <div className={`card-header text-white ${colorForLine(rt.name)}`}>

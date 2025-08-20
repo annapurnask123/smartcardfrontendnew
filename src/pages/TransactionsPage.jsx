@@ -6,6 +6,7 @@ import { transactionAPI } from '../api/api'
 function TransactionsPage() {
   const dispatch = useDispatch()
   const transactions = useSelector(s => s.data.transactions)
+  const q = useSelector(s => s.ui.query)
   const user = useSelector(s => s.auth.user)
   useEffect(() => {
     (async () => {
@@ -23,7 +24,7 @@ function TransactionsPage() {
       </div>
       <div className="card">
         <div className="card-body p-0">
-          {transactions.map(tx => (
+          {transactions.filter(tx => !q || `${tx.id} ${tx.description} ${tx.amount}`.toLowerCase().includes(q.toLowerCase())).map(tx => (
             <div key={tx.id} className="transaction-item p-3">
               <div className="d-flex justify-content-between align-items-center">
                 <div>

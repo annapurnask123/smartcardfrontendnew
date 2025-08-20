@@ -6,6 +6,7 @@ import { notificationAPI } from '../api/api'
 function NotificationsPage() {
   const dispatch = useDispatch()
   const notifications = useSelector(s => s.data.notifications)
+  const q = useSelector(s => s.ui.query)
   useEffect(() => {
     (async () => {
       try {
@@ -25,7 +26,7 @@ function NotificationsPage() {
         <button className="btn btn-outline-primary" onClick={markAll}><i className="fas fa-check-double me-2"></i>Mark All Read</button>
       </div>
       <div>
-        {notifications.map(n => (
+        {notifications.filter(n => !q || `${n.title} ${n.message}`.toLowerCase().includes(q.toLowerCase())).map(n => (
           <div key={n.id} className={`card notification-item ${n.read ? '' : 'unread'} mb-3`}>
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-start">

@@ -4,6 +4,7 @@ import stationReducer from "../slices/stationSlice";
 import dataReducer from "../slices/dataSlice";
 import subscriptionplanReducer from "../slices/subscriptionplanSlice";
 import walletReducer from "../slices/walletSlice";
+import uiReducer from "../slices/uiSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -11,5 +12,6 @@ export const store = configureStore({
     stations: stationReducer,
     subscriptionplan: subscriptionplanReducer, // Add subscription plan reducer
     wallet: walletReducer,
+    ui: uiReducer,
   },
 });
