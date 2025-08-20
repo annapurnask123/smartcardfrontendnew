@@ -104,24 +104,25 @@ function AppLayout({ children }) {
         </div>
       </div>
 
-      <div className="offcanvas offcanvas-start" tabIndex="-1" id="sidebar">
+      <div className="offcanvas offcanvas-start" tabIndex="-1" id="sidebar" aria-labelledby="sidebarLabel">
         <div className="offcanvas-header bg-primary text-white">
-          <h5 className="offcanvas-title">Menu</h5>
+          <h5 className="offcanvas-title" id="sidebarLabel">Menu</h5>
           <button type="button" className="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
         </div>
         <div className="offcanvas-body p-0">
-          <nav className="nav flex-column">
-            <NavLink className="nav-link" to="/home" data-bs-dismiss="offcanvas"><i className="fas fa-home me-2"></i>Home</NavLink>
-            <NavLink className="nav-link" to="/plans" data-bs-dismiss="offcanvas"><i className="fas fa-list-alt me-2"></i>Subscription Plans</NavLink>
-            <NavLink className="nav-link" to="/my-plans" data-bs-dismiss="offcanvas"><i className="fas fa-crown me-2"></i>My Plans</NavLink>
-            <NavLink className="nav-link" to="/tickets" data-bs-dismiss="offcanvas"><i className="fas fa-ticket-alt me-2"></i>Tickets</NavLink>
-            <NavLink className="nav-link" to="/cards" data-bs-dismiss="offcanvas"><i className="fas fa-credit-card me-2"></i>Cards</NavLink>
-            <NavLink className="nav-link" to="/wallet" data-bs-dismiss="offcanvas"><i className="fas fa-wallet me-2"></i>Wallet</NavLink>
-            <NavLink className="nav-link" to="/journey" data-bs-dismiss="offcanvas"><i className="fas fa-route me-2"></i>Journey Tracking</NavLink>
-            <NavLink className="nav-link" to="/history" data-bs-dismiss="offcanvas"><i className="fas fa-history me-2"></i>History</NavLink>
-            <NavLink className="nav-link" to="/transactions" data-bs-dismiss="offcanvas"><i className="fas fa-exchange-alt me-2"></i>Transactions</NavLink>
-            <NavLink className="nav-link" to="/schedules" data-bs-dismiss="offcanvas"><i className="fas fa-clock me-2"></i>Train Schedules</NavLink>
-          </nav>
+          <div className="list-group list-group-flush">
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/home" data-bs-dismiss="offcanvas"><i className="fas fa-home me-2"></i>Home</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/book" data-bs-dismiss="offcanvas"><i className="fas fa-ticket-alt me-2"></i>Ticket Booking</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/routes" data-bs-dismiss="offcanvas"><i className="fas fa-map me-2"></i>Routes</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/plans" data-bs-dismiss="offcanvas"><i className="fas fa-list-alt me-2"></i>Subscription Plans</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/my-plans" data-bs-dismiss="offcanvas"><i className="fas fa-crown me-2"></i>My Plans</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/cards" data-bs-dismiss="offcanvas"><i className="fas fa-credit-card me-2"></i>Virtual Card</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/wallet" data-bs-dismiss="offcanvas"><i className="fas fa-wallet me-2"></i>Recharge & Wallet</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/journey" data-bs-dismiss="offcanvas"><i className="fas fa-route me-2"></i>Journey Tracking</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/history" data-bs-dismiss="offcanvas"><i className="fas fa-history me-2"></i>Journey History</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/transactions" data-bs-dismiss="offcanvas"><i className="fas fa-exchange-alt me-2"></i>Transactions</NavLink>
+            <NavLink className="list-group-item list-group-item-action py-3 px-4" to="/schedules" data-bs-dismiss="offcanvas"><i className="fas fa-clock me-2"></i>Train Schedules</NavLink>
+          </div>
         </div>
       </div>
 
