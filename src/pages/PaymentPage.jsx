@@ -1,14 +1,15 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { addTicket } from '../slices/dataSlice'
 import { openRazorpayCheckout } from '../utils/razorpay'
-import { paymentAPI } from '../api/api'
+import { paymentAPI, ticketAPI } from '../api/api'
 
 function PaymentPage() {
   const { state } = useLocation()
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const booking = state?.booking
+  const user = useSelector(s => s.auth.user)
 
   async function pay() {
     try {
@@ -28,12 +29,22 @@ function PaymentPage() {
               razorpayOrderId: response.razorpay_order_id,
               razorpaySignature: response.razorpay_signature,
             })
+            // Create ticket in backend after successful payment
+            const createPayload = {
+              sourceId: booking.sourceId,
+              destinationId: booking.destinationId,
+              passengerCount: booking.passengerCount,
+              journeyType: booking.journeyType,
+              amount: amountPaise / 100,
+              paymentOrderId: order.id,
+            }
+            const { data: ticket } = await ticketAPI.bookTicket(createPayload)
             dispatch(addTicket({
-              id: `TKT${Date.now()}`,
+              id: ticket?.id || ticket?._id || `TKT${Date.now()}`,
               source: booking.sourceName,
               destination: booking.destinationName,
               date: new Date().toLocaleDateString(),
-              status: 'active',
+              status: ticket?.status || 'active',
               amount: booking.total,
             }))
             navigate('/tickets')

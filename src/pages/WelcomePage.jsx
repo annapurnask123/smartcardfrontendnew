@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import metroImage from "../../public/assets/metro.jpeg"; // Adjust the path as necessary
 
@@ -22,11 +22,25 @@ function WelcomePage() {
         className="navbar navbar-expand-lg navbar-dark bg-transparent w-100"
         style={{ zIndex: 1000 }}
       >
-        <div className="container-fluid px-4">
+        <div className="container-fluid px-4 d-flex justify-content-between align-items-center">
           <span className="fw-bold fs-4 text-white">Tapido<i
-            className="fas fa-train"
+            className="fas fa-train ms-2"
             style={{ fontSize: "2rem", color: "#f6faffff" }}
           ></i></span>
+
+          {/* Right side profile icon with Login */}
+          <div className="dropdown">
+            <button className="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+              <i className="fas fa-user-circle"></i>
+            </button>
+            <ul className="dropdown-menu dropdown-menu-end">
+              <li>
+                <Link className="dropdown-item" to="/login">
+                  <i className="fas fa-sign-in-alt me-2"></i>Login
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </nav>
 
@@ -40,7 +54,7 @@ function WelcomePage() {
         </div>
         <h1 className="display-4 text-white mb-3">SmartMetroCard</h1>
         <p className="lead text-white mb-5">
-           Book metro tickets easily, recharge your smart card, and enjoy a smooth travel experience.
+          "Ride the metro, skip the chaos — fast, simple, and seamless."
         </p>
 
         {/* ✅ Centered Buttons with Colors */}

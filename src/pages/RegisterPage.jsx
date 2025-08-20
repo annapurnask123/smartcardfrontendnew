@@ -150,7 +150,7 @@ const handleRegister = async () => {
             {alert.message && <Alert variant={alert.type}>{alert.message}</Alert>}
 
             <Form>
-              {/* Phone */}
+              {/* Phone with +91 default */}
               <Form.Group className="mb-3">
                 <Form.Label>Phone Number</Form.Label>
                 <PhoneInput

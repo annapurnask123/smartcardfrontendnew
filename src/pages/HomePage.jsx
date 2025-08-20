@@ -1,17 +1,27 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { fetchStations, setSearch, setPage } from '../slices/stationSlice'
 
 function HomePage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useSelector(state => state.auth.user)
   const { items: stations, page, pageSize, total, loading, search, error } = useSelector(state => state.stations)
 
   useEffect(() => {
     dispatch(fetchStations())
   }, [dispatch])
+
+  // Initialize search from global search query param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const q = params.get('search') || ''
+    if (q && q !== search) {
+      dispatch(setSearch(q))
+    }
+  }, [location.search, dispatch])
 
   function onBook(station) {
     const id = station.id || station._id || station.stationId || station.code

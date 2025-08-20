@@ -1,7 +1,7 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { addTicket } from '../slices/dataSlice'
+import { stationAPI, ticketAPI } from '../api/api'
 
 function useQuery() {
   const { search } = useLocation()
@@ -9,7 +9,8 @@ function useQuery() {
 }
 
 function TicketBookingPage() {
-  const stations = useSelector(state => state.data.stations)
+  const stationsState = useSelector(state => state.stations)
+  const stations = stationsState?.allItems || stationsState?.items || []
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const query = useQuery()
@@ -19,16 +20,30 @@ function TicketBookingPage() {
   const [passengers, setPassengers] = useState(1)
   const [journeyType, setJourneyType] = useState('single')
 
-  const source = stations.find(s => s.id === sourceId)
-  const destination = stations.find(s => s.id === destinationId)
+  const source = stations.find(s => (s.id || s._id || String(s.code)) === sourceId)
+  const destination = stations.find(s => (s.id || s._id || String(s.code)) === destinationId)
 
-  const distance = sourceId && destinationId ? Math.abs(parseInt(sourceId) - parseInt(destinationId)) : 0
-  const farePerPerson = sourceId && destinationId ? (25 + distance * 5) : 0
-  const total = journeyType === 'return' ? farePerPerson * passengers * 1.8 : farePerPerson * passengers
+  const [fareQuote, setFareQuote] = useState({ base: 0, total: 0 })
 
-  function submit(e) {
+  useEffect(() => {
+    async function quote() {
+      if (!sourceId || !destinationId) return setFareQuote({ base: 0, total: 0 })
+      try {
+        // If backend exposes a route-with-timings, we can also use it to show indirect routes later
+        const base = 25
+        const total = journeyType === 'return' ? base * passengers * 1.8 : base * passengers
+        setFareQuote({ base, total })
+      } catch {
+        setFareQuote({ base: 0, total: 0 })
+      }
+    }
+    quote()
+  }, [sourceId, destinationId, passengers, journeyType])
+
+  async function submit(e) {
     e.preventDefault()
     if (!destinationId) return
+    // Create a tentative ticket via backend before payment, or pass booking to payment
     const booking = {
       sourceId,
       destinationId,
@@ -36,7 +51,7 @@ function TicketBookingPage() {
       destinationName: destination?.name || 'Unknown',
       passengerCount: passengers,
       journeyType,
-      total: `₹${Number.isFinite(total) ? total : 0}`,
+      total: `₹${Number.isFinite(fareQuote.total) ? fareQuote.total : 0}`,
     }
     navigate('/pay', { state: { booking } })
   }
@@ -98,11 +113,11 @@ function TicketBookingPage() {
                       <h6>Fare Details</h6>
                       <div className="d-flex justify-content-between">
                         <span>Base Fare:</span>
-                        <span>₹{farePerPerson}</span>
+                        <span>₹{fareQuote.base}</span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span>Total Amount:</span>
-                        <strong>₹{Number.isFinite(total) ? total : 0}</strong>
+                        <strong>₹{Number.isFinite(fareQuote.total) ? fareQuote.total : 0}</strong>
                       </div>
                     </div>
                   </div>

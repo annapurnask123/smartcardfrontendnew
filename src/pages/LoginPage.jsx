@@ -91,7 +91,7 @@ function LoginPage() {
               </div>
               <div className="card-body p-4">
                 {/* Toggle Password / OTP */}
-                <div className="btn-group w-100 mb-3" role="group">
+                <div className="btn-group w-100 mb-3" role="group" aria-label="Login method">
                   <input
                     type="radio"
                     className="btn-check"
@@ -101,7 +101,7 @@ function LoginPage() {
                     onChange={() => setIsOtp(false)}
                   />
                   <label className="btn btn-outline-primary" htmlFor="passwordLogin">
-                    Password
+                    Login with Password
                   </label>
                   <input
                     type="radio"
@@ -112,7 +112,7 @@ function LoginPage() {
                     onChange={() => setIsOtp(true)}
                   />
                   <label className="btn btn-outline-primary" htmlFor="otpLogin">
-                    OTP
+                    Login with OTP
                   </label>
                 </div>
 

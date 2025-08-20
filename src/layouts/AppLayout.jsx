@@ -1,6 +1,24 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { logout } from '../slices/authSlice'
+import { useState } from 'react'
 
 function AppLayout({ children }) {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const user = useSelector(s => s.auth.user)
+  const [query, setQuery] = useState('')
+
+  function handleLogout() {
+    dispatch(logout())
+    navigate('/login')
+  }
+
+  function onGlobalSearch(e) {
+    e.preventDefault()
+    if (!query.trim()) return
+    navigate(`/home?search=${encodeURIComponent(query.trim())}`)
+  }
   return (
     <div>
       <nav className="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
@@ -23,16 +41,23 @@ function AppLayout({ children }) {
               <li className="nav-item"><NavLink className="nav-link" to="/schedules">Schedules</NavLink></li>
             </ul>
           </div>
-          <div className="d-flex">
+          <form className="d-none d-lg-flex me-2" onSubmit={onGlobalSearch} role="search">
+            <div className="input-group">
+              <span className="input-group-text"><i className="fas fa-search"></i></span>
+              <input className="form-control" placeholder="Search stations, plans, tickets..." value={query} onChange={e=>setQuery(e.target.value)} />
+            </div>
+          </form>
+          <div className="d-flex align-items-center">
             <Link className="btn btn-outline-light me-2" to="/notifications">
               <i className="fas fa-bell"></i>
             </Link>
             <div className="dropdown">
               <button className="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
-                <i className="fas fa-user-circle"></i>
+                <i className="fas fa-user-circle me-1"></i>{user?.name ? <span className="ms-1">{user.name}</span> : null}
               </button>
               <ul className="dropdown-menu dropdown-menu-end">
-                <li><Link className="dropdown-item" to="/profile">Profile</Link></li>
+                <li><Link className="dropdown-item" to="/profile"><i className="fas fa-id-badge me-2"></i>Profile</Link></li>
+                <li><button className="dropdown-item" type="button" onClick={handleLogout}><i className="fas fa-sign-out-alt me-2"></i>Logout</button></li>
               </ul>
             </div>
           </div>
