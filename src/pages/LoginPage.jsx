@@ -121,20 +121,22 @@ function LoginPage() {
                   {/* Phone Input */}
                   <div className="mb-3">
                     <label className="form-label">Phone Number</label>
-                    <div className="input-group">
-                      <span className="input-group-text">
-                        <i className="fas fa-phone"></i>
-                      </span>
-                      <PhoneInput
-                        international
-                        defaultCountry="IN"
-                        value={phone}
-                        onChange={setPhone}
-                        className="form-control"
-                        placeholder="Enter phone number"
-                        required
-                        disabled={otpLoading}
-                      />
+                    <div className={`d-flex ${isOtp ? 'flex-column flex-sm-row gap-2' : ''}`}>
+                      <div className="flex-fill d-flex align-items-center">
+                        <span className="input-group-text me-2 d-none d-sm-inline"><i className="fas fa-phone"></i></span>
+                        <div className="flex-fill">
+                          <PhoneInput
+                            international
+                            defaultCountry="IN"
+                            value={phone}
+                            onChange={setPhone}
+                            className="form-control"
+                            placeholder="Enter phone number"
+                            required
+                            disabled={otpLoading}
+                          />
+                        </div>
+                      </div>
                       {isOtp && (
                         <button
                           type="button"

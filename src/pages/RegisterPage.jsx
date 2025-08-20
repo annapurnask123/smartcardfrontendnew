@@ -162,26 +162,26 @@ const handleRegister = async () => {
                   className="form-control"
                 />
                 {!phoneOtpSent && !phoneVerified && (
-                  <Button className="mt-2 w-100" onClick={sendPhoneOtp} disabled={!form.phone || loading}>
-                    {loading ? <Spinner animation="border" size="sm" /> : "Send OTP"}
-                  </Button>
+                  <div className="d-grid d-sm-flex gap-2 mt-2">
+                    <Button className="flex-fill" onClick={sendPhoneOtp} disabled={!form.phone || loading}>
+                      {loading ? <Spinner animation="border" size="sm" /> : "Send OTP"}
+                    </Button>
+                  </div>
                 )}
                 {phoneOtpSent && !phoneVerified && (
-                  <>
+                  <div className="d-grid d-sm-flex gap-2 mt-2">
                     <Form.Control
-                      className="mt-2"
                       placeholder="Enter OTP"
                       value={form.phoneOtp}
                       onChange={(e) => setForm({ ...form, phoneOtp: e.target.value })}
                     />
                     <Button
-                      className="mt-2 w-100"
                       onClick={verifyPhoneOtp}
                       disabled={!form.phoneOtp || loading}
                     >
                       {loading ? <Spinner animation="border" size="sm" /> : "Verify OTP"}
                     </Button>
-                  </>
+                  </div>
                 )}
                 {phoneVerified && <Alert variant="success" className="mt-2">Phone verified ✅</Alert>}
               </Form.Group>
@@ -197,26 +197,26 @@ const handleRegister = async () => {
                     disabled={emailVerified}
                   />
                   {!emailOtpSent && !emailVerified && (
-                    <Button className="mt-2 w-100" onClick={sendEmailOtp} disabled={!form.email || loading}>
-                      {loading ? <Spinner animation="border" size="sm" /> : "Send OTP"}
-                    </Button>
+                    <div className="d-grid d-sm-flex gap-2 mt-2">
+                      <Button className="flex-fill" onClick={sendEmailOtp} disabled={!form.email || loading}>
+                        {loading ? <Spinner animation="border" size="sm" /> : "Send OTP"}
+                      </Button>
+                    </div>
                   )}
                   {emailOtpSent && !emailVerified && (
-                    <>
+                    <div className="d-grid d-sm-flex gap-2 mt-2">
                       <Form.Control
-                        className="mt-2"
                         placeholder="Enter OTP"
                         value={form.emailOtp}
                         onChange={(e) => setForm({ ...form, emailOtp: e.target.value })}
                       />
                       <Button
-                        className="mt-2 w-100"
                         onClick={verifyEmailOtp}
                         disabled={!form.emailOtp || loading}
                       >
                         {loading ? <Spinner animation="border" size="sm" /> : "Verify OTP"}
                       </Button>
-                    </>
+                    </div>
                   )}
                   {emailVerified && <Alert variant="success" className="mt-2">Email verified ✅</Alert>}
                 </Form.Group>

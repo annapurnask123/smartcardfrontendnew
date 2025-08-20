@@ -113,7 +113,7 @@ function PaymentPage() {
                   </div>
                 </div>
               </div>
-              <div className="d-grid gap-2 d-md-flex">
+              <div className="d-grid gap-2 d-sm-flex">
                 <button className="btn btn-success flex-fill" onClick={pay}><i className="fas fa-lock me-2"></i>Pay {booking.total}</button>
                 <button className="btn btn-outline-primary flex-fill" onClick={payWithWallet}><i className="fas fa-wallet me-2"></i>Pay with Wallet</button>
               </div>
