@@ -213,7 +213,16 @@ export const paymentAPI = {
   deletePaymentMethod: (methodId) => api.delete(`/payment-methods/${methodId}`),
 
   // Payment Processing
-  createPaymentOrder: (data) => api.post("/payments/create-order", data),
+  createPaymentOrder: ({ amount, currency = 'INR', purpose, meta = {}, receipt, notes = {} }) => {
+    const integerAmount = Math.max(1, Math.trunc(Number(amount || 0)))
+    const payload = {
+      amount: integerAmount,
+      currency,
+      receipt: receipt || `rcpt_${Date.now()}`,
+      notes: { purpose, ...meta, ...notes },
+    }
+    return api.post("/payments/create-order", payload)
+  },
   verifyPayment: (data) => api.post("/payments/verify", data),
   handleWebhook: (data) => api.post("/payments/webhook", data),
 };

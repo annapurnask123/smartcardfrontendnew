@@ -13,8 +13,8 @@ function PaymentPage() {
 
   async function pay() {
     try {
-      const amountPaise = Number(String(booking.total).replace(/[^0-9.]/g,'')) * 100
-      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'ticket', meta: booking })
+      const amountPaise = Math.round(Number(String(booking.total).replace(/[^0-9.]/g,'')) * 100)
+      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'ticket', meta: { source: booking.sourceId, destination: booking.destinationId } })
       await openRazorpayCheckout({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
         amount: order.amount,
