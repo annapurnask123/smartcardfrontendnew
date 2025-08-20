@@ -20,6 +20,10 @@ api.interceptors.request.use(
       "/users/verify-login-otp",
     ];
     const isPublic = publicPaths.some((p) => (config.url || "").startsWith(p));
+    // Log minimal request for debugging 500s (non-sensitive)
+    if (import.meta && import.meta.env && import.meta.env.DEV) {
+      console.debug('[API]', config.method?.toUpperCase(), config.url)
+    }
     if (!isPublic) {
       const token = localStorage.getItem("token");
       if (token) {
@@ -73,6 +77,11 @@ export const authAPI = {
       phoneNumber: fmt.e164,
       phone: fmt.digits,
       countryCode: fmt.countryCode,
+      mobile: fmt.digits,
+      mobileNumber: fmt.digits,
+      phone_number: fmt.e164,
+      mobile_number: fmt.e164,
+      msisdn: fmt.digits,
     })
   },
   verifyPhoneOtp: (phoneNumber, otp, otpHash) =>
@@ -83,7 +92,8 @@ export const authAPI = {
   requestRegisterEmailOtp: (phoneNumber, email) =>
     api.post("/users/request-register-email-otp", (() => {
       const fmt = normalizePhoneFormats(phoneNumber)
-      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, email }
+      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, email,
+        mobile: fmt.digits, mobileNumber: fmt.digits, phone_number: fmt.e164, mobile_number: fmt.e164, msisdn: fmt.digits }
     })()),
   verifyEmailOtp: (email, otp, otpHash) =>
     api.post("/users/verify-email-otp", { email, otp, otpHash }),
@@ -101,7 +111,8 @@ export const authAPI = {
     })()),
   requestLoginOtp: (phoneNumber) => {
     const fmt = normalizePhoneFormats(phoneNumber)
-    return api.post("/users/request-login-otp", { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode })
+    return api.post("/users/request-login-otp", { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode,
+      mobile: fmt.digits, mobileNumber: fmt.digits, phone_number: fmt.e164, mobile_number: fmt.e164, msisdn: fmt.digits })
   },
   verifyLoginOtp: (phoneNumber, otp, otpHash) =>
     api.post("/users/verify-login-otp", (() => {

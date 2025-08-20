@@ -39,7 +39,8 @@ function RegisterPage() {
       setPhoneOtpSent(true);
       setAlert({ type: "success", message: "Phone OTP sent!" });
     } catch (err) {
-      setAlert({ type: "danger", message: err.response?.data?.error || err.message });
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message
+      setAlert({ type: "danger", message: `Failed to send phone OTP: ${msg}` });
     } finally {
       setLoading(false);
     }
