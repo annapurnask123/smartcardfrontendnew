@@ -68,26 +68,29 @@ function CardsPage() {
         <div className="col-12">
           <h5>Primary Card</h5>
           <div className="col-md-6">
-            <div className="metro-card">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h6>SmartMetroCard</h6>
-                  <small>Primary Card</small>
+            <div className="credit-card">
+              <div className="credit-row mb-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="credit-chip"></div>
+                  <div className="credit-brand">SMART METRO</div>
                 </div>
-                <div className="card-chip"></div>
+                <i className="fas fa-wifi credit-nfc"></i>
               </div>
-              <div className="mb-3">
-                <h4>₹<span>{primaryCardBalance.toFixed(2)}</span></h4>
-                <small>Available Balance</small>
+              <div className="credit-row mb-3">
+                <div className="credit-number">**** **** **** 1234</div>
+                <div className="text-end">
+                  <div className="credit-label">VALID THRU</div>
+                  <div>12/25</div>
+                </div>
               </div>
-              <div className="d-flex justify-content-between align-items-end">
+              <div className="credit-row">
                 <div>
-                  <div className="card-number">**** **** **** 1234</div>
-                  <small>Card Number</small>
+                  <div className="credit-label">CARD HOLDER</div>
+                  <div className="credit-name">Primary Card</div>
                 </div>
                 <div className="text-end">
-                  <div>12/25</div>
-                  <small>Exp Date</small>
+                  <div className="credit-label">BALANCE</div>
+                  <div className="fw-bold">₹{primaryCardBalance.toFixed(2)}</div>
                 </div>
               </div>
               <div className="mt-3">

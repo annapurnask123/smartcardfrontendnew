@@ -51,6 +51,19 @@ function SchedulesPage() {
                     <span className={`badge bg-${s?.status === 'on-time' ? 'success' : s?.status === 'delayed' ? 'warning' : 'danger'} train-status ${s?.status || ''}`}>{String(s?.status || '').replace('-', ' ').toUpperCase() || '—'}</span>
                   </div>
                 </div>
+                {Array.isArray(s.stops) && s.stops.length > 0 && (
+                  <details className="mt-3">
+                    <summary className="text-primary">View Stops</summary>
+                    <ul className="list-group mt-2">
+                      {s.stops.map((st, i) => (
+                        <li key={i} className="list-group-item d-flex justify-content-between align-items-center">
+                          <span>{st.name || st.station}</span>
+                          <small className="text-muted">{st.time || st.arrival || ''}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </div>
             </div>
           </div>
@@ -61,4 +74,3 @@ function SchedulesPage() {
 }
 
 export default SchedulesPage
-
