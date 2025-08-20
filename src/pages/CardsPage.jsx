@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { cardAPI, stationAPI } from '../api/api'
-import { setJourney } from '../slices/dataSlice'
+import { setJourney, setCards } from '../slices/dataSlice'
 
 function CardsPage() {
   const dispatch = useDispatch()
   const { primaryCardBalance, cards } = useSelector(s => s.data)
+  const user = useSelector(s => s.auth.user)
   const [stations, setStations] = useState([])
   const [tapInStation, setTapInStation] = useState('')
   const [tapOutStation, setTapOutStation] = useState('')
@@ -16,16 +17,40 @@ function CardsPage() {
         const { data } = await stationAPI.getAllStations()
         setStations(Array.isArray(data) ? data : data.items || [])
       } catch {}
+      try {
+        if (!user?.id && !user?._id) return
+        const { data: userCards } = await cardAPI.getUserCards(user.id || user._id)
+        dispatch(setCards(Array.isArray(userCards) ? userCards : userCards?.items || []))
+      } catch {}
     })()
   }, [])
+
+  async function createNewCard() {
+    try {
+      const { data } = await cardAPI.createCard({ userId: user.id || user._id })
+      dispatch(setCards([...(cards||[]), data]))
+    } catch {}
+  }
+
+  async function checkBalance(cardId) {
+    try {
+      const { data } = await cardAPI.getBalance(cardId)
+      alert(`Balance: ₹${data.balance} | Journeys: ${data.journeyCount || 0}`)
+    } catch {}
+  }
 
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-credit-card me-2"></i>My Cards</h2>
-        <button className="btn btn-primary">
-          <i className="fas fa-plus me-2"></i>Recharge Card
-        </button>
+        <div className="d-flex gap-2">
+          <button className="btn btn-outline-secondary" onClick={() => checkBalance('primary')}>
+            <i className="fas fa-wallet me-2"></i>Check Balance
+          </button>
+          <button className="btn btn-primary" onClick={createNewCard}>
+            <i className="fas fa-plus me-2"></i>Get New Card
+          </button>
+        </div>
       </div>
 
       <div className="row mb-4">
@@ -114,9 +139,14 @@ function CardsPage() {
                     <h6>{card.name}</h6>
                     <p>Balance: ₹{card.balance}</p>
                     <p>Status: <span className={`badge ${card.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>{card.status}</span></p>
-                    {card.status === 'active' && (
-                      <button className="btn btn-primary btn-sm">Use Card</button>
-                    )}
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-outline-secondary btn-sm" onClick={() => checkBalance(card.id || card._id)}>
+                        <i className="fas fa-wallet me-1"></i>Balance
+                      </button>
+                      <button className="btn btn-outline-primary btn-sm" disabled={card.status !== 'active'}>
+                        Use Card
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
