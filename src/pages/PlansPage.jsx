@@ -17,7 +17,7 @@ function PlansPage() {
   async function purchasePlan(plan) {
     try {
       const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
-      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'subscription', meta: { subscriptionPlanId: plan.id || plan._id }, type: 'subscription', id: (plan.id || plan._id), userId: (user?.id || user?._id) })
+      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'subscription', meta: { subscriptionPlanId: plan.id || plan._id }, type: 'subscription', id: (plan.id || plan._id), userId: (user?.id || user?._id), paymentMethod: 'card' })
       await openRazorpayCheckout({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
         amount: order.amount,
