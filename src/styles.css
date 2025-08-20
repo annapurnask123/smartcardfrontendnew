@@ -6,6 +6,9 @@
     .metro-card { padding: 16px; border-radius: 12px; }
     .balance-card h3 { font-size: 1.5rem; }
     .navbar .form-control { width: 160px; }
+    .btn, .btn-sm { min-height: 44px; }
+    .stack-sm .btn { width: 100%; }
+    .credit-card .btn { width: 100%; }
 }
 
 /* Page backgrounds */
