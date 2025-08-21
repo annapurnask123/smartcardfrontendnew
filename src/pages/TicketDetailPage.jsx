@@ -1,156 +1,197 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ticketAPI, stationAPI, paymentAPI } from '../api/api'
-import { openRazorpayCheckout } from '../utils/razorpay'
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import QRCode from "react-qr-code";
+import { ticketAPI } from "../api/api";
+import { fetchStations } from "../slices/stationSlice";
 
 function TicketDetailPage() {
-  const { ticketId } = useParams()
-  const navigate = useNavigate()
-  const [ticket, setTicket] = useState(null)
-  const [qr, setQr] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const stations = useSelector((state) => state.stations.stations || []);
+
+  // Fetch ticket + stations
   useEffect(() => {
-    (async () => {
+    async function fetchData() {
       try {
-        setLoading(true)
-        const { data } = await ticketAPI.getTicket(ticketId)
-        setTicket(data)
-        try {
-          const qrRes = await ticketAPI.generateQR(ticketId)
-          setQr(qrRes.data?.qr || '')
-        } catch {}
-      } catch (e) {
-        setError('Failed to load ticket')
+        const res = await ticketAPI.getTicketById(id);
+        setTicket(res.data);
+        dispatch(fetchStations());
+      } catch (err) {
+        setError("Failed to load ticket details.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    })()
-  }, [ticketId])
+    }
+    fetchData();
+  }, [id, dispatch]);
 
-  async function handleCancel() {
+  if (loading) return <p>Loading ticket details...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  if (!ticket) return <p>No ticket found.</p>;
+
+  const fromStation =
+    stations.find((s) => s.id === ticket.fromStationId)?.name || "Unknown";
+  const toStation =
+    stations.find((s) => s.id === ticket.toStationId)?.name || "Unknown";
+
+  // ===== Ticket Actions =====
+  const handleCancel = async () => {
     try {
-      setLoading(true)
-      await ticketAPI.cancelTicket({ ticketId })
-      navigate('/tickets')
-    } finally { setLoading(false) }
-  }
+      await ticketAPI.cancelTicket(ticket._id);
+      alert("Ticket cancelled successfully");
+      navigate("/tickets");
+    } catch {
+      alert("Failed to cancel ticket.");
+    }
+  };
 
-  async function handleEarlyDrop() {
+  const handleExtend = async () => {
     try {
-      setLoading(true)
-      await ticketAPI.dropEarly({ ticketId })
-      navigate('/tickets')
-    } finally { setLoading(false) }
-  }
+      const res = await ticketAPI.extendJourney(ticket._id);
+      const order = res.data.order;
 
-  async function handleExtend(newDestinationId, amount) {
-    // Create payment order, verify, then extend via backend
-    const amountPaise = Math.round((amount || 0) * 100)
-    const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'extend-ticket', meta: { ticketId, newDestinationId } })
-    await openRazorpayCheckout({
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
-      amount: order.amount,
-      name: 'SmartMetroCard',
-      description: 'Extend Journey',
-      orderId: order.id,
-      handler: async (response) => {
-        await paymentAPI.verifyPayment({
-          orderId: order.id,
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpayOrderId: response.razorpay_order_id,
-          razorpaySignature: response.razorpay_signature,
-        })
-        await ticketAPI.extendJourney({ ticketId, newDestinationId, paymentOrderId: order.id })
-        navigate('/tickets')
-      },
-    })
-  }
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Metro Ticket Extension",
+        order_id: order.id,
+        handler: async function (response) {
+          await ticketAPI.verifyExtension(ticket._id, response);
+          alert("Journey extended successfully!");
+          navigate(0);
+        },
+      };
 
-  if (!ticket) return (
-    <div className="container mt-5 pt-5">
-      {loading ? 'Loading…' : error || 'Ticket not found'}
-    </div>
-  )
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch {
+      alert("Failed to extend journey.");
+    }
+  };
+
+  const handleTapIn = async () => {
+    try {
+      await ticketAPI.tapIn(ticket._id);
+      alert("Tap In successful!");
+      navigate(0);
+    } catch {
+      alert("Failed to Tap In.");
+    }
+  };
+
+  const handleTapOut = async () => {
+    try {
+      await ticketAPI.tapOut(ticket._id);
+      alert("Tap Out successful!");
+      navigate(0);
+    } catch {
+      alert("Failed to Tap Out.");
+    }
+  };
+
+  const handleEarlyDrop = async () => {
+    try {
+      await ticketAPI.earlyDrop(ticket._id);
+      alert("Early Drop successful!");
+      navigate(0);
+    } catch {
+      alert("Failed to Early Drop.");
+    }
+  };
 
   return (
-    <div className="container mt-5 pt-5">
-      <div className="row">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-header bg-primary text-white">
-              <h5 className="mb-0"><i className="fas fa-ticket-alt me-2"></i>Ticket {ticket.id || ticket._id}</h5>
-            </div>
-            <div className="card-body">
-              <div className="d-flex justify-content-between">
-                <div>
-                  <small className="text-muted">From</small>
-                  <div className="fw-bold">{ticket.sourceName || ticket.source}</div>
-                </div>
-                <div className="text-end">
-                  <small className="text-muted">To</small>
-                  <div className="fw-bold">{ticket.destinationName || ticket.destination}</div>
-                </div>
-              </div>
-              <hr />
-              <div className="d-flex justify-content-between">
-                <div>Status: <span className={`badge bg-${(ticket.status||'active')==='active'?'success':'secondary'}`}>{ticket.status}</span></div>
-                <div>Passengers: <strong>{ticket.passengerCount || 1}</strong></div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 d-flex gap-2">
-            <button className="btn btn-outline-danger" onClick={handleCancel} disabled={loading}><i className="fas fa-times me-2"></i>Cancel</button>
-            <button className="btn btn-outline-warning" onClick={handleEarlyDrop} disabled={loading}><i className="fas fa-door-open me-2"></i>Early Drop</button>
-          </div>
+    <div className="max-w-lg mx-auto p-6 bg-white shadow-lg rounded-xl mt-6">
+      <h2 className="text-2xl font-bold mb-4 text-center">Ticket Details</h2>
+
+      <div className="space-y-2 text-gray-700">
+        <p>
+          <strong>From:</strong> {fromStation}
+        </p>
+        <p>
+          <strong>To:</strong> {toStation}
+        </p>
+        <p>
+          <strong>Price:</strong> ₹{ticket.price}
+        </p>
+        <p>
+          <strong>Status:</strong>{" "}
+          <span
+            className={`px-2 py-1 rounded text-white ${
+              ticket.status === "Active"
+                ? "bg-green-500"
+                : ticket.status === "Cancelled"
+                ? "bg-red-500"
+                : "bg-yellow-500"
+            }`}
+          >
+            {ticket.status}
+          </span>
+        </p>
+        <p>
+          <strong>Created At:</strong>{" "}
+          {new Date(ticket.createdAt).toLocaleString()}
+        </p>
+      </div>
+
+      {/* QR Code */}
+      {(ticket.status === "Active" || ticket.status === "InProgress") && (
+        <div className="mt-6 flex justify-center">
+          <QRCode value={ticket._id} size={180} />
         </div>
-        <div className="col-md-6">
-          <div className="card h-100">
-            <div className="card-header bg-light">
-              <h6 className="mb-0"><i className="fas fa-qrcode me-2"></i>QR Code</h6>
-            </div>
-            <div className="card-body d-flex justify-content-center align-items-center">
-              {qr ? (
-                <img src={qr} alt="Ticket QR" style={{ maxWidth: '100%', height: 'auto' }} />
-              ) : (
-                <span className="text-muted">QR not available</span>
-              )}
-            </div>
-          </div>
-          <div className="card mt-3">
-            <div className="card-header bg-light">
-              <h6 className="mb-0"><i className="fas fa-arrows-alt me-2"></i>Extend Journey</h6>
-            </div>
-            <div className="card-body">
-              <ExtendForm onExtend={handleExtend} />
-            </div>
-          </div>
-        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-6 space-y-3">
+        {ticket.status === "Active" && (
+          <>
+            <button
+              onClick={handleTapIn}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg"
+            >
+              Tap In
+            </button>
+            <button
+              onClick={handleCancel}
+              className="w-full bg-red-600 text-white py-2 rounded-lg"
+            >
+              Cancel Ticket
+            </button>
+            <button
+              onClick={handleExtend}
+              className="w-full bg-purple-600 text-white py-2 rounded-lg"
+            >
+              Extend Journey
+            </button>
+          </>
+        )}
+
+        {ticket.status === "InProgress" && (
+          <>
+            <button
+              onClick={handleTapOut}
+              className="w-full bg-green-600 text-white py-2 rounded-lg"
+            >
+              Tap Out
+            </button>
+            <button
+              onClick={handleEarlyDrop}
+              className="w-full bg-orange-500 text-white py-2 rounded-lg"
+            >
+              Early Drop
+            </button>
+          </>
+        )}
       </div>
     </div>
-  )
+  );
 }
 
-function ExtendForm({ onExtend }) {
-  const [destinationId, setDestinationId] = useState('')
-  const [fare, setFare] = useState('')
-  return (
-    <form onSubmit={(e)=>{e.preventDefault(); if (!destinationId) return; onExtend(destinationId, Number(fare)||0)}}>
-      <div className="row g-2">
-        <div className="col-6">
-          <input className="form-control" placeholder="New destination id" value={destinationId} onChange={e=>setDestinationId(e.target.value)} />
-        </div>
-        <div className="col-4">
-          <input className="form-control" placeholder="Fare" value={fare} onChange={e=>setFare(e.target.value)} />
-        </div>
-        <div className="col-2 d-grid">
-          <button className="btn btn-primary" type="submit">Go</button>
-        </div>
-      </div>
-    </form>
-  )
-}
-
-export default TicketDetailPage
-
+export default TicketDetailPage;

@@ -1,20 +1,30 @@
-// src/redux/slices/ticketSlice.js
+// src/slices/ticketSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/api";
+import { ticketAPI } from "../api/api";
 
-// Async thunk to fetch tickets
+// Async thunk to fetch tickets for user
 export const fetchTickets = createAsyncThunk(
   "tickets/fetchTickets",
   async () => {
-    const response = await api.get("/tickets");
+    const response = await ticketAPI.getUserTickets();
     return response.data;
   }
 );
 
 const ticketSlice = createSlice({
   name: "tickets",
-  initialState: { tickets: [], loading: false, error: null },
-  reducers: {},
+  initialState: {
+    tickets: [],
+    loading: false,
+    error: null,
+  },
+  reducers: {
+    // Reducer to add a new ticket locally
+    addTicket: (state, action) => {
+      state.tickets.push(action.payload);
+    },
+    // You can add more reducers like updateTicket, removeTicket if needed
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchTickets.pending, (state) => {
@@ -31,4 +41,8 @@ const ticketSlice = createSlice({
   },
 });
 
+// Export the addTicket action creator
+export const { addTicket } = ticketSlice.actions;
+
+// Export the reducer as default export
 export default ticketSlice.reducer;

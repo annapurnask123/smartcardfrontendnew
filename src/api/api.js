@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const apiBase = (import.meta?.env?.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "")
+const apiBase = (import.meta?.env?.VITE_API_BASE_URL || "/api/v1").replace(
+  /\/$/,
+  ""
+);
 const api = axios.create({
   baseURL: apiBase,
   headers: { "Content-Type": "application/json" },
@@ -23,7 +26,7 @@ api.interceptors.request.use(
     const isPublic = publicPaths.some((p) => (config.url || "").startsWith(p));
     // Log minimal request for debugging 500s (non-sensitive)
     if (import.meta && import.meta.env && import.meta.env.DEV) {
-      console.debug('[API]', config.method?.toUpperCase(), config.url)
+      console.debug("[API]", config.method?.toUpperCase(), config.url);
     }
     if (!isPublic) {
       const token = localStorage.getItem("token");
@@ -55,25 +58,28 @@ api.interceptors.response.use(
 
 // Helpers
 function normalizePhoneFormats(input) {
-  const raw = String(input || '').trim()
-  const digits = raw.replace(/\D/g, '')
+  const raw = String(input || "").trim();
+  const digits = raw.replace(/\D/g, "");
   // derive e164 for India by default if 10 digits, or preserve if already has country code
-  let e164 = raw.startsWith('+') ? raw : ''
+  let e164 = raw.startsWith("+") ? raw : "";
   if (!e164) {
-    if (digits.length === 10) e164 = `+91${digits}`
-    else if (digits.length === 12 && digits.startsWith('91')) e164 = `+${digits}`
-    else e164 = raw // fallback
+    if (digits.length === 10) e164 = `+91${digits}`;
+    else if (digits.length === 12 && digits.startsWith("91"))
+      e164 = `+${digits}`;
+    else e164 = raw; // fallback
   }
-  const phoneOnlyDigits = digits
-  const countryCode = e164.startsWith('+') ? `+${(e164.match(/^\+(\d{1,3})/) || [,''])[1]}` : '+91'
-  return { e164, digits: phoneOnlyDigits, countryCode }
+  const phoneOnlyDigits = digits;
+  const countryCode = e164.startsWith("+")
+    ? `+${(e164.match(/^\+(\d{1,3})/) || [, ""])[1]}`
+    : "+91";
+  return { e164, digits: phoneOnlyDigits, countryCode };
 }
 
 // Auth API - Updated to match backend OTP flow
 export const authAPI = {
   // Registration flow
   requestRegisterPhoneOtp: (phoneNumber) => {
-    const fmt = normalizePhoneFormats(phoneNumber)
+    const fmt = normalizePhoneFormats(phoneNumber);
     return api.post("/users/request-register-phone-otp", {
       phoneNumber: fmt.e164,
       phone: fmt.digits,
@@ -83,19 +89,40 @@ export const authAPI = {
       phone_number: fmt.e164,
       mobile_number: fmt.e164,
       msisdn: fmt.digits,
-    })
+    });
   },
   verifyPhoneOtp: (phoneNumber, otp, otpHash) =>
-    api.post("/users/verify-phone-otp", (() => {
-      const fmt = normalizePhoneFormats(phoneNumber)
-      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, otp, otpHash }
-    })()),
+    api.post(
+      "/users/verify-phone-otp",
+      (() => {
+        const fmt = normalizePhoneFormats(phoneNumber);
+        return {
+          phoneNumber: fmt.e164,
+          phone: fmt.digits,
+          countryCode: fmt.countryCode,
+          otp,
+          otpHash,
+        };
+      })()
+    ),
   requestRegisterEmailOtp: (phoneNumber, email) =>
-    api.post("/users/request-register-email-otp", (() => {
-      const fmt = normalizePhoneFormats(phoneNumber)
-      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, email,
-        mobile: fmt.digits, mobileNumber: fmt.digits, phone_number: fmt.e164, mobile_number: fmt.e164, msisdn: fmt.digits }
-    })()),
+    api.post(
+      "/users/request-register-email-otp",
+      (() => {
+        const fmt = normalizePhoneFormats(phoneNumber);
+        return {
+          phoneNumber: fmt.e164,
+          phone: fmt.digits,
+          countryCode: fmt.countryCode,
+          email,
+          mobile: fmt.digits,
+          mobileNumber: fmt.digits,
+          phone_number: fmt.e164,
+          mobile_number: fmt.e164,
+          msisdn: fmt.digits,
+        };
+      })()
+    ),
   verifyEmailOtp: (email, otp, otpHash) =>
     api.post("/users/verify-email-otp", { email, otp, otpHash }),
   setPassword: (userId, password, confirmPassword) =>
@@ -106,20 +133,45 @@ export const authAPI = {
 
   // Login flow
   loginWithPassword: (phoneNumber, password) =>
-    api.post("/users/login/password", (() => {
-      const fmt = normalizePhoneFormats(phoneNumber)
-      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, password }
-    })()),
+    api.post(
+      "/users/login/password",
+      (() => {
+        const fmt = normalizePhoneFormats(phoneNumber);
+        return {
+          phoneNumber: fmt.e164,
+          phone: fmt.digits,
+          countryCode: fmt.countryCode,
+          password,
+        };
+      })()
+    ),
   requestLoginOtp: (phoneNumber) => {
-    const fmt = normalizePhoneFormats(phoneNumber)
-    return api.post("/users/request-login-otp", { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode,
-      mobile: fmt.digits, mobileNumber: fmt.digits, phone_number: fmt.e164, mobile_number: fmt.e164, msisdn: fmt.digits })
+    const fmt = normalizePhoneFormats(phoneNumber);
+    return api.post("/users/request-login-otp", {
+      phoneNumber: fmt.e164,
+      phone: fmt.digits,
+      countryCode: fmt.countryCode,
+      mobile: fmt.digits,
+      mobileNumber: fmt.digits,
+      phone_number: fmt.e164,
+      mobile_number: fmt.e164,
+      msisdn: fmt.digits,
+    });
   },
   verifyLoginOtp: (phoneNumber, otp, otpHash) =>
-    api.post("/users/verify-login-otp", (() => {
-      const fmt = normalizePhoneFormats(phoneNumber)
-      return { phoneNumber: fmt.e164, phone: fmt.digits, countryCode: fmt.countryCode, otp, otpHash }
-    })()),
+    api.post(
+      "/users/verify-login-otp",
+      (() => {
+        const fmt = normalizePhoneFormats(phoneNumber);
+        return {
+          phoneNumber: fmt.e164,
+          phone: fmt.digits,
+          countryCode: fmt.countryCode,
+          otp,
+          otpHash,
+        };
+      })()
+    ),
   // Profile and token verification
   verifyToken: () => api.get("/users/profile"),
   logout: () => api.post("/users/logout"),
@@ -168,7 +220,9 @@ export const stationAPI = {
   updateStation: (stationId, data) => api.put(`/stations/${stationId}`, data),
   deleteStation: (stationId) => api.delete(`/stations/${stationId}`),
   getRouteWithTimings: (from, to) =>
-    api.get(`/stations/route-with-timings/query?from=${from}&to=${to}`),
+    axios.get("/api/v1/stations/route-with-timings/query", {
+      params: { from: sourceId, to: destinationId },
+    }),
   getNextTrains: (stationCode) =>
     api.get(`/stations/${stationCode}/next-trains`),
 };

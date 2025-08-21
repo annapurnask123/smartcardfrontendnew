@@ -25,8 +25,12 @@ import SearchPage from './pages/SearchPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import PrivacyPage from './pages/PrivacyPage.jsx'
 import TermsPage from './pages/TermsPage.jsx'
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentFailedPage from "./pages/PaymentFailedPage";
+import PaymentResultPage from "./pages/PaymentResultPage";
 
 function App() {
+  
   return (
     <Routes>
       <Route path="/" element={<WelcomePage />} />
@@ -53,6 +57,9 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+    <Route path="/payment-failed" element={<PaymentFailedPage />} />
+     <Route path="/payment-result" element={<PaymentResultPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

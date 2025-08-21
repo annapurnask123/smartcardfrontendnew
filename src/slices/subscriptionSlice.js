@@ -1,11 +1,10 @@
-// src/redux/slices/subscriptionSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { subscriptionAPI } from "../api/api";
 
-// Async thunk to fetch subscriptions
 export const fetchSubscriptions = createAsyncThunk(
   "subscriptions/fetchSubscriptions",
   async () => {
-    const response = await api.get("/subscriptions");
+    const response = await subscriptionAPI.getAllSubscriptions();
     return response.data;
   }
 );
@@ -13,7 +12,19 @@ export const fetchSubscriptions = createAsyncThunk(
 const subscriptionSlice = createSlice({
   name: "subscriptions",
   initialState: { subscriptions: [], loading: false, error: null },
-  reducers: {},
+  reducers: {
+    addSubscription: (state, action) => {
+      // Add or update subscription in state.subscriptions
+      const index = state.subscriptions.findIndex(
+        (s) => s.id === action.payload.id
+      );
+      if (index >= 0) {
+        state.subscriptions[index] = action.payload;
+      } else {
+        state.subscriptions.push(action.payload);
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchSubscriptions.pending, (state) => {
@@ -30,4 +41,5 @@ const subscriptionSlice = createSlice({
   },
 });
 
+export const { addSubscription } = subscriptionSlice.actions;
 export default subscriptionSlice.reducer;

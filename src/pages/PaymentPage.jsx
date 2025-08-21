@@ -1,89 +1,192 @@
-import { useLocation, useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { addTicket } from '../slices/dataSlice'
-import { openRazorpayCheckout } from '../utils/razorpay'
-import { paymentAPI, ticketAPI } from '../api/api'
+import { useLocation, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { useState, useEffect } from "react";
 
-function PaymentPage() {
-  const { state } = useLocation()
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
-  const booking = state?.booking
-  const user = useSelector(s => s.auth.user)
+import { addTicket } from "../slices/ticketSlice";
+import { addSubscription } from "../slices/subscriptionSlice";
+import { fetchWallet, deductFare } from "../slices/walletSlice";
 
-  async function pay() {
+import { paymentAPI, ticketAPI, subscriptionAPI } from "../api/api";
+import { openRazorpayCheckout } from "../utils/razorpay";
+
+export default function PaymentPage() {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const user = useSelector((s) => s.auth.user);
+  const wallet = useSelector((s) => s.wallet);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const paymentInfo = state?.paymentInfo;
+
+  useEffect(() => {
+    if (!paymentInfo) setError("Payment info missing");
+    if (!user) setError("User not logged in");
+    if (user && paymentInfo) dispatch(fetchWallet(user.id));
+  }, [paymentInfo, user, dispatch]);
+
+  if (!paymentInfo) return <div className="container mt-5">Payment info missing</div>;
+  if (!user) return <div className="container mt-5">User not logged in</div>;
+
+  const goToResult = (success, message = "") => {
+    const result = { success, method: paymentInfo.paymentMethod || "razorpay", message };
+    localStorage.setItem("lastPaymentResult", JSON.stringify({ ...result, paymentInfo }));
+    navigate("/payment-result");
+  };
+
+  // Wallet Payment
+  async function payWithWallet() {
+    setLoading(true);
+    setError(null);
+
     try {
-      const amountPaise = Number(String(booking.total).replace(/[^0-9.]/g,'')) * 100
-      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'ticket', meta: booking })
+      if (wallet.balance < paymentInfo.amount) {
+        return goToResult(false, "Insufficient wallet balance.");
+      }
+
+      await dispatch(deductFare({ userId: user.id, amount: paymentInfo.amount })).unwrap();
+
+      if (paymentInfo.type === "ticket") {
+        const ticketPayload = {
+          userId: user.id,
+          trip_id: '100', // Replace with real tripId if needed
+          startStationId: paymentInfo.booking.sourceId,
+          endStationId: paymentInfo.booking.destinationId,
+          ticketType: paymentInfo.booking.journeyType,
+          passengerCount: Number(paymentInfo.booking.passengerCount),
+          amount: Number(paymentInfo.amount),
+          paymentMethod: "wallet",
+        };
+
+        const { data: ticket } = await ticketAPI.bookTicket(ticketPayload);
+        dispatch(addTicket({
+          id: ticket.id || ticket._id || `TKT${Date.now()}`,
+          source: paymentInfo.booking.sourceName,
+          destination: paymentInfo.booking.destinationName,
+          date: new Date().toLocaleDateString(),
+          status: ticket.status || "active",
+          amount: paymentInfo.amount,
+        }));
+      } else if (paymentInfo.type === "subscription") {
+        const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
+        dispatch(addSubscription(subscription));
+      }
+
+      goToResult(true);
+    } catch (err) {
+      console.error("Wallet payment error:", err);
+      goToResult(false, "Wallet payment failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Razorpay Payment
+  async function pay() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const amountPaise = Math.round(Number(paymentInfo.amount) * 100);
+
+      const payload = {
+        amount: amountPaise,
+        currency: "INR",
+        purpose: paymentInfo.type,
+        type: paymentInfo.type,
+        id: paymentInfo.id,
+        userId: user.id || user._id,
+        meta: paymentInfo.booking
+          ? {
+              startStationId: paymentInfo.booking.sourceId,
+              endStationId: paymentInfo.booking.destinationId,
+              passengerCount: Number(paymentInfo.booking.passengerCount),
+              ticketType: paymentInfo.booking.journeyType,
+            }
+          : {},
+      };
+
+      const { data: order } = await paymentAPI.createPaymentOrder(payload);
+
+      if (!order?.order_id && !order?.id) {
+        throw new Error("Invalid payment order returned");
+      }
+
       await openRazorpayCheckout({
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
-        name: 'SmartMetroCard',
-        description: 'Ticket Payment',
-        orderId: order.id,
+        currency: "INR",
+        name: "SmartMetroCard",
+        description: `Payment for ${paymentInfo.type}`,
+        orderId: order.order_id || order.id,
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone,
+        },
         handler: async (response) => {
           try {
-            await paymentAPI.verifyPayment({
-              orderId: order.id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpaySignature: response.razorpay_signature,
-            })
-            // Create ticket in backend after successful payment
-            const createPayload = {
-              sourceId: booking.sourceId,
-              destinationId: booking.destinationId,
-              passengerCount: booking.passengerCount,
-              journeyType: booking.journeyType,
-              amount: amountPaise / 100,
-              paymentOrderId: order.id,
+            const { data: verifyResult } = await paymentAPI.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (!verifyResult?.success) {
+              console.error("Payment verification failed", verifyResult);
+              return goToResult(false, "Payment verification failed.");
             }
-            const { data: ticket } = await ticketAPI.bookTicket(createPayload)
-            dispatch(addTicket({
-              id: ticket?.id || ticket?._id || `TKT${Date.now()}`,
-              source: booking.sourceName,
-              destination: booking.destinationName,
-              date: new Date().toLocaleDateString(),
-              status: ticket?.status || 'active',
-              amount: booking.total,
-            }))
-            navigate('/tickets')
-          } catch (e) {
-            // optional: show error toast
+
+            if (paymentInfo.type === "ticket") {
+              const ticketPayload = {
+                userId: user.id,
+                trip_id: '100', // Replace with real tripId if needed
+                startStationId: paymentInfo.booking.sourceId,
+                endStationId: paymentInfo.booking.destinationId,
+                ticketType: paymentInfo.booking.journeyType,
+                passengerCount: Number(paymentInfo.booking.passengerCount),
+                amount: Number(paymentInfo.amount),
+                paymentMethod: "razorpay",
+                paymentOrderId: order.order_id || order.id,
+              };
+
+              console.log("Booking payload:", ticketPayload); // Debug
+
+              const { data: ticket } = await ticketAPI.bookTicket(ticketPayload);
+              dispatch(addTicket({
+                id: ticket.id || ticket._id || `TKT${Date.now()}`,
+                source: paymentInfo.booking.sourceName,
+                destination: paymentInfo.booking.destinationName,
+                date: new Date().toLocaleDateString(),
+                status: ticket.status || "active",
+                amount: paymentInfo.amount,
+              }));
+            } else if (paymentInfo.type === "subscription") {
+              const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
+              dispatch(addSubscription(subscription));
+            }
+
+            goToResult(true);
+          } catch (err) {
+            console.error("Payment handler error:", err);
+            goToResult(false, "Payment verification failed.");
+          } finally {
+            setLoading(false);
           }
         },
-      })
-    } catch (e) {
-      // no-op
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+      });
+    } catch (err) {
+      console.error("Payment initiation error:", err);
+      goToResult(false, "Payment initiation failed.");
+      setLoading(false);
     }
   }
-
-  async function payWithWallet() {
-    try {
-      const amount = Number(String(booking.total).replace(/[^0-9.]/g,''))
-      const { data: ticket } = await ticketAPI.bookTicket({
-        sourceId: booking.sourceId,
-        destinationId: booking.destinationId,
-        passengerCount: booking.passengerCount,
-        journeyType: booking.journeyType,
-        amount,
-        paymentMethod: 'wallet',
-      })
-      dispatch(addTicket({
-        id: ticket?.id || ticket?._id || `TKT${Date.now()}`,
-        source: booking.sourceName,
-        destination: booking.destinationName,
-        date: new Date().toLocaleDateString(),
-        status: ticket?.status || 'active',
-        amount: booking.total,
-      }))
-      navigate('/tickets')
-    } catch (e) {
-      // show error toast
-    }
-  }
-
-  if (!booking) return <div className="container mt-5 pt-5">Invalid booking.</div>
 
   return (
     <div className="container mt-5 pt-5">
@@ -94,35 +197,34 @@ function PaymentPage() {
               <h5><i className="fas fa-credit-card me-2"></i>Payment</h5>
             </div>
             <div className="card-body">
+              {error && <div className="alert alert-danger">{error}</div>}
               <div className="mb-4">
-                <h6>Booking Summary</h6>
-                <div className="card bg-light">
-                  <div className="card-body">
-                    <div className="d-flex justify-content-between">
-                      <div><small className="text-muted">From</small><br /><strong>{booking.sourceName}</strong></div>
-                      <div className="text-end"><small className="text-muted">To</small><br /><strong>{booking.destinationName}</strong></div>
-                    </div>
-                    <hr />
-                    <div className="d-flex justify-content-between">
-                      <span>Passengers: {booking.passengerCount}</span>
-                      <span>Type: {booking.journeyType}</span>
-                    </div>
-                    <div className="d-flex justify-content-between mt-2">
-                      <strong>Total Amount: {booking.total}</strong>
-                    </div>
-                  </div>
+                <h6>Payment Summary</h6>
+                <div className="card bg-light p-3">
+                  <p>Type: {paymentInfo.type}</p>
+                  <p>Amount: {paymentInfo.amount} INR</p>
+                  {paymentInfo.booking && <>
+                    <p>From: <strong>{paymentInfo.booking.sourceName}</strong></p>
+                    <p>To: <strong>{paymentInfo.booking.destinationName}</strong></p>
+                    <p>Passengers: {paymentInfo.booking.passengerCount}</p>
+                    <p>Journey Type: {paymentInfo.booking.journeyType}</p>
+                  </>}
+                  {paymentInfo.type === "recharge" && <p>Virtual Card ID: {paymentInfo.virtualCardId}</p>}
+                  <p>Wallet Balance: ₹{wallet.balance}</p>
                 </div>
               </div>
-              <div className="d-grid gap-2 d-sm-flex">
-                <button className="btn btn-success flex-fill" onClick={pay}><i className="fas fa-lock me-2"></i>Pay {booking.total}</button>
-                <button className="btn btn-outline-primary flex-fill" onClick={payWithWallet}><i className="fas fa-wallet me-2"></i>Pay with Wallet</button>
+              <div className="d-grid gap-2">
+                <button className="btn btn-success" onClick={pay} disabled={loading}>
+                  {loading ? "Processing..." : "Pay with Card/UPI"}
+                </button>
+                <button className="btn btn-outline-primary" onClick={payWithWallet} disabled={loading}>
+                  Pay with Wallet
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default PaymentPage

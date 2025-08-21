@@ -1,8 +1,6 @@
-// src/redux/slices/walletSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../api/api";
 
-// Async thunk: fetch wallet details
 export const fetchWallet = createAsyncThunk(
   "wallet/fetchWallet",
   async (userId, { rejectWithValue }) => {
@@ -10,12 +8,14 @@ export const fetchWallet = createAsyncThunk(
       const { data } = await api.get(`/wallet/${userId}`);
       return data;
     } catch (error) {
+      if (error.response?.status === 404) {
+        return rejectWithValue("Wallet not found for this user.");
+      }
       return rejectWithValue(error.response?.data || "Failed to fetch wallet");
     }
   }
 );
 
-// Async thunk: add money to wallet
 export const addMoney = createAsyncThunk(
   "wallet/addMoney",
   async ({ userId, amount }, { rejectWithValue }) => {
@@ -28,7 +28,6 @@ export const addMoney = createAsyncThunk(
   }
 );
 
-// Async thunk: deduct fare
 export const deductFare = createAsyncThunk(
   "wallet/deductFare",
   async ({ userId, amount }, { rejectWithValue }) => {
@@ -45,7 +44,7 @@ const walletSlice = createSlice({
   name: "wallet",
   initialState: {
     balance: 0,
-    transactions: [], // [{id, type: 'credit'|'debit', amount, date}]
+    transactions: [],
     loading: false,
     error: null,
   },
@@ -56,9 +55,10 @@ const walletSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Wallet
+      // fetchWallet handlers
       .addCase(fetchWallet.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchWallet.fulfilled, (state, action) => {
         state.loading = false;
@@ -69,24 +69,24 @@ const walletSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
-      // Add Money
+      // addMoney handlers
       .addCase(addMoney.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(addMoney.fulfilled, (state, action) => {
         state.loading = false;
         state.balance = action.payload.balance;
-        state.transactions.unshift(action.payload.transaction); // latest first
+        state.transactions.unshift(action.payload.transaction);
       })
       .addCase(addMoney.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-
-      // Deduct Fare
+      // deductFare handlers
       .addCase(deductFare.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(deductFare.fulfilled, (state, action) => {
         state.loading = false;

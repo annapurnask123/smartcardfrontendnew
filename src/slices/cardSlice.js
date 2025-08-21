@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/api";
+import { cardAPI } from "../api/api";
 
 // Async thunk for creating virtual card
 export const createVirtualCard = createAsyncThunk(
