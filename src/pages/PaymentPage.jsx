@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { addTicket } from "../slices/ticketSlice";
 import { addSubscription } from "../slices/subscriptionSlice";
 import { fetchWallet, deductFare } from "../slices/walletSlice";
+import { cardAPI } from "../api/api";
 
 import { paymentAPI, ticketAPI, subscriptionAPI } from "../api/api";
 import { openRazorpayCheckout } from "../utils/razorpay";
@@ -73,6 +74,16 @@ export default function PaymentPage() {
       } else if (paymentInfo.type === "subscription") {
         const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
         dispatch(addSubscription(subscription));
+      } else if (paymentInfo.type === "card_recharge") {
+        // Handle card recharge
+        try {
+          await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
+          alert(`Card recharged successfully with ₹${paymentInfo.amount}`);
+          navigate('/cards');
+        } catch (error) {
+          console.error('Card recharge failed:', error);
+          alert('Card recharge failed. Please try again.');
+        }
       }
 
       goToResult(true);
@@ -156,17 +167,31 @@ export default function PaymentPage() {
               console.log("Booking payload:", ticketPayload); // Debug
 
               const { data: ticket } = await ticketAPI.bookTicket(ticketPayload);
+              const ticketId = ticket.id || ticket._id;
               dispatch(addTicket({
-                id: ticket.id || ticket._id || `TKT${Date.now()}`,
+                id: ticketId || `TKT${Date.now()}`,
                 source: paymentInfo.booking.sourceName,
                 destination: paymentInfo.booking.destinationName,
                 date: new Date().toLocaleDateString(),
                 status: ticket.status || "active",
                 amount: paymentInfo.amount,
               }));
+              // Navigate to Ticket Details page after successful ticket payment
+              localStorage.setItem("lastPaymentResult", JSON.stringify({ success: true, method: "razorpay", paymentInfo }));
+              return navigate(`/tickets/${encodeURIComponent(ticketId)}`);
             } else if (paymentInfo.type === "subscription") {
               const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
               dispatch(addSubscription(subscription));
+            } else if (paymentInfo.type === "card_recharge") {
+              // Handle card recharge
+              try {
+                await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
+                alert(`Card recharged successfully with ₹${paymentInfo.amount}`);
+                navigate('/cards');
+              } catch (error) {
+                console.error('Card recharge failed:', error);
+                alert('Card recharge failed. Please try again.');
+              }
             }
 
             goToResult(true);
@@ -209,7 +234,12 @@ export default function PaymentPage() {
                     <p>Passengers: {paymentInfo.booking.passengerCount}</p>
                     <p>Journey Type: {paymentInfo.booking.journeyType}</p>
                   </>}
-                  {paymentInfo.type === "recharge" && <p>Virtual Card ID: {paymentInfo.virtualCardId}</p>}
+                  {paymentInfo.type === "card_recharge" && (
+                    <>
+                      <p>Card ID: {paymentInfo.cardId}</p>
+                      <p>Recharge Amount: ₹{paymentInfo.amount}</p>
+                    </>
+                  )}
                   <p>Wallet Balance: ₹{wallet.balance}</p>
                 </div>
               </div>

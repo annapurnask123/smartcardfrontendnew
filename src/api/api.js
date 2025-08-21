@@ -208,6 +208,9 @@ export const cardAPI = {
   tapIn: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-in`, data),
   tapOut: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-out`, data),
 
+  // Card Recharge
+  rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
+
   // QR Code Generation
   generateQR: (cardId) => api.get(`/virtualcards/${cardId}/qr`),
 };

@@ -1,10 +1,10 @@
-// src/redux/slices/tripSlice.js
+// src/slices/tripSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/api";
+import { tripAPI } from "../api/api";
 
 // Async thunk to fetch trips
 export const fetchTrips = createAsyncThunk("trips/fetchTrips", async () => {
-  const response = await api.get("/trips");
+  const response = await tripAPI.getAllTrips();
   return response.data;
 });
 
@@ -16,6 +16,7 @@ const tripSlice = createSlice({
     builder
       .addCase(fetchTrips.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchTrips.fulfilled, (state, action) => {
         state.loading = false;

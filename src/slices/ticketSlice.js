@@ -5,8 +5,12 @@ import { ticketAPI } from "../api/api";
 // Async thunk to fetch tickets for user
 export const fetchTickets = createAsyncThunk(
   "tickets/fetchTickets",
-  async () => {
-    const response = await ticketAPI.getUserTickets();
+  async (_, { getState }) => {
+    const state = getState();
+    const userId = state.auth.user?.id || state.auth.user?._id;
+    if (!userId) throw new Error("User not authenticated");
+    
+    const response = await ticketAPI.getUserTickets(userId);
     return response.data;
   }
 );

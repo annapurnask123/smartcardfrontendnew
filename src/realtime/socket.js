@@ -1,5 +1,8 @@
 import { io } from 'socket.io-client'
-import { setJourney, setNotifications, setTransactions } from '../slices/dataSlice'
+import { setNotifications } from '../slices/notificationSlice'
+// For transactions and journey updates, prefer thunks/slices if available
+// import { fetchTransactions } from '../slices/transactionSlice'
+// import { someJourneyAction } from '../slices/journeySlice'
 
 let socket = null
 
@@ -25,9 +28,9 @@ export function initRealtime(store) {
 
     socket.on('connect', () => {})
     socket.on('connect_error', () => {})
-    socket.on('journey:update', (payload) => store.dispatch(setJourney(payload)))
+    socket.on('journey:update', () => {})
     socket.on('notification:new', (payload) => store.dispatch(setNotifications(payload)))
-    socket.on('transactions:update', (payload) => store.dispatch(setTransactions(payload)))
+    socket.on('transactions:update', () => {})
     socket.on('disconnect', () => {})
   } catch {
     // swallow init errors

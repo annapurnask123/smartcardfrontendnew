@@ -6,7 +6,7 @@ export const createVirtualCard = createAsyncThunk(
   "card/createVirtualCard",
   async (userId, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/cards/create", { userId });
+      const { data } = await cardAPI.createCard({ userId });
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -19,7 +19,7 @@ export const fetchUserCard = createAsyncThunk(
   "card/fetchUserCard",
   async (userId, { rejectWithValue }) => {
     try {
-      const { data } = await api.get(`/cards/user/${userId}`);
+      const { data } = await cardAPI.getUserCards(userId);
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -31,14 +31,19 @@ const cardSlice = createSlice({
   name: "card",
   initialState: {
     card: null,
+    cards: [],
     loading: false,
     error: null,
   },
   reducers: {
     resetCardState: (state) => {
       state.card = null;
+      state.cards = [];
       state.loading = false;
       state.error = null;
+    },
+    setCards: (state, action) => {
+      state.cards = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -51,6 +56,7 @@ const cardSlice = createSlice({
       .addCase(createVirtualCard.fulfilled, (state, action) => {
         state.loading = false;
         state.card = action.payload;
+        state.cards.push(action.payload);
       })
       .addCase(createVirtualCard.rejected, (state, action) => {
         state.loading = false;
@@ -63,7 +69,7 @@ const cardSlice = createSlice({
       })
       .addCase(fetchUserCard.fulfilled, (state, action) => {
         state.loading = false;
-        state.card = action.payload;
+        state.cards = Array.isArray(action.payload) ? action.payload : [action.payload];
       })
       .addCase(fetchUserCard.rejected, (state, action) => {
         state.loading = false;
@@ -72,5 +78,5 @@ const cardSlice = createSlice({
   },
 });
 
-export const { resetCardState } = cardSlice.actions;
+export const { resetCardState, setCards } = cardSlice.actions;
 export default cardSlice.reducer;

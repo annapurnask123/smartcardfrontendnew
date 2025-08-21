@@ -41,8 +41,8 @@ function App() {
         <Route path="/book" element={<RequireAuth><TicketBookingPage /></RequireAuth>} />
         <Route path="/pay" element={<RequireAuth><PaymentPage /></RequireAuth>} />
         <Route path="/plans" element={<RequireAuth><PlansPage /></RequireAuth>} />
-        <Route path="/tickets" element={<RequireAuth><TicketsPage /></RequireAuth>} />
-        <Route path="/tickets/:ticketId" element={<RequireAuth><TicketDetailPage /></RequireAuth>} />
+        <Route path="/tickets" element={<TicketsPage />} />
+        <Route path="/tickets/:id" element={<TicketDetailPage />} />
         <Route path="/my-plans" element={<RequireAuth><MyPlansPage /></RequireAuth>} />
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />

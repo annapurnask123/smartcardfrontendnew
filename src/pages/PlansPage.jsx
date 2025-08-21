@@ -48,11 +48,14 @@ function PlansPage() {
         <div className="card-body d-flex flex-column">
           <h5 className="card-title">{plan.name}</h5>
           <p className="card-text">₹{plan.price || plan.amount} / {plan.duration || 'period'}</p>
-          {Array.isArray(plan.features) && (
-            <ul>
-              {plan.features.map((f, i) => <li key={i}>{f}</li>)}
-            </ul>
-          )}
+         {Array.isArray(plan.features) && (
+  <ul>
+    {plan.features.map((f) => (
+      <li key={f}>{f}</li>
+    ))}
+  </ul>
+)}
+
           <div className="mt-auto d-grid">
             <button className="btn btn-primary" onClick={() => purchasePlan(plan)}>
               <i className="fas fa-check me-2"></i>Purchase
