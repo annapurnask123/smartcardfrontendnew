@@ -1,19 +1,48 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchTransactions } from '../slices/transactionSlice'
+import { transactionAPI } from '../api/api'
 
 function TransactionsPage() {
   const dispatch = useDispatch()
   const { transactions, loading, error } = useSelector(s => s.transactions)
+  const user = useSelector(s => s.auth.user)
+  const [localTransactions, setLocalTransactions] = useState([])
+  const [localLoading, setLocalLoading] = useState(false)
+  const [localError, setLocalError] = useState('')
 
   useEffect(() => {
-    dispatch(fetchTransactions())
-  }, [dispatch])
+    async function fetchUserTransactions() {
+      if (!user?.id && !user?._id) return
+      
+      setLocalLoading(true)
+      setLocalError('')
+      
+      try {
+        // Try to fetch from Redux first
+        dispatch(fetchTransactions())
+        
+        // Also try direct API call
+        const response = await transactionAPI.getUserTransactions(user.id || user._id)
+        const apiTransactions = response.data || response.transactions || []
+        setLocalTransactions(apiTransactions)
+      } catch (err) {
+        console.error('Failed to fetch transactions:', err)
+        setLocalError('Failed to load transactions. Please try again.')
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+    
+    fetchUserTransactions()
+  }, [dispatch, user])
 
-  const recentTransactions = transactions?.slice(0, 5) || []
-  const allTransactions = transactions || []
+  // Use local transactions if available, fallback to Redux state
+  const displayTransactions = localTransactions.length > 0 ? localTransactions : (transactions || [])
+  const recentTransactions = displayTransactions.slice(0, 5)
+  const allTransactions = displayTransactions
 
-  if (loading) {
+  if (loading || localLoading) {
     return (
       <div className="container mt-5 pt-5">
         <div className="text-center">
@@ -26,12 +55,12 @@ function TransactionsPage() {
     )
   }
 
-  if (error) {
+  if (error || localError) {
     return (
       <div className="container mt-5 pt-5">
         <div className="alert alert-danger">
           <i className="fas fa-exclamation-triangle me-2"></i>
-          {error}
+          {localError || error}
         </div>
       </div>
     )
@@ -229,35 +258,57 @@ function TransactionsPage() {
   )
 }
 
-function getTransactionIcon(type) {
-  switch (type?.toLowerCase()) {
+function getTransactionIcon(type, transactionType) {
+  // Use transactionType if available, fallback to type
+  const txType = (transactionType || type || 'unknown').toLowerCase();
+  
+  switch (txType) {
     case 'credit': return 'arrow-down'
     case 'debit': return 'arrow-up'
     case 'payment': return 'credit-card'
     case 'refund': return 'undo'
     case 'recharge': return 'plus-circle'
+    case 'subscription': return 'calendar-alt'
+    case 'ticket': return 'ticket-alt'
+    case 'ticket_payment': return 'ticket-alt'
+    case 'subscription_payment': return 'calendar-alt'
+    case 'card_recharge': return 'plus-circle'
     default: return 'exchange-alt'
   }
 }
 
-function getTransactionColor(type) {
-  switch (type?.toLowerCase()) {
+function getTransactionColor(type, transactionType) {
+  const txType = (transactionType || type || 'unknown').toLowerCase();
+  
+  switch (txType) {
     case 'credit': return 'text-success'
     case 'debit': return 'text-danger'
     case 'payment': return 'text-primary'
     case 'refund': return 'text-warning'
     case 'recharge': return 'text-info'
+    case 'subscription': return 'text-purple'
+    case 'ticket': return 'text-orange'
+    case 'ticket_payment': return 'text-orange'
+    case 'subscription_payment': return 'text-purple'
+    case 'card_recharge': return 'text-info'
     default: return 'text-secondary'
   }
 }
 
-function getTypeBadgeClass(type) {
-  switch (type?.toLowerCase()) {
+function getTypeBadgeClass(type, transactionType) {
+  const txType = (transactionType || type || 'unknown').toLowerCase();
+  
+  switch (txType) {
     case 'credit': return 'bg-success'
     case 'debit': return 'bg-danger'
     case 'payment': return 'bg-primary'
     case 'refund': return 'bg-warning'
     case 'recharge': return 'bg-info'
+    case 'subscription': return 'bg-purple'
+    case 'ticket': return 'bg-orange'
+    case 'ticket_payment': return 'bg-orange'
+    case 'subscription_payment': return 'bg-purple'
+    case 'card_recharge': return 'bg-info'
     default: return 'bg-secondary'
   }
 }

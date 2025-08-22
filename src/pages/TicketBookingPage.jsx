@@ -44,67 +44,62 @@ function TicketBookingPage() {
     setFareQuote({ base, total })
   }, [sourceId, destinationId, passengers, journeyType])
 
-async function submit(e) {
-  e.preventDefault();
+  const handleBookTicket = async () => {
+    if (!sourceId || !destinationId || sourceId === destinationId) {
+      setError('Please select valid source and destination');
+      return;
+    }
 
-  if (!user || !user.id) {
-    setError('User not logged in');
-    return;
-  }
+    setLoading(true);
+    setError('');
 
-  if (!sourceId || !destinationId || sourceId === destinationId) {
-    setError('Please select valid source and destination.');
-    return;
-  }
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const response = await ticketAPI.bookTicket({
+        userId: user.id || user._id,
+        trip_id: `trip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        startStationId: sourceId,
+        endStationId: destinationId,
+        ticketType: journeyType === 'single' ? 'one-way' : journeyType,
+        passengerCount: passengers,
+      });
 
-  setLoading(true);
-  setError(null);
+      const ticket = response.data.ticket || (response.data.tickets && response.data.tickets[0]);
 
-  try {
-    const bookingPayload = {
-      userId: user.id,
-      trip_id: '100', // Replace as needed
-      startStationId: sourceId,
-      endStationId: destinationId,
-      ticketType: journeyType,
-      passengerCount: passengers,
-    };
+      if (!ticket || !(ticket.id || ticket._id)) {
+        throw new Error("Ticket creation failed: No ticket id returned");
+      }
 
-  const response = await ticketAPI.bookTicket(bookingPayload);
+      setBackendTotalFare(response.data.totalAmount || ticket.amount);
 
-// support multiple formats
-const ticket =
-  response.data.ticket ||
-  (response.data.tickets && response.data.tickets[0]);
+      const paymentInfo = {
+        type: "ticket",
+        amount: ticket.amount,
+        id: ticket.id || ticket._id,   
+        booking: {
+          sourceId,
+          destinationId,
+          passengerCount: passengers,
+          journeyType,
+          sourceName: stations.find(s => s._id === sourceId)?.name || "Unknown",
+          destinationName: stations.find(s => s._id === destinationId)?.name || "Unknown",
+        },
+      };
 
-if (!ticket || !(ticket.id || ticket._id)) {
-  throw new Error("Ticket creation failed: No ticket id returned");
-}
+      navigate('/payment', { state: { paymentInfo } });
+    } catch (error) {
+      console.error('Booking failed:', error);
+      setError(error.response?.data?.error || 'Failed to book ticket');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-setBackendTotalFare(response.data.totalAmount || ticket.amount);
-
-const paymentInfo = {
-  type: "ticket",
-  amount: ticket.amount,
-  id: ticket.id || ticket._id,   // ✅ safe extraction
-  booking: {
-    sourceId,
-    destinationId,
-    passengerCount: passengers,
-    journeyType,
-    sourceName: stations.find(s => s._id === sourceId)?.name || "Unknown",
-    destinationName: stations.find(s => s._id === destinationId)?.name || "Unknown",
-  },
-};
-
-
-    navigate('/pay', { state: { paymentInfo } });
-  } catch (err) {
-    setError(err.message || 'Booking failed, please try again.');
-  } finally {
-    setLoading(false);
-  }
-}
+  const submit = (e) => {
+    e.preventDefault();
+    handleBookTicket();
+  };
 
 
   return (

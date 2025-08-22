@@ -106,11 +106,10 @@ function TicketsPage() {
                       <strong>₹{t.amount}</strong>
                       <button
                         className="btn btn-outline-primary btn-sm"
-                        disabled={!isActive}
                         onClick={() => navigate(`/tickets/${encodeURIComponent(id)}`)}
-                        title={isActive ? 'Open QR' : 'QR available only for active tickets'}
+                        title="View ticket details"
                       >
-                        <i className="fas fa-qrcode me-1"></i> View
+                        <i className="fas fa-eye me-1"></i> View
                       </button>
                     </div>
                   </li>

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchNotifications, markAllNotificationsRead } from '../slices/notificationSlice'
+import { notificationAPI } from '../api/api'
 
 function NotificationsPage() {
   const dispatch = useDispatch()

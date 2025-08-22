@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const apiBase = (import.meta?.env?.VITE_API_BASE_URL || "/api/v1").replace(
+const apiBase = (import.meta?.env?.VITE_API_BASE_URL || "http://localhost:5000/api/v1").replace(
   /\/$/,
   ""
 );
@@ -22,6 +22,8 @@ api.interceptors.request.use(
       "/users/login/password",
       "/users/request-login-otp",
       "/users/verify-login-otp",
+      "/stations",
+      "/subscription-plans",
     ];
     const isPublic = publicPaths.some((p) => (config.url || "").startsWith(p));
     // Log minimal request for debugging 500s (non-sensitive)
@@ -214,26 +216,21 @@ export const userAPI = {
 
 // Virtual Card API - Updated to match backend routes
 export const cardAPI = {
-  // Card Management
   getAllCards: () => api.get("/virtualcards"),
-  getUserCards: (userId) => api.get(`/virtualcards/user/${userId}`),
   createCard: (data) => api.post("/virtualcards", data),
-  updateCard: (cardId, data) => api.put(`/virtualcards/${cardId}`, data),
   getCard: (cardId) => api.get(`/virtualcards/${cardId}`),
+  getUserCards: (userId) => api.get(`/virtualcards/user/${userId}`),
+  updateCard: (cardId, data) => api.put(`/virtualcards/${cardId}`, data),
   deleteCard: (cardId) => api.delete(`/virtualcards/${cardId}`),
-  getBalance: (cardId) => api.get(`/virtualcards/${cardId}/balance`),
-
-  // Device Management
-  assignDevice: (data) => api.post("/virtualcards/assign-device", data),
-  unassignDevice: (data) => api.post("/virtualcards/unassign-device", data),
-
-  // Journey Management
+  checkBalance: (cardId) => api.get(`/virtualcards/${cardId}/balance`),
+  rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
+  rechargeByCardNumber: (data) => api.post("/virtualcards/recharge-by-number", data),
   tapIn: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-in`, data),
   tapOut: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-out`, data),
-
-  // Card Recharge
-  rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
-
+  // Device assignment endpoints commented out for future implementation
+  // assignDevice: (data) => api.post("/virtualcards/assign-device", data),
+  // unassignDevice: (data) => api.post("/virtualcards/unassign-device", data),
+  getCardByNumber: (cardNumber) => api.get(`/virtualcards/by-number/${cardNumber}`),
   // QR Code Generation
   generateQR: (cardId) => api.get(`/virtualcards/${cardId}/qr`),
 };
@@ -246,27 +243,35 @@ export const stationAPI = {
   updateStation: (stationId, data) => api.put(`/stations/${stationId}`, data),
   deleteStation: (stationId) => api.delete(`/stations/${stationId}`),
   getRouteWithTimings: (from, to) =>
-    axios.get("/api/v1/stations/route-with-timings/query", {
-      params: { from: sourceId, to: destinationId },
+    api.get("/stations/route-with-timings/query", {
+      params: { from, to },
     }),
   getNextTrains: (stationCode) =>
     api.get(`/stations/${stationCode}/next-trains`),
+  getStationDepartures: (stationId) =>
+    api.get(`/stations/${stationId}/departures`),
+  getStationArrivals: (stationId) =>
+    api.get(`/stations/${stationId}/arrivals`),
+  getStationSchedule: (stationId) =>
+    api.get(`/stations/${stationId}/schedule`),
 };
 
 // Route API - Updated to match backend routes
 export const routeAPI = {
   getAllRoutes: () => api.get("/routes"),
-  createRoute: (data) => api.post("/routes", data),
   getRoute: (routeId) => api.get(`/routes/${routeId}`),
+  getRouteStations: (routeId) => api.get(`/routes/${routeId}/stations`),
+  getRouteShape: (routeId) => api.get(`/routes/${routeId}/shape`),
+  findRoutes: (data) => api.post("/routes/find", data),
+  createRoute: (data) => api.post("/routes", data),
   updateRoute: (routeId, data) => api.put(`/routes/${routeId}`, data),
   deleteRoute: (routeId) => api.delete(`/routes/${routeId}`),
-  getRouteShape: (shapeId) => api.get(`/routes/${shapeId}/shape`),
-  getRouteStations: (routeId) => api.get(`/routes/${routeId}/stations`),
 };
 
 // Ticket API - Updated to match backend routes
 export const ticketAPI = {
   bookTicket: (data) => api.post("/tickets/book", data),
+  bookMultiRouteTicket: (data) => api.post("/tickets/book-multi-route", data),
   getUserTickets: (userId) => api.get(`/tickets/user/${userId}`),
   getTicket: (ticketId) => api.get(`/tickets/${ticketId}`),
   tapIn: (data) => api.post("/tickets/tapin", data),
@@ -293,26 +298,23 @@ export const paymentAPI = {
   deletePaymentMethod: (methodId) => api.delete(`/payment-methods/${methodId}`),
 
   // Payment Processing
-  createPaymentOrder: (data) => api.post("/payments/orders", {
+  createPaymentOrder: (data) => {
+    console.log('Creating payment order with data:', data);
+    return api.post("/payments/create-order", {
+      type: data.type,
+      id: data.id,
+      userId: data.userId,
+      amount: data.amount,
+      paymentMethod: data.paymentMethod || "upi",
+    });
+  },
+  // Fallback for legacy endpoints
+  createPaymentOrderLegacy: (data) => api.post("/payments/orders", {
+    type: data.type,
+    id: data.id,
+    userId: data.userId,
     amount: data.amount,
-    currency: data.currency || "INR",
-    receipt: data.receipt || `rcpt_${Date.now()}`,
-    notes: {
-      purpose: data.purpose || data.type || "generic",
-      userId: data.userId || "unknown",
-      ...((data.meta && typeof data.meta === 'object') ? data.meta : {}),
-    },
-  }),
-  // Some backends use the legacy path
-  createPaymentOrderLegacy: (data) => api.post("/payments/create-order", {
-    amount: data.amount,
-    currency: data.currency || "INR",
-    receipt: data.receipt || `rcpt_${Date.now()}`,
-    notes: {
-      purpose: data.purpose || data.type || "generic",
-      userId: data.userId || "unknown",
-      ...((data.meta && typeof data.meta === 'object') ? data.meta : {}),
-    },
+    paymentMethod: data.paymentMethod || "upi",
   }),
   verifyPayment: (data) => api.post("/payments/verify", data),
   handleWebhook: (data) => api.post("/payments/webhook", data),
@@ -368,30 +370,21 @@ export const notificationAPI = {
 // Transaction API - New backend feature
 export const transactionAPI = {
   getAllTransactions: () => safeGet("/transactions", { defaultData: [] }),
-  getUserTransactions: async (userId) => {
-    // Try multiple shapes: /transactions/user/:id, /user-transactions/:id, /users/:id/transactions
-    const candidates = [
-      `/transactions/user/${userId}`,
-      `/user-transactions/${userId}`,
-      `/users/${userId}/transactions`,
-    ];
-    for (const path of candidates) {
-      try {
-        const res = await safeGet(path, { defaultData: [] });
-        if (Array.isArray(res.data) ? res.data.length >= 0 : res.data) return res;
-      } catch (_) {}
-    }
-    return { data: [] };
-  },
+  getUserTransactions: (userId) => api.get(`/transactions/user/${userId}`),
   createTransaction: (data) => api.post("/transactions", data),
   getTransaction: (transactionId) => api.get(`/transactions/${transactionId}`),
   updateTransaction: (transactionId, data) =>
     api.put(`/transactions/${transactionId}`, data),
   deleteTransaction: (transactionId) =>
     api.delete(`/transactions/${transactionId}`),
-  // Alternative endpoints for compatibility
-  getUserTransactionHistory: (userId) => safeGet(`/user-transactions/${userId}`, { defaultData: [] }),
-  getTransactionHistory: () => safeGet("/transaction-history", { defaultData: [] }),
+};
+
+// Wallet API
+export const walletAPI = {
+  getUserWallet: (userId) => api.get(`/wallet/user/${userId}`),
+  addToWallet: (data) => api.post("/wallet/add", data),
+  deductFromWallet: (data) => api.post("/wallet/deduct", data),
+  getWalletTransactions: (userId) => api.get(`/wallet/transactions/${userId}`),
 };
 
 // Trip API - New backend feature

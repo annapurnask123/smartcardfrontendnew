@@ -26,15 +26,18 @@ function MyPlansPage() {
     } else {
       const filtered = plans.filter(plan => {
         const planStatus = (plan.status || '').toLowerCase()
+        // Handle pending status properly
+        const actualStatus = planStatus === 'pending' ? 'active' : planStatus
+        
         switch (statusFilter) {
           case 'active':
-            return planStatus === 'active'
+            return actualStatus === 'active' || planStatus === 'pending'
           case 'expired':
-            return planStatus === 'expired'
+            return actualStatus === 'expired'
           case 'expiring':
-            return planStatus === 'expiring' || planStatus === 'expiring_soon'
+            return actualStatus === 'expiring' || actualStatus === 'expiring_soon'
           case 'cancelled':
-            return planStatus === 'cancelled' || planStatus === 'canceled'
+            return actualStatus === 'cancelled' || actualStatus === 'canceled'
           default:
             return true
         }
@@ -44,15 +47,24 @@ function MyPlansPage() {
   }, [plans, statusFilter])
   async function renew(sub) {
     try {
-      await subscriptionAPI.renewSubscription(sub.id || sub._id)
+      const response = await subscriptionAPI.renewSubscription(sub.id || sub._id)
       setBanner('Renewal initiated. Please complete payment.')
-    } catch {}
+      // Update local state
+      setPlans(plans.map(p => (p.id===sub.id||p._id===sub._id) ? { ...p, status: 'renewing' } : p))
+    } catch (error) {
+      console.error('Renewal failed:', error)
+      setBanner('Renewal failed. Please try again.')
+    }
   }
   async function cancel(sub) {
     try {
       await subscriptionAPI.cancelSubscription(sub.id || sub._id)
       setPlans(plans.map(p => (p.id===sub.id||p._id===sub._id) ? { ...p, status: 'cancelled' } : p))
-    } catch {}
+      setBanner('Subscription cancelled successfully.')
+    } catch (error) {
+      console.error('Cancellation failed:', error)
+      setBanner('Cancellation failed. Please try again.')
+    }
   }
   return (
     <div className="container mt-5 pt-5">

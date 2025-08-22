@@ -15,6 +15,8 @@ import JourneyTrackingPage from './pages/JourneyTrackingPage.jsx'
 import HistoryPage from './pages/HistoryPage.jsx'
 import TransactionsPage from './pages/TransactionsPage.jsx'
 import SchedulesPage from './pages/SchedulesPage.jsx'
+import SchedulePage from './pages/SchedulePage.jsx'
+import MultiRouteBookingPage from './pages/MultiRouteBookingPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import RoutesPage from './pages/RoutesPage.jsx'
@@ -39,7 +41,7 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/home" element={<RequireAuth><HomePage /></RequireAuth>} />
         <Route path="/book" element={<RequireAuth><TicketBookingPage /></RequireAuth>} />
-        <Route path="/pay" element={<RequireAuth><PaymentPage /></RequireAuth>} />
+        <Route path="/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
         <Route path="/plans" element={<RequireAuth><PlansPage /></RequireAuth>} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/tickets/:id" element={<TicketDetailPage />} />
@@ -50,6 +52,7 @@ function App() {
         <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
         <Route path="/schedules" element={<RequireAuth><SchedulesPage /></RequireAuth>} />
+        <Route path="/multi-route" element={<RequireAuth><MultiRouteBookingPage /></RequireAuth>} />
         <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />

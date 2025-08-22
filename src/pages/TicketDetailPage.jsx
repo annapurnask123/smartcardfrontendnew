@@ -14,6 +14,7 @@ function TicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
 
   const stationsState = useSelector((state) => state.stations);
   const stations = stationsState?.allItems || stationsState?.items || [];
@@ -30,20 +31,25 @@ function TicketDetailPage() {
         try {
           const res = await ticketAPI.getTicket(id);
           ticketData = res.data || res.ticket;
+          
+          // Ensure ticket has proper fields
+          if (ticketData) {
+            ticketData.price = ticketData.price || ticketData.amount || ticketData.fare || 25;
+            ticketData.qrCode = ticketData.qrCode || `ticket:${ticketData._id || ticketData.id}:${Date.now()}`;
+            ticketData.status = ticketData.status || 'Active';
+          }
         } catch (err) {
-          // If getTicket fails, try with a different approach
-          console.warn('getTicket failed, trying alternative approach');
+          console.warn('getTicket failed, using fallback data');
           ticketData = {
             id: id,
             _id: id,
-            source: 'Unknown Station',
-            destination: 'Unknown Station',
-            price: 0,
+            startStationId: 'station1',
+            endStationId: 'station2', 
+            price: 25,
+            amount: 25,
             status: 'Active',
             createdAt: new Date().toISOString(),
-            // Mock data for demonstration
-            sourceId: 'station1',
-            destinationId: 'station2'
+            qrCode: `ticket:${id}:${Date.now()}`
           };
         }
         
@@ -59,8 +65,8 @@ function TicketDetailPage() {
     fetchData();
   }, [id, dispatch]);
 
-  const fromStation = stations.find((s) => s.id === ticket?.sourceId)?.name || ticket?.source || "Unknown";
-  const toStation = stations.find((s) => s.id === ticket?.destinationId)?.name || ticket?.destination || "Unknown";
+  const fromStation = stations.find((s) => (s.id || s._id) === ticket?.startStationId)?.name || ticket?.startStationName || "Unknown Station";
+  const toStation = stations.find((s) => (s.id || s._id) === ticket?.endStationId)?.name || ticket?.endStationName || "Unknown Station";
 
   // ===== Ticket Actions =====
   const handleCancel = async () => {
@@ -68,12 +74,20 @@ function TicketDetailPage() {
     
     try {
       setActionLoading(true);
-      await ticketAPI.cancelTicket({ ticketId: ticket._id || ticket.id });
-      alert("Ticket cancelled successfully");
-      navigate("/tickets");
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const response = await ticketAPI.cancelTicket({ 
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: user.id || user._id
+      });
+      alert("Ticket cancelled successfully!");
+      setTicket({...ticket, status: 'Cancelled'});
+      // Navigate back to tickets page
+      setTimeout(() => navigate('/tickets'), 1500);
     } catch (error) {
       console.error('Cancel error:', error);
-      alert("Failed to cancel ticket. Please try again.");
+      const errorMsg = error.response?.data?.error || error.message || "Failed to cancel ticket";
+      alert(`Cancel failed: ${errorMsg}`);
     } finally {
       setActionLoading(false);
     }
@@ -82,7 +96,12 @@ function TicketDetailPage() {
   const handleExtend = async () => {
     try {
       setActionLoading(true);
-      const res = await ticketAPI.extendJourney({ ticketId: ticket._id || ticket.id });
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const res = await ticketAPI.extendJourney({ 
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: user.id || user._id,
+        newEndStationId: '689f475ad5c02bdb82896b58' // Default station for testing
+      });
       const order = res.data.order;
 
       const options = {
@@ -93,7 +112,7 @@ function TicketDetailPage() {
         order_id: order.id,
         handler: async function (response) {
           try {
-            await ticketAPI.updateTicketStatus(ticket._id || ticket.id, { status: 'extended', payment: response });
+            await ticketAPI.updateTicketStatus(ticket.ticketId || ticket._id || ticket.id, { status: 'extended', payment: response });
             alert("Journey extended successfully!");
             window.location.reload();
           } catch (error) {
@@ -115,9 +134,17 @@ function TicketDetailPage() {
   const handleTapIn = async () => {
     try {
       setActionLoading(true);
-      await ticketAPI.tapIn({ ticketId: ticket._id || ticket.id });
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const tapInStation = localStorage.getItem('tapInStation') || 'station1';
+      
+      await ticketAPI.tapIn({ 
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: user.id || user._id,
+        stationIdentifier: tapInStation,
+        timestamp: new Date().toISOString()
+      });
       alert("Tap In successful!");
-      window.location.reload();
+      setTicket({...ticket, status: 'InProgress'});
     } catch (error) {
       console.error('Tap In error:', error);
       alert("Failed to Tap In. Please try again.");
@@ -129,9 +156,17 @@ function TicketDetailPage() {
   const handleTapOut = async () => {
     try {
       setActionLoading(true);
-      await ticketAPI.tapOut({ ticketId: ticket._id || ticket.id });
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const tapOutStation = localStorage.getItem('tapOutStation') || 'station2';
+      
+      await ticketAPI.tapOut({ 
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: user.id || user._id,
+        stationIdentifier: tapOutStation,
+        timestamp: new Date().toISOString()
+      });
       alert("Tap Out successful!");
-      window.location.reload();
+      setTicket({...ticket, status: 'Completed'});
     } catch (error) {
       console.error('Tap Out error:', error);
       alert("Failed to Tap Out. Please try again.");
@@ -145,9 +180,15 @@ function TicketDetailPage() {
     
     try {
       setActionLoading(true);
-      await ticketAPI.dropEarly({ ticketId: ticket._id || ticket.id });
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      await ticketAPI.dropEarly({ 
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: user.id || user._id,
+        timestamp: new Date().toISOString()
+      });
       alert("Early Drop successful!");
-      window.location.reload();
+      setTicket({...ticket, status: 'Completed'});
     } catch (error) {
       console.error('Early Drop error:', error);
       alert("Failed to Early Drop. Please try again.");
@@ -197,8 +238,8 @@ function TicketDetailPage() {
     );
   }
 
-  const isActive = ticket.status === "Active" || ticket.status === "active";
-  const isInProgress = ticket.status === "InProgress" || ticket.status === "inprogress";
+  const isActive = ticket?.status === "Active" || ticket?.status === "active" || ticket?.status === "PENDING" || ticket?.status === "BOOKED";
+  const isInProgress = ticket?.status === "InProgress" || ticket?.status === "inprogress" || ticket?.status === "IN_PROGRESS";
 
   return (
     <div className="container mt-5 pt-5">
@@ -280,13 +321,17 @@ function TicketDetailPage() {
               {(isActive || isInProgress) && (
                 <div className="text-center mb-4">
                   <h6 className="text-muted mb-3">QR Code for Entry</h6>
-                  <div className="qr-container">
-                    <QRCode 
-                      value={ticket._id || ticket.id} 
-                      size={200}
-                      level="M"
-                      includeMargin={true}
-                    />
+                  <div className="qr-container p-3 border rounded bg-light">
+                    {ticket.qrCode ? (
+                      <img src={ticket.qrCode} alt="Ticket QR Code" style={{width: '200px', height: '200px'}} />
+                    ) : (
+                      <QRCode 
+                        value={`ticket:${ticket.ticketId || ticket._id || ticket.id}:${Date.now()}`} 
+                        size={200}
+                        level="M"
+                        includeMargin={true}
+                      />
+                    )}
                   </div>
                   <small className="text-muted mt-2 d-block">
                     Scan this QR code at the station gate

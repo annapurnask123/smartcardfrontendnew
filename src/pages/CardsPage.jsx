@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cardAPI, stationAPI } from '../api/api'
 import { fetchUserCard, createVirtualCard, setCards } from '../slices/cardSlice'
+import RechargeByCardNumber from '../components/RechargeByCardNumber'
 
 function CardsPage() {
   const dispatch = useDispatch()
@@ -14,6 +15,7 @@ function CardsPage() {
   const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '')
   const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '')
   const [showRechargeModal, setShowRechargeModal] = useState(false)
+  const [showRechargeByNumberModal, setShowRechargeByNumberModal] = useState(false)
   const [rechargeAmount, setRechargeAmount] = useState(100)
   const [message, setMessage] = useState(location.state?.message || '')
   const [messageType, setMessageType] = useState(location.state?.type || '')
@@ -41,79 +43,88 @@ function CardsPage() {
   async function createNewCard() {
     try {
       await dispatch(createVirtualCard(user.id || user._id)).unwrap()
+      setMessage('Card created successfully!')
+      setMessageType('success')
     } catch (error) {
       console.error('Failed to create card:', error)
+      const errorMsg = error?.response?.data?.error || error?.message || 'Failed to create card'
+      if (errorMsg.includes('subscription') || errorMsg.includes('only 1 card allowed')) {
+        setMessage('You need an active subscription to create more cards. Only 1 card allowed without subscription.')
+        setMessageType('warning')
+      } else {
+        setMessage(errorMsg)
+        setMessageType('error')
+      }
     }
   }
 
   async function checkBalance(cardId) {
     try {
-      const actualCardId = cardId === 'primary' ? (primaryCard?.id || primaryCard?._id) : cardId;
-      if (!actualCardId) {
-        alert('No primary card found. Please create a card first.');
-        return;
-      }
-      const { data } = await cardAPI.getBalance(actualCardId)
-      // Show balance in a more user-friendly way instead of alert
-      const balanceDisplay = document.createElement('div');
+      const response = await cardAPI.checkBalance(cardId)
+      const balance = response.data?.balance || response.data || 0
+      
+      // Create a temporary display element
+      const balanceDisplay = document.createElement('div')
       balanceDisplay.innerHTML = `
-        <div class="alert alert-info" role="alert">
-          <h6><i class="fas fa-wallet me-2"></i>Card Balance</h6>
-          <p class="mb-1"><strong>Balance:</strong> ₹${data.balance || 0}</p>
-          <p class="mb-0"><strong>Journeys:</strong> ${data.journeyCount || 0}</p>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <i class="fas fa-wallet me-2"></i>
+          <strong>Card Balance: ₹${Number(balance).toFixed(2)}</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-      `;
+      `
       
       // Remove any existing balance display
-      const existingDisplay = document.querySelector('.balance-display');
-      if (existingDisplay) existingDisplay.remove();
+      const existingDisplay = document.querySelector('.balance-display')
+      if (existingDisplay) existingDisplay.remove()
       
-      balanceDisplay.className = 'balance-display';
-      document.querySelector('.container').insertBefore(balanceDisplay, document.querySelector('.row'));
+      balanceDisplay.className = 'balance-display'
+      const container = document.querySelector('.container')
+      const firstRow = document.querySelector('.row')
+      if (container && firstRow) {
+        container.insertBefore(balanceDisplay, firstRow)
+      }
       
       // Auto-remove after 5 seconds
       setTimeout(() => {
         if (balanceDisplay.parentNode) {
-          balanceDisplay.remove();
+          balanceDisplay.remove()
         }
-      }, 5000);
+      }, 5000)
     } catch (error) {
       console.error('Failed to check balance:', error)
-      alert('Failed to check balance. Please try again.')
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to check balance'
+      alert(`Balance check failed: ${errorMsg}`)
     }
   }
 
   async function setPrimary(cardId) {
     try {
-      await cardAPI.updateCard ? cardAPI.updateCard(cardId, { primary: true }) : Promise.resolve()
-      const updated = (cards || []).map(c => ((c.id||c._id) === cardId) ? { ...c, type: 'primary' } : { ...c, type: (c.type==='primary'?'secondary':c.type) })
+      // Backend doesn't have update endpoint, so we'll handle this locally for now
+      const updated = (cards || []).map(c => ((c.id||c._id) === cardId) ? { ...c, type: 'primary', isPrimary: true } : { ...c, type: (c.type==='primary'?'secondary':c.type), isPrimary: false })
       dispatch(setCards(updated))
+      alert('Primary card updated locally. Note: This change is not persisted to backend.')
     } catch (error) {
       console.error('Failed to set primary card:', error)
       alert('Failed to set primary card. Please try again.')
     }
   }
 
-  function handleRecharge() {
-    if (!primaryCard?.id && !primaryCard?._id) {
-      alert('No primary card found. Please create a card first.');
-      return;
-    }
-    // Navigate to payment page with recharge details
-    navigate('/payment', { 
-      state: { 
-        paymentInfo: {
-          type: 'card_recharge', 
-          amount: rechargeAmount,
-          cardId: primaryCard.id || primaryCard._id,
-          description: `Card Recharge - ₹${rechargeAmount}`
-        }
-      } 
+  function handleRecharge(cardId, cardNumber) {
+    const paymentInfo = {
+      type: 'card_recharge',
+      cardId: cardId,
+      id: cardId,
+      amount: 100,
+      description: `Card Recharge - ${cardNumber} - ₹100`
+    };
+    
+    navigate('/payment', {
+      state: { paymentInfo }
     });
   }
 
-  const primaryCard = cards?.find(c => c.type === 'primary') || cards?.[0]
-  const secondaryCards = cards?.filter(c => c.type !== 'primary') || []
+  const primaryCard = cards?.find(c => c.isPrimary || c.type === 'primary') || cards?.[0]
+  const secondaryCards = cards?.filter(c => !c.isPrimary && c.type !== 'primary') || []
 
   return (
     <div className="container mt-5 pt-5">
@@ -129,6 +140,12 @@ function CardsPage() {
             disabled={!primaryCard}
           >
             <i className="fas fa-plus me-2"></i>Recharge Card
+          </button>
+          <button 
+            className="btn btn-outline-info" 
+            onClick={() => setShowRechargeByNumberModal(true)}
+          >
+            <i className="fas fa-credit-card me-2"></i>Recharge Any Card
           </button>
           <button className="btn btn-primary" onClick={createNewCard} disabled={loading}>
             <i className="fas fa-plus me-2"></i>Get New Card
@@ -201,12 +218,33 @@ function CardsPage() {
                           alert('No primary card found. Please create a card first.');
                           return;
                         }
-                        try {
-                          await cardAPI.tapIn(primaryCard.id || primaryCard._id, { stationId: tapInStation, timestamp: new Date().toISOString() })
-                        } catch (error) {
-                          console.error('Tap in failed:', error)
-                          alert('Tap in failed. Please try again.')
-                        }
+                        const handleTapIn = async (cardId) => {
+                          try {
+                            setActionLoading(cardId);
+                            const user = JSON.parse(localStorage.getItem('user') || '{}');
+                            const stationIdentifier = tapInStation || stations.find(s => (s.id || s._id) === tapInStation)?.name || 'Central Station';
+                            const deviceId = localStorage.getItem('deviceId') || 'device123';
+                            const qrData = `card:${cardId}:${Date.now()}`;
+                            
+                            const response = await cardAPI.tapIn(cardId, { 
+                              userId: user.id || user._id,
+                              stationIdentifier,
+                              deviceId,
+                              qrData
+                            });
+                            
+                            alert("Tap In successful!");
+                            fetchCards(); // Refresh cards
+                          } catch (error) {
+                            console.error('Tap In error:', error);
+                            const errorMsg = error.response?.data?.error || error.message || "Failed to Tap In";
+                            alert(`Tap In failed: ${errorMsg}`);
+                          } finally {
+                            setActionLoading(null);
+                            localStorage.setItem('tapInStation', tapInStation);
+                          }
+                        };
+                        await handleTapIn(primaryCard.id || primaryCard._id);
                       }}>
                         <i className="fas fa-sign-in-alt me-1"></i>Tap In
                       </button>
@@ -223,13 +261,20 @@ function CardsPage() {
                     </div>
                     <div className="col-md-3 d-grid">
                       <button className="btn btn-light btn-sm" onClick={async () => {
-                        if (!tapOutStation) return
                         if (!primaryCard?.id && !primaryCard?._id) {
                           alert('No primary card found. Please create a card first.');
                           return;
                         }
                         try {
-                          await cardAPI.tapOut(primaryCard.id || primaryCard._id, { stationId: tapOutStation, timestamp: new Date().toISOString() })
+                          const qrData = JSON.stringify({
+                            cardNumber: primaryCard.cardNumber,
+                            token: 'demo-token' // In real app, this would be generated
+                          })
+                          await cardAPI.tapOut(primaryCard.id || primaryCard._id, {
+                            endStation: stations.find(s => (s.id || s._id) === tapOutStation)?.name || tapOutStation,
+                            deviceId: 'web-device-' + (user?.id || user?._id),
+                            qrData: qrData
+                          })
                         } catch (error) {
                           console.error('Tap out failed:', error)
                           alert('Tap out failed. Please try again.')
@@ -289,8 +334,8 @@ function CardsPage() {
                     </div>
                   </div>
                   <div className="mt-3 d-flex gap-2 flex-wrap">
-                    <button className="btn btn-outline-secondary btn-sm" onClick={() => checkBalance(card.id || card._id)}>
-                      <i className="fas fa-wallet me-1"></i>Balance
+                    <button className="btn btn-success btn-sm me-2" onClick={() => handleRecharge(card.id || card._id, card.cardNumber)}>
+                      <i className="fas fa-plus me-1"></i>Recharge
                     </button>
                     <button className="btn btn-outline-dark btn-sm" onClick={() => setPrimary(card.id || card._id)}>
                       Set Primary
@@ -472,6 +517,12 @@ function CardsPage() {
           </div>
         </div>
       )}
+
+      {/* Recharge by Card Number Modal */}
+      <RechargeByCardNumber 
+        show={showRechargeByNumberModal}
+        onClose={() => setShowRechargeByNumberModal(false)}
+      />
     </div>
   )
 }
