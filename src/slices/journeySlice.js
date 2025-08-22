@@ -10,8 +10,25 @@ export const fetchJourneys = createAsyncThunk(
     const userId = state.auth.user?.id || state.auth.user?._id;
     if (!userId) throw new Error("User not authenticated");
     
-    const response = await userJourneyAPI.getUserJourneys(userId);
-    return response.data;
+    try {
+      const response = await userJourneyAPI.getUserJourneys(userId);
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    } catch (error) {
+      // Try alternative endpoints if primary fails
+      try {
+        const response = await userJourneyAPI.getJourneyHistory(userId);
+        return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      } catch (secondError) {
+        try {
+          const response = await userJourneyAPI.getAllJourneys();
+          return Array.isArray(response.data) ? response.data : response.data?.items || [];
+        } catch (thirdError) {
+          // If all endpoints fail, return empty array
+          console.warn('All journey endpoints failed:', { error, secondError, thirdError });
+          return [];
+        }
+      }
+    }
   }
 );
 

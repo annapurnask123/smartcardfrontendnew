@@ -43,6 +43,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Resilient helpers: tolerate 404 by returning empty results so UI doesn't break
+async function safeGet(url, options = {}) {
+  try {
+    return await api.get(url, options);
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      return { data: Array.isArray(options?.defaultData) ? [] : (options?.defaultData ?? []) };
+    }
+    throw err;
+  }
+}
+
+async function safePost(url, body = {}, options = {}) {
+  try {
+    return await api.post(url, body, options);
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      return { data: options?.defaultData ?? {} };
+    }
+    throw err;
+  }
+}
+
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
@@ -183,7 +206,7 @@ export const userAPI = {
   updateProfile: (data) => api.put("/users/profile", data),
   changePassword: (data) => api.put("/users/change-password", data),
   deleteAccount: () => api.delete("/users/profile"),
-  getUserJourneys: () => api.get("/user-journeys"),
+  getUserJourneys: () => safeGet("/user-journeys", { defaultData: [] }),
   startJourney: (data) => api.post("/user-journeys/start", data),
   endJourney: (journeyId, data) =>
     api.put(`/user-journeys/${journeyId}/end`, data),
@@ -270,7 +293,27 @@ export const paymentAPI = {
   deletePaymentMethod: (methodId) => api.delete(`/payment-methods/${methodId}`),
 
   // Payment Processing
-  createPaymentOrder: (data) => api.post("/payments/create-order", data),
+  createPaymentOrder: (data) => api.post("/payments/orders", {
+    amount: data.amount,
+    currency: data.currency || "INR",
+    receipt: data.receipt || `rcpt_${Date.now()}`,
+    notes: {
+      purpose: data.purpose || data.type || "generic",
+      userId: data.userId || "unknown",
+      ...((data.meta && typeof data.meta === 'object') ? data.meta : {}),
+    },
+  }),
+  // Some backends use the legacy path
+  createPaymentOrderLegacy: (data) => api.post("/payments/create-order", {
+    amount: data.amount,
+    currency: data.currency || "INR",
+    receipt: data.receipt || `rcpt_${Date.now()}`,
+    notes: {
+      purpose: data.purpose || data.type || "generic",
+      userId: data.userId || "unknown",
+      ...((data.meta && typeof data.meta === 'object') ? data.meta : {}),
+    },
+  }),
   verifyPayment: (data) => api.post("/payments/verify", data),
   handleWebhook: (data) => api.post("/payments/webhook", data),
 };
@@ -324,14 +367,31 @@ export const notificationAPI = {
 
 // Transaction API - New backend feature
 export const transactionAPI = {
-  getAllTransactions: () => api.get("/transactions"),
-  getUserTransactions: (userId) => api.get(`/transactions/user/${userId}`),
+  getAllTransactions: () => safeGet("/transactions", { defaultData: [] }),
+  getUserTransactions: async (userId) => {
+    // Try multiple shapes: /transactions/user/:id, /user-transactions/:id, /users/:id/transactions
+    const candidates = [
+      `/transactions/user/${userId}`,
+      `/user-transactions/${userId}`,
+      `/users/${userId}/transactions`,
+    ];
+    for (const path of candidates) {
+      try {
+        const res = await safeGet(path, { defaultData: [] });
+        if (Array.isArray(res.data) ? res.data.length >= 0 : res.data) return res;
+      } catch (_) {}
+    }
+    return { data: [] };
+  },
   createTransaction: (data) => api.post("/transactions", data),
   getTransaction: (transactionId) => api.get(`/transactions/${transactionId}`),
   updateTransaction: (transactionId, data) =>
     api.put(`/transactions/${transactionId}`, data),
   deleteTransaction: (transactionId) =>
     api.delete(`/transactions/${transactionId}`),
+  // Alternative endpoints for compatibility
+  getUserTransactionHistory: (userId) => safeGet(`/user-transactions/${userId}`, { defaultData: [] }),
+  getTransactionHistory: () => safeGet("/transaction-history", { defaultData: [] }),
 };
 
 // Trip API - New backend feature
@@ -346,9 +406,27 @@ export const tripAPI = {
 
 // User Journey API - New backend feature
 export const userJourneyAPI = {
-  getUserJourneys: (userId) => api.get(`/user-journeys/${userId}`),
+  getUserJourneys: async (userId) => {
+    // Try multiple shapes: /user-journeys/:id, /journey-history/:id, /users/:id/journeys
+    const candidates = [
+      `/user-journeys/${userId}`,
+      `/journey-history/${userId}`,
+      `/users/${userId}/journeys`,
+    ];
+    for (const path of candidates) {
+      try {
+        const res = await safeGet(path, { defaultData: [] });
+        if (Array.isArray(res.data) ? res.data.length >= 0 : res.data) return res;
+      } catch (_) {}
+    }
+    return { data: [] };
+  },
   startJourney: (data) => api.post("/user-journeys/start", data),
   endJourney: (data) => api.post("/user-journeys/end", data),
+  // Alternative endpoints for compatibility
+  getJourneyHistory: (userId) => safeGet(`/journey-history/${userId}`, { defaultData: [] }),
+  getAllJourneys: () => safeGet("/journeys", { defaultData: [] }),
+  getJourneyById: (journeyId) => api.get(`/journeys/${journeyId}`),
 };
 
 // Train Schedule API - Updated

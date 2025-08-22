@@ -195,31 +195,32 @@ function HomePage() {
         </div>
       </div>
 
-      <style jsx>{`
-        .hover-lift {
-          transition: transform 0.2s ease-in-out;
-        }
-        .hover-lift:hover {
-          transform: translateY(-5px);
-        }
-        .feature-icon {
-          height: 80px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .station-icon {
-          height: 60px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        @media (max-width: 768px) {
-          .col-md-2 {
-            margin-bottom: 1rem;
-          }
-        }
-      `}</style>
+      <style>{`
+  .hover-lift {
+    transition: transform 0.2s ease-in-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-5px);
+  }
+  .feature-icon {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .station-icon {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @media (max-width: 768px) {
+    .col-md-2 {
+      margin-bottom: 1rem;
+    }
+  }
+`}</style>
+
     </div>
   )
 }

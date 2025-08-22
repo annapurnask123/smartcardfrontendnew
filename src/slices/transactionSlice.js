@@ -14,12 +14,20 @@ export const fetchTransactions = createAsyncThunk(
       const response = await transactionAPI.getUserTransactions(userId);
       return Array.isArray(response.data) ? response.data : response.data?.items || [];
     } catch (error) {
-      // If the specific user endpoint fails, try the general endpoint
-      if (error.response?.status === 404) {
-        const generalResponse = await transactionAPI.getAllTransactions();
-        return Array.isArray(generalResponse.data) ? generalResponse.data : generalResponse.data?.items || [];
+      // Try alternative endpoints if primary fails
+      try {
+        const response = await transactionAPI.getUserTransactionHistory(userId);
+        return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      } catch (secondError) {
+        try {
+          const response = await transactionAPI.getTransactionHistory();
+          return Array.isArray(response.data) ? response.data : response.data?.items || [];
+        } catch (thirdError) {
+          // If all endpoints fail, return empty array
+          console.warn('All transaction endpoints failed:', { error, secondError, thirdError });
+          return [];
+        }
       }
-      throw error;
     }
   }
 );

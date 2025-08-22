@@ -130,7 +130,15 @@ export default function PaymentPage() {
           : {},
       };
 
-      const { data: order } = await paymentAPI.createPaymentOrder(payload);
+      let order
+      try {
+        const res = await paymentAPI.createPaymentOrder(payload);
+        order = res.data
+      } catch (e) {
+        // fallback to legacy endpoint path
+        const res2 = await paymentAPI.createPaymentOrderLegacy(payload)
+        order = res2.data
+      }
 
       if (!order?.order_id && !order?.id) {
         throw new Error("Invalid payment order returned");

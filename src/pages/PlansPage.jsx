@@ -17,7 +17,26 @@ function PlansPage() {
   async function purchasePlan(plan) {
     try {
       const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
-      const { data: order } = await paymentAPI.createPaymentOrder({ amount: amountPaise, currency: 'INR', purpose: 'subscription', meta: { planId: plan.id || plan._id } })
+      let order
+      try {
+        const res = await paymentAPI.createPaymentOrder({ 
+        amount: amountPaise, 
+        currency: 'INR', 
+        purpose: 'subscription', 
+        meta: { planId: plan.id || plan._id } 
+        })
+        order = res.data
+      } catch (e) {
+        // fallback to legacy endpoint
+        const res2 = await paymentAPI.createPaymentOrderLegacy({
+          amount: amountPaise,
+          currency: 'INR',
+          purpose: 'subscription',
+          meta: { planId: plan.id || plan._id }
+        })
+        order = res2.data
+      }
+      
       await openRazorpayCheckout({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
         amount: order.amount,
@@ -25,17 +44,30 @@ function PlansPage() {
         description: `Purchase ${plan.name}`,
         orderId: order.id,
         handler: async (response) => {
-          await paymentAPI.verifyPayment({
-            orderId: order.id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpaySignature: response.razorpay_signature,
-          })
-          await subscriptionAPI.createSubscription({ planId: plan.id || plan._id, paymentOrderId: order.id })
-          // Optionally navigate to My Plans or show toast
+          try {
+            await paymentAPI.verifyPayment({
+              orderId: order.id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            })
+            await subscriptionAPI.createSubscription({ 
+              planId: plan.id || plan._id, 
+              paymentOrderId: order.id 
+            })
+            alert('Subscription purchased successfully!')
+            // Navigate to My Plans page
+            window.location.href = '/my-plans'
+          } catch (error) {
+            console.error('Payment verification failed:', error)
+            alert('Payment verification failed. Please contact support.')
+          }
         },
       })
-    } catch {}
+    } catch (error) {
+      console.error('Payment order creation failed:', error)
+      alert('Failed to create payment order. Please try again.')
+    }
   }
 
   return (

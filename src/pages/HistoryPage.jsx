@@ -1,33 +1,47 @@
 import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { userJourneyAPI } from '../api/api'
 
 function HistoryPage() {
   const [journeys, setJourneys] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const user = useSelector(s => s.auth.user)
 
   useEffect(() => {
     async function fetchJourneys() {
       try {
         setLoading(true)
-        const { data } = await userJourneyAPI.getUserJourneys()
+        const userId = user?.id || user?._id
+        if (!userId) {
+          setError('User not authenticated')
+          return
+        }
+        
+        const { data } = await userJourneyAPI.getUserJourneys(userId)
         setJourneys(Array.isArray(data) ? data : data?.items || [])
       } catch (error) {
         console.error('Failed to fetch journeys:', error)
-        // Try alternative endpoint if the first one fails
+        // Try alternative endpoints if the first one fails
         try {
-          const { data } = await userJourneyAPI.getUserJourneys()
+          const userId = user?.id || user?._id
+          const { data } = await userJourneyAPI.getJourneyHistory(userId)
           setJourneys(Array.isArray(data) ? data : data?.items || [])
         } catch (secondError) {
-          console.error('Second attempt failed:', secondError)
-          setError('Failed to load journey history')
+          try {
+            const { data } = await userJourneyAPI.getAllJourneys()
+            setJourneys(Array.isArray(data) ? data : data?.items || [])
+          } catch (thirdError) {
+            console.error('All attempts failed:', { error, secondError, thirdError })
+            setError('Failed to load journey history')
+          }
         }
       } finally {
         setLoading(false)
       }
     }
     fetchJourneys()
-  }, [])
+  }, [user])
 
   const recentJourneys = journeys.slice(0, 5)
   const allJourneys = journeys

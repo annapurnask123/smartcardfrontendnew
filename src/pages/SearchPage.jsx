@@ -59,11 +59,29 @@ function SearchPage() {
   }, [user])
 
   const filtered = {
-    stations: stations.filter(s => matches(s.name || s.code, q)),
-    plans: plans.filter(p => matches(p.name, q)),
-    tickets: tickets.filter(t => matches(t.id, q) || matches(t.source, q) || matches(t.destination, q) || matches(t.sourceName, q) || matches(t.destinationName, q)),
-    journeys: journeys.filter(j => matches(j.sourceName || j.source, q) || matches(j.destinationName || j.destination, q)),
-    transactions: transactions.filter(tx => matches(tx.description, q) || matches(tx.id, q) || matches(tx.type, q)),
+    stations: stations.filter(s => matches(s.name || s.code || s.title, q)),
+    plans: plans.filter(p => matches(p.name || p.title, q)),
+    tickets: tickets.filter(t => 
+      matches(t.id, q) || 
+      matches(t.source, q) || 
+      matches(t.destination, q) || 
+      matches(t.sourceName, q) || 
+      matches(t.destinationName, q) ||
+      matches(t.ticketNumber, q) ||
+      matches(t.status, q)
+    ),
+    journeys: journeys.filter(j => 
+      matches(j.sourceName || j.source, q) || 
+      matches(j.destinationName || j.destination, q) ||
+      matches(j.journeyId, q) ||
+      matches(j.status, q)
+    ),
+    transactions: transactions.filter(tx => 
+      matches(tx.description, q) || 
+      matches(tx.id, q) ||
+      matches(tx.transactionId, q) ||
+      matches(tx.type, q)
+    ),
   }
 
   return (

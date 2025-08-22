@@ -39,8 +39,12 @@ function SchedulesPage() {
 
   function getStationName(stationId) {
     if (!stationId) return 'Unknown Station'
-    const station = stations.find(s => (s.id || s._id || s.code) === stationId)
-    return station?.name || station?.title || station?.displayName || stationId
+    const station = stations.find(s => 
+      (s.id || s._id || s.code || s.stationId || s.station_id) === stationId ||
+      (s.name && s.name.toLowerCase().includes(stationId.toLowerCase())) ||
+      (s.code && s.code.toLowerCase() === stationId.toLowerCase())
+    )
+    return station?.name || station?.title || station?.displayName || station?.stationName || stationId
   }
 
   function handleSelectTrain(schedule) {
