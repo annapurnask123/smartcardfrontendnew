@@ -7,7 +7,7 @@ import { useSelector as useReduxSelector } from 'react-redux'
 
 function PlansPage() {
   const dispatch = useDispatch();
-  const { plans = [], loading, error } = useSelector(state => state.subscriptionplan);
+  const { plans = [], loading, error } = useSelector(state => state.subscriptionPlans);
   const q = useSelector(state => state.ui.query)
 
   useEffect(() => {

@@ -15,7 +15,7 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     stations: stationReducer,
-    subscriptionplan: subscriptionplanReducer,
+    subscriptionPlans: subscriptionplanReducer, // Fixed: Changed from subscriptionplan to subscriptionPlans
     wallet: walletReducer,
     ui: uiReducer,
     tickets: ticketReducer,

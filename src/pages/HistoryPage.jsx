@@ -14,7 +14,14 @@ function HistoryPage() {
         setJourneys(Array.isArray(data) ? data : data?.items || [])
       } catch (error) {
         console.error('Failed to fetch journeys:', error)
-        setError('Failed to load journey history')
+        // Try alternative endpoint if the first one fails
+        try {
+          const { data } = await userJourneyAPI.getUserJourneys()
+          setJourneys(Array.isArray(data) ? data : data?.items || [])
+        } catch (secondError) {
+          console.error('Second attempt failed:', secondError)
+          setError('Failed to load journey history')
+        }
       } finally {
         setLoading(false)
       }

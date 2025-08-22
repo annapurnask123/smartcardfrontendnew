@@ -10,8 +10,17 @@ export const fetchTransactions = createAsyncThunk(
     const userId = state.auth.user?.id || state.auth.user?._id;
     if (!userId) throw new Error("User not authenticated");
     
-    const response = await transactionAPI.getUserTransactions(userId);
-    return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    try {
+      const response = await transactionAPI.getUserTransactions(userId);
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    } catch (error) {
+      // If the specific user endpoint fails, try the general endpoint
+      if (error.response?.status === 404) {
+        const generalResponse = await transactionAPI.getAllTransactions();
+        return Array.isArray(generalResponse.data) ? generalResponse.data : generalResponse.data?.items || [];
+      }
+      throw error;
+    }
   }
 );
 

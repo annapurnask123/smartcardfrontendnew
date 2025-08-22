@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { cardAPI, stationAPI } from '../api/api'
 import { fetchUserCard, createVirtualCard, setCards } from '../slices/cardSlice'
 
 function CardsPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const { cards, loading, error } = useSelector(s => s.card)
   const user = useSelector(s => s.auth.user)
   const [stations, setStations] = useState([])
@@ -14,6 +15,8 @@ function CardsPage() {
   const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '')
   const [showRechargeModal, setShowRechargeModal] = useState(false)
   const [rechargeAmount, setRechargeAmount] = useState(100)
+  const [message, setMessage] = useState(location.state?.message || '')
+  const [messageType, setMessageType] = useState(location.state?.type || '')
 
   useEffect(() => {
     (async () => {
@@ -51,7 +54,29 @@ function CardsPage() {
         return;
       }
       const { data } = await cardAPI.getBalance(actualCardId)
-      alert(`Balance: ₹${data.balance} | Journeys: ${data.journeyCount || 0}`)
+      // Show balance in a more user-friendly way instead of alert
+      const balanceDisplay = document.createElement('div');
+      balanceDisplay.innerHTML = `
+        <div class="alert alert-info" role="alert">
+          <h6><i class="fas fa-wallet me-2"></i>Card Balance</h6>
+          <p class="mb-1"><strong>Balance:</strong> ₹${data.balance || 0}</p>
+          <p class="mb-0"><strong>Journeys:</strong> ${data.journeyCount || 0}</p>
+        </div>
+      `;
+      
+      // Remove any existing balance display
+      const existingDisplay = document.querySelector('.balance-display');
+      if (existingDisplay) existingDisplay.remove();
+      
+      balanceDisplay.className = 'balance-display';
+      document.querySelector('.container').insertBefore(balanceDisplay, document.querySelector('.row'));
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (balanceDisplay.parentNode) {
+          balanceDisplay.remove();
+        }
+      }, 5000);
     } catch (error) {
       console.error('Failed to check balance:', error)
       alert('Failed to check balance. Please try again.')
@@ -77,10 +102,12 @@ function CardsPage() {
     // Navigate to payment page with recharge details
     navigate('/payment', { 
       state: { 
-        type: 'card_recharge', 
-        amount: rechargeAmount,
-        cardId: primaryCard.id || primaryCard._id,
-        description: `Card Recharge - ₹${rechargeAmount}`
+        paymentInfo: {
+          type: 'card_recharge', 
+          amount: rechargeAmount,
+          cardId: primaryCard.id || primaryCard._id,
+          description: `Card Recharge - ₹${rechargeAmount}`
+        }
       } 
     });
   }
@@ -110,6 +137,16 @@ function CardsPage() {
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+      {message && (
+        <div className={`alert alert-${messageType === 'error' ? 'danger' : 'success'}`}>
+          {message}
+          <button 
+            type="button" 
+            className="btn-close float-end" 
+            onClick={() => setMessage('')}
+          ></button>
+        </div>
+      )}
 
       <div className="row mb-4">
         <div className="col-12">

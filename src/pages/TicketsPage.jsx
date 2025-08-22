@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useMemo as memo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchTickets } from '../slices/ticketSlice'
 import { useNavigate } from 'react-router-dom'
@@ -10,9 +10,10 @@ function TicketsPage() {
   const { tickets = [] } = useSelector(state => state.tickets)
   const user = useSelector(state => state.auth.user)
   const q = useSelector(state => state.ui.query)
+  const [statusFilter, setStatusFilter] = useState('')
 
   // station slice can be items | list | stations depending on how you set it up
-  const stationState = useSelector(s => s.station || {})
+  const stationState = useSelector(s => s.stations || {})
   const stations = stationState.items || stationState.list || stationState.stations || []
 
   // Build a quick lookup map: id -> name
@@ -60,13 +61,26 @@ function TicketsPage() {
 
   return (
     <div className="container mt-5 pt-5">
-      <h2><i className="fas fa-ticket-alt me-2"></i>Tickets</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2><i className="fas fa-ticket-alt me-2"></i>Tickets</h2>
+        <div className="input-group" style={{ maxWidth: 300 }}>
+          <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All Tickets</option>
+            <option value="active">Active</option>
+            <option value="ended">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
       {['active','ended','pending','cancelled'].map(section => {
         const sectionTickets = grouped[section].filter(t => {
           const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId || ''
           const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId || ''
           const text = `${fromName} ${toName}`.toLowerCase()
-          return !q || text.includes((q||'').toLowerCase())
+          const matchesSearch = !q || text.includes((q||'').toLowerCase())
+          const matchesFilter = !statusFilter || section === statusFilter
+          return matchesSearch && matchesFilter
         })
         if (sectionTickets.length === 0) return null
         const title = section.charAt(0).toUpperCase() + section.slice(1)

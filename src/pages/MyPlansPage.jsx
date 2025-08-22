@@ -3,17 +3,45 @@ import { subscriptionAPI } from '../api/api'
 
 function MyPlansPage() {
   const [plans, setPlans] = useState([])
+  const [filteredPlans, setFilteredPlans] = useState([])
   const [banner, setBanner] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  
   useEffect(() => {
     (async () => {
       try {
         const { data } = await subscriptionAPI.getAllSubscriptions()
-        setPlans(Array.isArray(data) ? data : data?.items || [])
+        const plansData = Array.isArray(data) ? data : data?.items || []
+        setPlans(plansData)
+        setFilteredPlans(plansData)
         const url = new URL(window.location.href)
         if (url.searchParams.get('activated') === '1') setBanner('Your plan is activated successfully')
       } catch {}
     })()
   }, [])
+  
+  useEffect(() => {
+    if (!statusFilter) {
+      setFilteredPlans(plans)
+    } else {
+      const filtered = plans.filter(plan => {
+        const planStatus = (plan.status || '').toLowerCase()
+        switch (statusFilter) {
+          case 'active':
+            return planStatus === 'active'
+          case 'expired':
+            return planStatus === 'expired'
+          case 'expiring':
+            return planStatus === 'expiring' || planStatus === 'expiring_soon'
+          case 'cancelled':
+            return planStatus === 'cancelled' || planStatus === 'canceled'
+          default:
+            return true
+        }
+      })
+      setFilteredPlans(filtered)
+    }
+  }, [plans, statusFilter])
   async function renew(sub) {
     try {
       await subscriptionAPI.renewSubscription(sub.id || sub._id)
@@ -31,10 +59,7 @@ function MyPlansPage() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-crown me-2"></i>My Plans</h2>
         <div className="input-group" style={{ maxWidth: 300 }}>
-          <select className="form-select" onChange={(e) => {
-            // Add filtering logic here
-            console.log('Filter by:', e.target.value);
-          }}>
+          <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Plans</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>
@@ -45,8 +70,8 @@ function MyPlansPage() {
       </div>
       {banner && <div className="alert alert-success">{banner}</div>}
       <div className="row">
-        {plans.length === 0 && <p className="text-muted">No plans yet.</p>}
-        {plans.map((plan, index) => (
+        {filteredPlans.length === 0 && <p className="text-muted">No plans found.</p>}
+        {filteredPlans.map((plan, index) => (
           <div className="col-md-6 mb-4" key={plan.id || plan._id || `plan-${index}`}>
             <div className={`card border-0 shadow-sm hover-lift subscription-${plan.status}`}>
               <div className="card-body">

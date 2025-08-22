@@ -74,17 +74,27 @@ export default function PaymentPage() {
       } else if (paymentInfo.type === "subscription") {
         const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
         dispatch(addSubscription(subscription));
-      } else if (paymentInfo.type === "card_recharge") {
-        // Handle card recharge
-        try {
-          await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
-          alert(`Card recharged successfully with ₹${paymentInfo.amount}`);
-          navigate('/cards');
-        } catch (error) {
-          console.error('Card recharge failed:', error);
-          alert('Card recharge failed. Please try again.');
-        }
-      }
+                  } else if (paymentInfo.type === "card_recharge") {
+              // Handle card recharge
+              try {
+                await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
+                // Navigate back to cards page with success message
+                navigate('/cards', { 
+                  state: { 
+                    message: `Card recharged successfully with ₹${paymentInfo.amount}`,
+                    type: 'success'
+                  } 
+                });
+              } catch (error) {
+                console.error('Card recharge failed:', error);
+                navigate('/cards', { 
+                  state: { 
+                    message: 'Card recharge failed. Please try again.',
+                    type: 'error'
+                  } 
+                });
+              }
+            }
 
       goToResult(true);
     } catch (err) {
@@ -186,11 +196,21 @@ export default function PaymentPage() {
               // Handle card recharge
               try {
                 await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
-                alert(`Card recharged successfully with ₹${paymentInfo.amount}`);
-                navigate('/cards');
+                // Navigate back to cards page with success message
+                navigate('/cards', { 
+                  state: { 
+                    message: `Card recharged successfully with ₹${paymentInfo.amount}`,
+                    type: 'success'
+                  } 
+                });
               } catch (error) {
                 console.error('Card recharge failed:', error);
-                alert('Card recharge failed. Please try again.');
+                navigate('/cards', { 
+                  state: { 
+                    message: 'Card recharge failed. Please try again.',
+                    type: 'error'
+                  } 
+                });
               }
             }
 

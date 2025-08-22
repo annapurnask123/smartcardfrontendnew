@@ -287,6 +287,24 @@ function JourneyTrackingPage() {
                     Lat: {currentLocation.lat.toFixed(6)}<br />
                     Lng: {currentLocation.lng.toFixed(6)}
                   </p>
+                  <button 
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLocation.lat}&lon=${currentLocation.lng}&zoom=18&addressdetails=1`
+                        );
+                        const data = await response.json();
+                        if (data.display_name) {
+                          addNotification(`Location: ${data.display_name}`, 'info');
+                        }
+                      } catch (error) {
+                        console.error('Failed to get location name:', error);
+                      }
+                    }}
+                  >
+                    <i className="fas fa-map-marker-alt me-1"></i>Get Address
+                  </button>
                 </div>
               )}
               

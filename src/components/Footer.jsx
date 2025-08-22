@@ -188,14 +188,32 @@ function Footer() {
       </div>
 
       <style jsx>{`
+        .hover-light {
+          transition: color 0.3s ease;
+        }
+        
         .hover-light:hover {
           color: #fff !important;
           text-decoration: none;
         }
         
+        .social-links a {
+          transition: all 0.3s ease;
+        }
+        
         .social-links a:hover {
           background-color: #007bff !important;
           border-color: #007bff !important;
+          transform: translateY(-2px);
+        }
+        
+        footer a {
+          transition: color 0.3s ease;
+        }
+        
+        footer a:hover {
+          color: #fff !important;
+          text-decoration: none;
         }
         
         @media (max-width: 768px) {
