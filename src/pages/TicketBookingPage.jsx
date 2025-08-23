@@ -90,7 +90,7 @@ function TicketBookingPage() {
       navigate('/payment', { state: { paymentInfo } });
     } catch (error) {
       console.error('Booking failed:', error);
-      setError(error.response?.data?.error || 'Failed to book ticket');
+      setError(error.response?.data?.error || error.message || 'Failed to book ticket. Please try again.');
     } finally {
       setLoading(false);
     }

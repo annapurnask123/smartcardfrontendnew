@@ -27,7 +27,7 @@ function RechargeByCardNumber({ show, onClose }) {
       navigate('/payment', {
         state: {
           paymentInfo: {
-            type: 'card_recharge_by_number',
+            type: 'recharge',
             id: cardNumber.trim(),
             amount: amount,
             description: `Card Recharge - ${cardNumber.trim()} - ₹${amount}`

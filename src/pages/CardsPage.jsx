@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { cardAPI, stationAPI } from '../api/api'
 import { fetchUserCard, createVirtualCard, setCards } from '../slices/cardSlice'
 import RechargeByCardNumber from '../components/RechargeByCardNumber'
+import SimpleNotification from '../components/SimpleNotification'
 
 function CardsPage() {
   const dispatch = useDispatch()
@@ -19,6 +20,7 @@ function CardsPage() {
   const [rechargeAmount, setRechargeAmount] = useState(100)
   const [message, setMessage] = useState(location.state?.message || '')
   const [messageType, setMessageType] = useState(location.state?.type || '')
+  const [actionLoading, setActionLoading] = useState(null)
 
   useEffect(() => {
     (async () => {
@@ -27,34 +29,77 @@ function CardsPage() {
         setStations(Array.isArray(data) ? data : data.items || [])
       } catch (error) {
         console.error('Failed to fetch stations:', error)
+        setMessage('Failed to fetch stations. Please try again later.')
+        setMessageType('error')
       }
       try {
         if (!user?.id && !user?._id) return
         dispatch(fetchUserCard(user.id || user._id))
       } catch (error) {
         console.error('Failed to fetch user cards:', error)
+        setMessage('Failed to fetch user cards. Please try again later.')
+        setMessageType('error')
       }
     })()
   }, [dispatch, user])
 
   useEffect(() => { localStorage.setItem('tap_in_station', tapInStation) }, [tapInStation])
   useEffect(() => { localStorage.setItem('tap_out_station', tapOutStation) }, [tapOutStation])
+  
+  // Handle successful recharge
+  useEffect(() => {
+    const pendingRecharge = localStorage.getItem('pendingRecharge')
+    if (pendingRecharge && cards.length > 0) {
+      try {
+        const rechargeData = JSON.parse(pendingRecharge)
+        const updatedCards = cards.map(card => {
+          if ((card.id || card._id) === rechargeData.cardId) {
+            return { ...card, balance: (card.balance || 0) + rechargeData.amount }
+          }
+          return card
+        })
+        dispatch(setCards(updatedCards))
+        localStorage.removeItem('pendingRecharge')
+        setMessage(`Card ${rechargeData.cardNumber} recharged with ₹${rechargeData.amount}`)
+        setMessageType('success')
+      } catch (error) {
+        console.error('Error processing recharge:', error)
+      }
+    }
+  }, [cards, dispatch])
 
   async function createNewCard() {
+    if (!user?.id && !user?._id) {
+      setMessage('Please login to create a card')
+      setMessageType('error')
+      return
+    }
+
     try {
-      await dispatch(createVirtualCard(user.id || user._id)).unwrap()
-      setMessage('Card created successfully!')
-      setMessageType('success')
-    } catch (error) {
-      console.error('Failed to create card:', error)
-      const errorMsg = error?.response?.data?.error || error?.message || 'Failed to create card'
-      if (errorMsg.includes('subscription') || errorMsg.includes('only 1 card allowed')) {
-        setMessage('You need an active subscription to create more cards. Only 1 card allowed without subscription.')
-        setMessageType('warning')
+      setLoading(true)
+      
+      // Create card via backend API
+      const response = await cardAPI.createCard({
+        userId: user.id || user._id,
+        isPrimary: cards.length === 0, // First card is always primary
+        cardType: cards.length === 0 ? 'primary' : 'secondary'
+      });
+
+      if (response.data.success && response.data.card) {
+        // Add new card to state
+        const newCard = response.data.card;
+        dispatch(setCards([...cards, newCard]));
+        setMessage(`Card created successfully! Card Number: ${newCard.cardNumber}`)
+        setMessageType('success')
       } else {
-        setMessage(errorMsg)
-        setMessageType('error')
+        throw new Error(response.data.error || 'Failed to create card');
       }
+    } catch (error) {
+      console.error('Card creation failed:', error)
+      setMessage(error.response?.data?.error || error.message || 'Card creation failed. Please try again.')
+      setMessageType('error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -93,7 +138,8 @@ function CardsPage() {
     } catch (error) {
       console.error('Failed to check balance:', error)
       const errorMsg = error.response?.data?.error || error.message || 'Failed to check balance'
-      alert(`Balance check failed: ${errorMsg}`)
+      setMessage(`Balance check failed: ${errorMsg}`)
+      setMessageType('error')
     }
   }
 
@@ -105,22 +151,183 @@ function CardsPage() {
       alert('Primary card updated locally. Note: This change is not persisted to backend.')
     } catch (error) {
       console.error('Failed to set primary card:', error)
-      alert('Failed to set primary card. Please try again.')
+      setMessage('Failed to set primary card. Please try again.')
+      setMessageType('error')
     }
   }
 
   function handleRecharge(cardId, cardNumber) {
+    if (!cardId) {
+      alert('Please select a card to recharge');
+      return;
+    }
+
+    if (!rechargeAmount || rechargeAmount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
     const paymentInfo = {
       type: 'card_recharge',
       cardId: cardId,
       id: cardId,
-      amount: 100,
-      description: `Card Recharge - ${cardNumber} - ₹100`
+      amount: rechargeAmount,
+      description: `Card Recharge - ${cardNumber || 'Card'} - ₹${rechargeAmount}`
     };
+    
+    // Store recharge info for after payment
+    localStorage.setItem('pendingRecharge', JSON.stringify({
+      cardId: cardId,
+      cardNumber: cardNumber,
+      amount: rechargeAmount
+    }));
     
     navigate('/payment', {
       state: { paymentInfo }
     });
+  }
+
+  async function handleTapIn(cardId) {
+    if (!tapInStation) {
+      alert('Please select a tap-in station first');
+      return;
+    }
+    
+    if (!cardId) {
+      alert('No card found. Please create a card first.');
+      return;
+    }
+
+    try {
+      setActionLoading(cardId);
+      
+      // Get card details
+      const card = cards.find(c => (c.id || c._id) === cardId);
+      if (!card) {
+        alert('Card not found');
+        return;
+      }
+      
+      // Check if card has sufficient balance
+      if (card.balance < 25) {
+        alert('Insufficient balance. Minimum ₹25 required for journey.');
+        return;
+      }
+      
+      console.log('Tap In:', {
+        cardId: cardId,
+        cardNumber: card.cardNumber,
+        station: tapInStation,
+        balance: card.balance,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Deduct initial fare from card
+      const updatedCards = cards.map(c => {
+        if ((c.id || c._id) === cardId) {
+          return { ...c, balance: Math.max(0, c.balance - 25) };
+        }
+        return c;
+      });
+      dispatch(setCards(updatedCards));
+      
+      alert("Tap In successful! ₹25 deducted as initial fare.");
+      
+      // Store tap in info
+      localStorage.setItem('tapInStation', tapInStation);
+      localStorage.setItem('tappedInCardId', cardId);
+      localStorage.setItem('tapInTime', new Date().toISOString());
+      localStorage.setItem('initialFare', '25');
+      
+    } catch (error) {
+      console.error('Tap In error:', error);
+      setMessage('Tap In failed. Please try again.');
+      setMessageType('error');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleTapOut(cardId) {
+    if (!tapOutStation) {
+      alert('Please select a tap-out station first');
+      return;
+    }
+    
+    if (!cardId) {
+      alert('No card found. Please create a card first.');
+      return;
+    }
+
+    const tappedInCardId = localStorage.getItem('tappedInCardId');
+    if (tappedInCardId !== cardId) {
+      alert('This card was not used for tap-in. Please use the same card.');
+      return;
+    }
+
+    try {
+      setActionLoading(cardId);
+      
+      // Get card details
+      const card = cards.find(c => (c.id || c._id) === cardId);
+      if (!card) {
+        alert('Card not found');
+        return;
+      }
+      
+      const tapInStation = localStorage.getItem('tapInStation');
+      const initialFare = parseInt(localStorage.getItem('initialFare') || '25');
+      
+      // Calculate final fare (simplified calculation)
+      const finalFare = initialFare; // In real app, calculate based on distance
+      
+      console.log('Tap Out:', {
+        cardId: cardId,
+        cardNumber: card.cardNumber,
+        tapInStation: tapInStation,
+        tapOutStation: tapOutStation,
+        initialFare: initialFare,
+        finalFare: finalFare,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add journey to history
+      const journeyData = {
+        cardId: cardId,
+        cardNumber: card.cardNumber,
+        startStation: tapInStation,
+        endStation: tapOutStation,
+        fare: finalFare,
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      };
+      
+      // Store in localStorage for journey page
+      const existingJourneys = JSON.parse(localStorage.getItem('journeys') || '[]');
+      existingJourneys.push(journeyData);
+      localStorage.setItem('journeys', JSON.stringify(existingJourneys));
+      
+      alert(`Tap Out successful! Journey completed. Fare: ₹${finalFare}`);
+      
+      // Clear tap in info
+      localStorage.removeItem('tapInStation');
+      localStorage.removeItem('tappedInCardId');
+      localStorage.removeItem('tapInTime');
+      localStorage.removeItem('initialFare');
+      
+    } catch (error) {
+      console.error('Tap Out error:', error);
+      setMessage('Tap Out failed. Please try again.');
+      setMessageType('error');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   const primaryCard = cards?.find(c => c.isPrimary || c.type === 'primary') || cards?.[0]
@@ -128,6 +335,13 @@ function CardsPage() {
 
   return (
     <div className="container mt-5 pt-5">
+      {message && (
+        <SimpleNotification
+          message={message}
+          type={messageType}
+          onClose={() => setMessage('')}
+        />
+      )}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-credit-card me-2"></i>My Cards</h2>
         <div className="d-flex gap-2">
@@ -212,41 +426,18 @@ function CardsPage() {
                       </select>
                     </div>
                     <div className="col-md-3 d-grid">
-                      <button className="btn btn-light btn-sm" onClick={async () => {
-                        if (!tapInStation) return
-                        if (!primaryCard?.id && !primaryCard?._id) {
-                          alert('No primary card found. Please create a card first.');
-                          return;
-                        }
-                        const handleTapIn = async (cardId) => {
-                          try {
-                            setActionLoading(cardId);
-                            const user = JSON.parse(localStorage.getItem('user') || '{}');
-                            const stationIdentifier = tapInStation || stations.find(s => (s.id || s._id) === tapInStation)?.name || 'Central Station';
-                            const deviceId = localStorage.getItem('deviceId') || 'device123';
-                            const qrData = `card:${cardId}:${Date.now()}`;
-                            
-                            const response = await cardAPI.tapIn(cardId, { 
-                              userId: user.id || user._id,
-                              stationIdentifier,
-                              deviceId,
-                              qrData
-                            });
-                            
-                            alert("Tap In successful!");
-                            fetchCards(); // Refresh cards
-                          } catch (error) {
-                            console.error('Tap In error:', error);
-                            const errorMsg = error.response?.data?.error || error.message || "Failed to Tap In";
-                            alert(`Tap In failed: ${errorMsg}`);
-                          } finally {
-                            setActionLoading(null);
-                            localStorage.setItem('tapInStation', tapInStation);
-                          }
-                        };
-                        await handleTapIn(primaryCard.id || primaryCard._id);
-                      }}>
-                        <i className="fas fa-sign-in-alt me-1"></i>Tap In
+                      <button 
+                        className="btn btn-light btn-sm" 
+                        onClick={() => handleTapIn(primaryCard.id || primaryCard._id)}
+                        disabled={actionLoading === (primaryCard.id || primaryCard._id)}
+                      >
+                        {actionLoading === (primaryCard.id || primaryCard._id) ? (
+                          <span className="spinner-border spinner-border-sm"></span>
+                        ) : (
+                          <>
+                            <i className="fas fa-sign-in-alt me-1"></i>Tap In
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -260,27 +451,18 @@ function CardsPage() {
                       </select>
                     </div>
                     <div className="col-md-3 d-grid">
-                      <button className="btn btn-light btn-sm" onClick={async () => {
-                        if (!primaryCard?.id && !primaryCard?._id) {
-                          alert('No primary card found. Please create a card first.');
-                          return;
-                        }
-                        try {
-                          const qrData = JSON.stringify({
-                            cardNumber: primaryCard.cardNumber,
-                            token: 'demo-token' // In real app, this would be generated
-                          })
-                          await cardAPI.tapOut(primaryCard.id || primaryCard._id, {
-                            endStation: stations.find(s => (s.id || s._id) === tapOutStation)?.name || tapOutStation,
-                            deviceId: 'web-device-' + (user?.id || user?._id),
-                            qrData: qrData
-                          })
-                        } catch (error) {
-                          console.error('Tap out failed:', error)
-                          alert('Tap out failed. Please try again.')
-                        }
-                      }}>
-                        <i className="fas fa-sign-out-alt me-1"></i>Tap Out
+                      <button 
+                        className="btn btn-light btn-sm" 
+                        onClick={() => handleTapOut(primaryCard.id || primaryCard._id)}
+                        disabled={actionLoading === (primaryCard.id || primaryCard._id)}
+                      >
+                        {actionLoading === (primaryCard.id || primaryCard._id) ? (
+                          <span className="spinner-border spinner-border-sm"></span>
+                        ) : (
+                          <>
+                            <i className="fas fa-sign-out-alt me-1"></i>Tap Out
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -506,8 +688,8 @@ function CardsPage() {
                 <button 
                   type="button" 
                   className="btn btn-primary" 
-                  onClick={handleRecharge}
-                  disabled={rechargeAmount < 10}
+                  onClick={() => handleRecharge(primaryCard?.id || primaryCard?._id, primaryCard?.cardNumber)}
+                  disabled={rechargeAmount < 10 || !primaryCard}
                 >
                   <i className="fas fa-credit-card me-2"></i>
                   Proceed to Payment
@@ -528,4 +710,3 @@ function CardsPage() {
 }
 
 export default CardsPage
-

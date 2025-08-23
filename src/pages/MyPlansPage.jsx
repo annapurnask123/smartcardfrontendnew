@@ -10,13 +10,35 @@ function MyPlansPage() {
   useEffect(() => {
     (async () => {
       try {
+        console.log('=== MY PLANS PAGE DEBUG START ===');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('Current user:', user);
+        
         const { data } = await subscriptionAPI.getAllSubscriptions()
+        console.log('Raw subscriptions API response:', data);
+        
         const plansData = Array.isArray(data) ? data : data?.items || []
+        console.log('Processed plans data:', plansData);
+        console.log('Plans count:', plansData.length);
+        
+        if (plansData.length === 0) {
+          console.warn('No subscriptions found for user in backend');
+        }
+        
         setPlans(plansData)
         setFilteredPlans(plansData)
+        
         const url = new URL(window.location.href)
         if (url.searchParams.get('activated') === '1') setBanner('Your plan is activated successfully')
-      } catch {}
+        
+        console.log('=== MY PLANS PAGE DEBUG END ===');
+      } catch (error) {
+        console.error('Failed to fetch user subscriptions:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        // Do NOT set dummy data - leave empty to show real state
+        setPlans([]);
+        setFilteredPlans([]);
+      }
     })()
   }, [])
   
@@ -171,4 +193,3 @@ if (typeof document !== 'undefined') {
   styleSheet.textContent = styles;
   document.head.appendChild(styleSheet);
 }
-

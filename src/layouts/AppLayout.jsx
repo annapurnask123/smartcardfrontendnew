@@ -6,6 +6,7 @@ import { setSearch } from '../slices/stationSlice'
 import { setQuery as setUiQuery } from '../slices/uiSlice'
 import Footer from '../components/Footer'
 import Chatbot from '../components/Chatbot'
+import NearbyStationsFinder from '../components/NearbyStationsFinder'
 
 function AppLayout({ children }) {
   const dispatch = useDispatch()
@@ -16,6 +17,7 @@ function AppLayout({ children }) {
   const [query, setQuery] = useState('')
   const [dark, setDark] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showNearbyStations, setShowNearbyStations] = useState(false)
 
   function handleLogout() {
     dispatch(logout())
@@ -223,6 +225,14 @@ function AppLayout({ children }) {
               )}
             </Link>
             
+            <button 
+              className="btn btn-outline-light me-2" 
+              type="button" 
+              onClick={() => setShowNearbyStations(true)}
+            >
+              <i className="fas fa-map-marker-alt me-1"></i>Find Me
+            </button>
+            
             <div className="dropdown">
               <button className="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
                 <i className="fas fa-user-circle me-1"></i>
@@ -267,6 +277,11 @@ function AppLayout({ children }) {
           </div>
         </div>
       </div>
+
+      <NearbyStationsFinder 
+        show={showNearbyStations} 
+        onHide={() => setShowNearbyStations(false)} 
+      />
 
       <main style={{ marginTop: '76px', minHeight: 'calc(100vh - 76px)' }}>
         {children || <Outlet />}
@@ -319,4 +334,3 @@ function AppLayout({ children }) {
 }
 
 export default AppLayout
-

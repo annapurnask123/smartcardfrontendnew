@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client'
-import { setNotifications } from '../slices/notificationSlice'
+import { addNotification } from '../slices/notificationSlice'
 // For transactions and journey updates, prefer thunks/slices if available
 // import { fetchTransactions } from '../slices/transactionSlice'
 // import { someJourneyAction } from '../slices/journeySlice'
@@ -29,7 +29,17 @@ export function initRealtime(store) {
     socket.on('connect', () => {})
     socket.on('connect_error', () => {})
     socket.on('journey:update', () => {})
-    socket.on('notification:new', (payload) => store.dispatch(setNotifications(payload)))
+    socket.on('notification:new', (payload) => {
+      // Use addNotification instead of setNotifications to prevent overwriting existing notifications
+      // and let the slice handle deduplication
+      if (payload && (payload.title || payload.message)) {
+        store.dispatch(addNotification({
+          ...payload,
+          timestamp: payload.timestamp || new Date().toISOString(),
+          read: false
+        }))
+      }
+    })
     socket.on('transactions:update', () => {})
     socket.on('disconnect', () => {})
   } catch {
@@ -39,4 +49,3 @@ export function initRealtime(store) {
 }
 
 export function getSocket() { return socket }
-

@@ -30,6 +30,7 @@ import TermsPage from './pages/TermsPage.jsx'
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
+import PaymentTestPage from "./pages/PaymentTestPage";
 
 function App() {
   
@@ -63,6 +64,7 @@ function App() {
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
     <Route path="/payment-failed" element={<PaymentFailedPage />} />
      <Route path="/payment-result" element={<PaymentResultPage />} />
+     <Route path="/payment-test" element={<PaymentTestPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

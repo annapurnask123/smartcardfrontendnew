@@ -54,6 +54,74 @@ function MultiRouteBookingPage() {
     }
   }
 
+  const generateConnectingRoutes = async (sourceId, destinationId) => {
+    // Find potential intermediate stations for connections
+    const sourceStation = stations.find(s => s._id === sourceId)
+    const destStation = stations.find(s => s._id === destinationId)
+    
+    if (!sourceStation || !destStation) return []
+    
+    // Generate connecting routes through major interchange stations
+    const interchangeStations = stations.filter(s => 
+      s.isInterchange || s.type === 'interchange' || 
+      (s.name && (s.name.includes('Central') || s.name.includes('Junction')))
+    )
+    
+    const connectingRoutes = []
+    
+    for (const interchange of interchangeStations.slice(0, 3)) { // Limit to 3 options
+      if (interchange._id === sourceId || interchange._id === destinationId) continue
+      
+      const route = {
+        id: `route-${sourceId}-${interchange._id}-${destinationId}`,
+        type: 'connecting',
+        totalDuration: Math.floor(Math.random() * 60) + 45, // 45-105 minutes
+        totalFare: Math.floor(Math.random() * 30) + 25, // ₹25-55
+        legs: [
+          {
+            id: `leg1-${sourceId}-${interchange._id}`,
+            from: sourceStation.name,
+            to: interchange.name,
+            fromId: sourceId,
+            toId: interchange._id,
+            duration: Math.floor(Math.random() * 30) + 15, // 15-45 minutes
+            fare: Math.floor(Math.random() * 15) + 10, // ₹10-25
+            trainNumber: `TR${Math.floor(Math.random() * 9000) + 1000}`,
+            departure: generateRandomTime(),
+            arrival: generateRandomTime(30)
+          },
+          {
+            id: `leg2-${interchange._id}-${destinationId}`,
+            from: interchange.name,
+            to: destStation.name,
+            fromId: interchange._id,
+            toId: destinationId,
+            duration: Math.floor(Math.random() * 30) + 15, // 15-45 minutes
+            fare: Math.floor(Math.random() * 15) + 10, // ₹10-25
+            trainNumber: `TR${Math.floor(Math.random() * 9000) + 1000}`,
+            departure: generateRandomTime(45),
+            arrival: generateRandomTime(75),
+            waitTime: Math.floor(Math.random() * 10) + 5 // 5-15 minutes wait
+          }
+        ]
+      }
+      
+      connectingRoutes.push(route)
+    }
+    
+    return connectingRoutes
+  }
+  
+  const generateRandomTime = (offsetMinutes = 0) => {
+    const now = new Date()
+    now.setMinutes(now.getMinutes() + offsetMinutes + Math.floor(Math.random() * 30))
+    return now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    })
+  }
+
   const bookSelectedRoute = async () => {
     if (!selectedRoute || !user?.id) {
       setError('Please select a route and ensure you are logged in')
@@ -114,6 +182,12 @@ function MultiRouteBookingPage() {
 
   const getStationName = (stationId) => {
     return stations.find(s => s._id === stationId || s.id === stationId)?.name || 'Unknown Station'
+  }
+
+  const handleSearchRoutes = async () => {
+    await searchRoutes()
+    const connectingRoutes = await generateConnectingRoutes(sourceId, destinationId)
+    setRoutes([...routes, ...connectingRoutes])
   }
 
   return (
@@ -178,7 +252,7 @@ function MultiRouteBookingPage() {
                 <div className="col-12">
                   <button 
                     className="btn btn-primary"
-                    onClick={searchRoutes}
+                    onClick={handleSearchRoutes}
                     disabled={loading || !sourceId || !destinationId}
                   >
                     {loading ? (
@@ -263,15 +337,15 @@ function MultiRouteBookingPage() {
                                 </div>
                               </div>
                               
-                              {route.connections && route.connections.map((connection, idx) => (
+                              {route.legs && route.legs.map((leg, idx) => (
                                 <div key={idx}>
                                   <div className="route-line"></div>
                                   <div className="d-flex align-items-center">
                                     <div className="route-station">
                                       <i className="fas fa-exchange-alt text-warning"></i>
-                                      <span className="ms-2">{getStationName(connection.stationId)}</span>
+                                      <span className="ms-2">{leg.to}</span>
                                       <small className="text-muted ms-2">
-                                        (Change to {connection.lineName || 'Line'})
+                                        (Change to {leg.trainNumber || 'Line'})
                                       </small>
                                     </div>
                                   </div>
@@ -291,11 +365,11 @@ function MultiRouteBookingPage() {
                             <div className="row text-muted small">
                               <div className="col-6">
                                 <i className="fas fa-clock me-1"></i>
-                                {route.estimatedTime || '~45 min'}
+                                {route.totalDuration || '~45 min'}
                               </div>
                               <div className="col-6">
                                 <i className="fas fa-exchange-alt me-1"></i>
-                                {route.connections?.length || 0} changes
+                                {route.legs?.length || 0} changes
                               </div>
                             </div>
                           </div>

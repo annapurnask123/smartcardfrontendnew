@@ -35,10 +35,10 @@ function HomePage() {
   }
 
   return (
-    <div className="container mt-5 pt-5">
+    <div className="container-fluid mt-5 pt-5">
       <div className="row">
-        <div className="col-12">
-          <h2 className="mb-4">Welcome, <span className="text-primary">{user?.name || 'User'}</span>!</h2>
+        <div className="col-12 px-3 px-md-4">
+          <h2 className="mb-4 text-center text-md-start">Welcome, <span className="text-primary">{user?.name || 'User'}</span>!</h2>
 
           {/* Major Features Section */}
           <div className="row mb-5">
@@ -47,6 +47,48 @@ function HomePage() {
                 <i className="fas fa-star text-warning me-2"></i>
                 Major Features
               </h4>
+            </div>
+            
+            {/* Quick Actions - Mobile Optimized */}
+            <div className="col-12 mb-4">
+              <div className="row g-2">
+                <div className="col-6 col-md-3">
+                  <button 
+                    className="btn btn-primary w-100 py-3 d-flex flex-column align-items-center"
+                    onClick={() => navigate('/book')}
+                  >
+                    <i className="fas fa-ticket-alt fa-2x mb-2"></i>
+                    <span className="small">Book Ticket</span>
+                  </button>
+                </div>
+                <div className="col-6 col-md-3">
+                  <button 
+                    className="btn btn-success w-100 py-3 d-flex flex-column align-items-center"
+                    onClick={() => navigate('/cards')}
+                  >
+                    <i className="fas fa-credit-card fa-2x mb-2"></i>
+                    <span className="small">My Cards</span>
+                  </button>
+                </div>
+                <div className="col-6 col-md-3">
+                  <button 
+                    className="btn btn-info w-100 py-3 d-flex flex-column align-items-center"
+                    onClick={() => navigate('/my-plans')}
+                  >
+                    <i className="fas fa-crown fa-2x mb-2"></i>
+                    <span className="small">My Plans</span>
+                  </button>
+                </div>
+                <div className="col-6 col-md-3">
+                  <button 
+                    className="btn btn-warning w-100 py-3 d-flex flex-column align-items-center"
+                    onClick={() => navigate('/schedule')}
+                  >
+                    <i className="fas fa-clock fa-2x mb-2"></i>
+                    <span className="small">Schedules</span>
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="col-md-3 col-sm-6 mb-4">
               <div className="card h-100 border-0 shadow-sm hover-lift">
@@ -72,20 +114,6 @@ function HomePage() {
                   <p className="card-text text-muted">View your past and current journeys</p>
                   <button className="btn btn-outline-success btn-sm" onClick={() => navigate('/history')}>
                     <i className="fas fa-arrow-right me-1"></i>View All
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3 col-sm-6 mb-4">
-              <div className="card h-100 border-0 shadow-sm hover-lift">
-                <div className="card-body text-center">
-                  <div className="feature-icon mb-3">
-                    <i className="fas fa-ticket-alt fa-3x text-info"></i>
-                  </div>
-                  <h5 className="card-title">Ticket Booking</h5>
-                  <p className="card-text text-muted">Book tickets for your next journey</p>
-                  <button className="btn btn-outline-info btn-sm" onClick={() => navigate('/book')}>
-                    <i className="fas fa-arrow-right me-1"></i>Book Now
                   </button>
                 </div>
               </div>

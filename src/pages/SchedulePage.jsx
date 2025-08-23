@@ -3,22 +3,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchStations } from '../slices/stationSlice'
 import { stationAPI } from '../api/api'
 
-// Mock data generator for fallback
-const generateMockScheduleData = (type) => {
-  const times = ['06:30', '07:15', '08:00', '08:45', '09:30', '10:15', '11:00', '11:45', '12:30']
-  const destinations = ['Central Station', 'Airport Terminal', 'Business District', 'University Campus', 'Shopping Mall']
-  
-  return times.map((time, index) => ({
-    id: `schedule-${index}`,
-    time,
-    destination: destinations[index % destinations.length],
-    platform: Math.floor(Math.random() * 4) + 1,
-    status: index < 2 ? 'On Time' : index < 4 ? 'Delayed' : 'On Time',
-    trainNumber: `TR${1000 + index}`,
-    type: type
-  }))
-}
-
 function SchedulePage() {
   const dispatch = useDispatch()
   const stationsState = useSelector(state => state.stations)
@@ -32,9 +16,9 @@ function SchedulePage() {
 
   useEffect(() => {
     if (!stations || stations.length === 0) {
-      dispatch(fetchStations())
+      dispatch(fetchStations());
     }
-  }, [stations, dispatch])
+  }, [stations, dispatch]);
 
   const searchSchedules = async () => {
     if (!selectedStation) {
@@ -48,30 +32,52 @@ function SchedulePage() {
     try {
       let response
       const stationId = selectedStation
+      const selectedStationData = stations.find(s => (s._id || s.id) === selectedStation)
       
-      // Try multiple API endpoints with fallback to mock data
+      if (!selectedStationData) {
+        setError('Selected station not found')
+        setLoading(false)
+        return
+      }
+      
+      // Try API endpoints - no fallback to mock data
       try {
-        if (searchType === 'departures') {
-          response = await stationAPI.getStationDepartures(stationId)
-        } else if (searchType === 'arrivals') {
-          response = await stationAPI.getStationArrivals(stationId)
-        } else if (searchType === 'next-trains') {
-          response = await stationAPI.getNextTrains(stationId)
-        } else {
-          response = await stationAPI.getStationSchedule(stationId)
+        // Find station name for display
+        const selectedStationObj = stations.find(s => s._id === selectedStation || s.stop_id === selectedStation)
+        const stationName = selectedStationObj?.stop_name || selectedStationObj?.name || selectedStationObj?.stationName
+        
+        if (!stationName) {
+          throw new Error('Station not found');
         }
         
-        const scheduleData = response.data || response.schedules || []
-        setSchedules(Array.isArray(scheduleData) ? scheduleData : [])
+        if (searchType === 'departures') {
+          response = await stationAPI.getDepartures(stationId)
+        } else if (searchType === 'arrivals') {
+          response = await stationAPI.getArrivals(stationId)
+        } else if (searchType === 'next-trains') {
+          response = await stationAPI.getNextTrains(stationId)
+        }
+        
+        if (response?.data && Array.isArray(response.data)) {
+          const mappedSchedules = response.data.map(item => ({
+            ...item,
+            origin: item.origin || stationName,
+            destination: item.destination || item.destinationName,
+            status: item.status || 'On Time'
+          }))
+          setSchedules(mappedSchedules)
+        } else {
+          setSchedules([])
+          setError('No schedule data available for this station')
+        }
       } catch (apiError) {
-        console.warn('API failed, using mock data:', apiError)
-        // Fallback to mock data
-        setSchedules(generateMockScheduleData(searchType))
+        console.error('API failed:', apiError)
+        setError('Failed to fetch schedule data. Please try again.')
+        setSchedules([])
       }
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
-      setError('Failed to load schedules. Using sample data.');
-      setSchedules(generateMockScheduleData(searchType));
+      setError('Failed to load schedules.');
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,7 @@ function SchedulePage() {
                     <option value="">Choose a station...</option>
                     {stations.map(station => (
                       <option key={station._id || station.id} value={station._id || station.id}>
-                        {station.name}
+                        {station.name || station.stationName || station.code}
                       </option>
                     ))}
                   </select>

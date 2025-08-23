@@ -13,14 +13,75 @@ function JourneyTrackingPage() {
   const [notifications, setNotifications] = useState([])
   const [trackingEnabled, setTrackingEnabled] = useState(false)
   
-  const { journeys, currentJourney } = useSelector(state => state.journeys)
+  const { journeys: reduxJourneys, currentJourney } = useSelector(state => state.journeys)
   const { items: stations } = useSelector(state => state.stations)
   const user = useSelector(state => state.auth.user)
-
+  
+  // Get journeys from localStorage
+  const [localJourneys, setLocalJourneys] = useState([])
+  
   useEffect(() => {
+    // Load journeys from localStorage
+    const storedJourneys = JSON.parse(localStorage.getItem('journeys') || '[]')
+    setLocalJourneys(storedJourneys)
+    
     dispatch(fetchJourneys())
     dispatch(fetchStations())
   }, [dispatch])
+  
+  // Combine Redux and localStorage journeys with station name resolution
+  const [resolvedJourneys, setResolvedJourneys] = useState([])
+  
+  useEffect(() => {
+    const resolveStationNames = async () => {
+      const allJourneys = [...localJourneys, ...(reduxJourneys || [])]
+      const resolved = await Promise.all(allJourneys.map(async (journey) => {
+        let startStationName = journey.startStation || journey.startStationName
+        let endStationName = journey.endStation || journey.endStationName
+        
+        // If we have station IDs but no names, resolve them
+        if (!startStationName && journey.startStationId) {
+          try {
+            const station = stations.find(s => 
+              s._id === journey.startStationId || 
+              s.stop_id === journey.startStationId ||
+              s.stationId === journey.startStationId
+            )
+            startStationName = station?.stop_name || station?.name || `Station ${journey.startStationId}`
+          } catch (e) {
+            startStationName = `Station ${journey.startStationId}`
+          }
+        }
+        
+        if (!endStationName && journey.endStationId) {
+          try {
+            const station = stations.find(s => 
+              s._id === journey.endStationId || 
+              s.stop_id === journey.endStationId ||
+              s.stationId === journey.endStationId
+            )
+            endStationName = station?.stop_name || station?.name || `Station ${journey.endStationId}`
+          } catch (e) {
+            endStationName = `Station ${journey.endStationId}`
+          }
+        }
+        
+        return {
+          ...journey,
+          startStationName,
+          endStationName
+        }
+      }))
+      
+      setResolvedJourneys(resolved)
+    }
+    
+    if (stations.length > 0) {
+      resolveStationNames()
+    }
+  }, [localJourneys, reduxJourneys, stations])
+  
+  const journeys = resolvedJourneys
 
   useEffect(() => {
     if (trackingEnabled) {
@@ -140,8 +201,14 @@ function JourneyTrackingPage() {
 
   function startJourney(journey) {
     dispatch(setCurrentJourney(journey))
+    localStorage.setItem('currentJourney', JSON.stringify(journey))
     setTrackingEnabled(true)
-    addNotification(`Journey started: ${journey.startStation} to ${journey.endStation}`, 'success')
+    setNotifications(prev => [...prev, {
+      id: Date.now(),
+      message: `Journey resumed from ${journey.startStationName || journey.startStation} to ${journey.endStationName || journey.endStation}`,
+      type: 'info',
+      timestamp: new Date().toISOString()
+    }])
   }
 
   function endJourney() {
@@ -229,32 +296,41 @@ function JourneyTrackingPage() {
               <h5>Recent Journeys</h5>
             </div>
             <div className="card-body">
-              {journeys.slice(0, 5).map(journey => (
-                <div key={journey.id} className="border-bottom py-2">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong>{journey.startStation} → {journey.endStation}</strong>
-                      <br />
-                      <small className="text-muted">{journey.date}</small>
-                    </div>
-                    <div className="text-end">
-                      <span className={`badge ${journey.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
-                        {journey.status}
-                      </span>
-                      {!currentJourney && journey.status === 'active' && (
-                        <button 
-                          className="btn btn-sm btn-primary ms-2"
-                          onClick={() => startJourney(journey)}
-                        >
-                          Resume
-                        </button>
-                      )}
+              {journeys.length === 0 ? (
+                <div className="text-center py-4">
+                  <i className="fas fa-route fa-2x text-muted mb-3"></i>
+                  <p className="text-muted">No journey history found</p>
+                </div>
+              ) : (
+                journeys.slice(0, 5).map((journey, index) => (
+                  <div key={journey.id || journey.ticketId || index} className="border-bottom py-2">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <strong>{journey.startStationName || journey.startStation || 'Unknown'} → {journey.endStationName || journey.endStation || 'Unknown'}</strong>
+                        <br />
+                        <small className="text-muted">
+                          {new Date(journey.completedAt || journey.tapOutTime || journey.createdAt || journey.date).toLocaleDateString()}
+                          {journey.actualFare && <span className="ms-2 badge bg-success">₹{journey.actualFare}</span>}
+                          {journey.cardNumber && <span className="ms-2 badge bg-info">Card: {journey.cardNumber}</span>}
+                          {journey.earlyDrop && <span className="ms-1 badge bg-warning">Early Drop</span>}
+                        </small>
+                      </div>
+                      <div className="text-end">
+                        <span className={`badge ${journey.status === 'completed' ? 'bg-success' : journey.status === 'in_progress' ? 'bg-primary' : 'bg-warning'}`}>
+                          {journey.status === 'in_progress' ? 'In Progress' : journey.status}
+                        </span>
+                        {!currentJourney && journey.status === 'in_progress' && (
+                          <button 
+                            className="btn btn-sm btn-primary ms-2"
+                            onClick={() => startJourney(journey)}
+                          >
+                            Resume
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {journeys.length === 0 && (
-                <p className="text-muted">No journey history</p>
+                ))
               )}
             </div>
           </div>

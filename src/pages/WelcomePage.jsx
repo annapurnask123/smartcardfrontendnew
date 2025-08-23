@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import Button from "react-bootstrap/Button";
-import metroImage from "../../public/assets/metro.jpeg"; // Adjust the path as necessary
+// Use public directory URL directly - no import needed for public assets
 
 function WelcomePage() {
   const navigate = useNavigate();
@@ -10,7 +10,7 @@ function WelcomePage() {
     <div
       className="min-vh-100 d-flex flex-column"
       style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${metroImage})`,
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(/assets/metro.jpeg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",

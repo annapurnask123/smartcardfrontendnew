@@ -13,8 +13,23 @@ function PlansPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('=== PLANS PAGE DEBUG START ===');
+    console.log('Dispatching fetchSubscriptionPlans...');
     dispatch(fetchSubscriptionPlans());
   }, [dispatch]);
+
+  // Debug plans data whenever it changes
+  useEffect(() => {
+    console.log('=== PLANS DATA UPDATE ===');
+    console.log('Plans state:', plans);
+    console.log('Plans count:', plans.length);
+    console.log('Loading:', loading);
+    console.log('Error:', error);
+    if (plans.length > 0) {
+      console.log('First plan sample:', plans[0]);
+    }
+    console.log('=== PLANS DATA UPDATE END ===');
+  }, [plans, loading, error]);
 
   async function purchasePlan(plan) {
     try {
@@ -22,8 +37,8 @@ function PlansPage() {
       
       // First create subscription record
       const subscriptionResponse = await subscriptionAPI.createSubscription({
-        planId: plan.id || plan._id,
-        userId: user.id || user._id,
+        planId: String(plan.id || plan._id),
+        userId: String(user.id || user._id),
         planType: plan.planType || plan.type || 'monthly'
       });
       
@@ -35,6 +50,7 @@ function PlansPage() {
           paymentInfo: {
             type: 'subscription',
             id: subscription.id || subscription._id,
+            subscriptionId: subscription.id || subscription._id,
             amount: plan.price || plan.amount || 0,
             description: `Subscription - ${plan.name}`,
             planDetails: plan

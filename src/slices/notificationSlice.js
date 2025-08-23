@@ -16,15 +16,40 @@ const notificationSlice = createSlice({
   initialState: { messages: [], loading: false, error: null },
   reducers: {
     addNotification: (state, action) => {
-      state.messages.unshift(action.payload); // Add to top
+      const newNotification = action.payload;
+      // Check for duplicates based on type, title, and message
+      const isDuplicate = state.messages.some(existing => 
+        existing.type === newNotification.type &&
+        existing.title === newNotification.title &&
+        existing.message === newNotification.message &&
+        Math.abs(new Date(existing.createdAt || existing.timestamp) - new Date(newNotification.createdAt || newNotification.timestamp)) < 5000 // Within 5 seconds
+      );
+      
+      if (!isDuplicate) {
+        state.messages.unshift(newNotification); // Add to top
+      }
     },
     clearNotifications: (state) => {
       state.messages = [];
     },
     setNotifications: (state, action) => {
-      state.messages = Array.isArray(action.payload)
+      const notifications = Array.isArray(action.payload)
         ? action.payload
         : [action.payload].filter(Boolean);
+      
+      // Deduplicate notifications
+      const uniqueNotifications = [];
+      const seen = new Set();
+      
+      notifications.forEach(notif => {
+        const key = `${notif.type}_${notif.title}_${notif.message}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueNotifications.push(notif);
+        }
+      });
+      
+      state.messages = uniqueNotifications;
     },
     markAllNotificationsRead: (state) => {
       state.messages = state.messages.map((n) => ({ ...n, read: true }));
@@ -38,7 +63,20 @@ const notificationSlice = createSlice({
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
-        state.messages = action.payload;
+        // Apply deduplication when setting fetched notifications
+        const notifications = Array.isArray(action.payload) ? action.payload : [];
+        const uniqueNotifications = [];
+        const seen = new Set();
+        
+        notifications.forEach(notif => {
+          const key = `${notif.type}_${notif.title}_${notif.message}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueNotifications.push(notif);
+          }
+        });
+        
+        state.messages = uniqueNotifications;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
