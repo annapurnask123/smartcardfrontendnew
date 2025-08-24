@@ -1,195 +1,608 @@
-import { useEffect, useState } from 'react'
-import { subscriptionAPI } from '../api/api'
+import { useEffect, useState, useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { 
+  fetchSubscriptions, 
+  cancelSubscription,
+  updateSubscriptionLocal,
+  clearError
+} from '../slices/subscriptionSlice'
+import { cardAPI } from '../api/api'
+
+// ✅ helper function for badge styling
+function getStatusBadgeClass(status) {
+  switch ((status || '').toLowerCase()) {
+    case 'active':
+    case 'success':
+      return 'bg-success text-white'
+    case 'expired':
+      return 'bg-danger text-white'
+    case 'expiring':
+    case 'expiring_soon':
+      return 'bg-warning text-dark'
+    case 'cancelled':
+    case 'canceled':
+      return 'bg-secondary text-white'
+    case 'pending':
+      return 'bg-info text-white'
+    default:
+      return 'bg-light text-dark'
+  }
+}
+
+// ✅ fallback expiry date calculator
+function calculateExpiryDate(planType, startDate = new Date()) {
+  const start = new Date(startDate)
+  const planTypeLower = (planType || '').toLowerCase()
+  
+  switch (planTypeLower) {
+    case 'daily':
+    case 'day pass':
+      start.setDate(start.getDate() + 1)
+      break
+    case 'weekly':
+      start.setDate(start.getDate() + 7)
+      break
+    case 'monthly':
+    case 'monthly plan':
+      start.setMonth(start.getMonth() + 1)
+      break
+    case 'yearly':
+    case 'annual':
+      start.setFullYear(start.getFullYear() + 1)
+      break
+    case 'family':
+    case 'familycard':
+      start.setMonth(start.getMonth() + 1)
+      break
+    default:
+      // Default to monthly if plan type is unknown
+      start.setMonth(start.getMonth() + 1)
+  }
+  return start.toISOString()
+}
+
+// ✅ utility
+function isPlanExpired(plan) {
+  if (!plan?.expiryDate) return false
+  return new Date(plan.expiryDate) < new Date()
+}
 
 function MyPlansPage() {
-  const [plans, setPlans] = useState([])
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  // ✅ FIXED: match your slice name (subscription, not subscriptions)
+  const { subscriptions = [], loading, error } = useSelector(
+    state => state.subscription || {}
+  )
+
   const [filteredPlans, setFilteredPlans] = useState([])
   const [banner, setBanner] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  
+  const hasShownExpiringBanner = useRef(false)
+  const [cards, setCards] = useState([])
+  const [selectedPlanForCard, setSelectedPlanForCard] = useState({})
+  const [showCardPlanModal, setShowCardPlanModal] = useState(false)
+  const [selectedCard, setSelectedCard] = useState(null)
+
   useEffect(() => {
-    (async () => {
-      try {
-        console.log('=== MY PLANS PAGE DEBUG START ===');
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('Current user:', user);
+    dispatch(fetchSubscriptions())
+    fetchUserCards()
+  }, [dispatch])
+
+  // Fetch user cards
+  const fetchUserCards = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      if (user.id || user._id) {
+        const response = await cardAPI.getUserCards(user.id || user._id)
+        const userCards = response.data || []
+        setCards(userCards)
         
-        const { data } = await subscriptionAPI.getAllSubscriptions()
-        console.log('Raw subscriptions API response:', data);
-        
-        const plansData = Array.isArray(data) ? data : data?.items || []
-        console.log('Processed plans data:', plansData);
-        console.log('Plans count:', plansData.length);
-        
-        if (plansData.length === 0) {
-          console.warn('No subscriptions found for user in backend');
-        }
-        
-        setPlans(plansData)
-        setFilteredPlans(plansData)
-        
-        const url = new URL(window.location.href)
-        if (url.searchParams.get('activated') === '1') setBanner('Your plan is activated successfully')
-        
-        console.log('=== MY PLANS PAGE DEBUG END ===');
-      } catch (error) {
-        console.error('Failed to fetch user subscriptions:', error);
-        console.error('Error details:', error.response?.data || error.message);
-        // Do NOT set dummy data - leave empty to show real state
-        setPlans([]);
-        setFilteredPlans([]);
+        // Load saved plan selections
+        const savedSelections = JSON.parse(localStorage.getItem('cardPlanSelections') || '{}')
+        setSelectedPlanForCard(savedSelections)
       }
-    })()
-  }, [])
-  
+    } catch (error) {
+      console.error('Failed to fetch cards:', error)
+    }
+  }
+
+  // Save plan selection for card
+  const handleSetPlanForCard = (cardId, planId) => {
+    const newSelections = {
+      ...selectedPlanForCard,
+      [cardId]: planId
+    }
+    setSelectedPlanForCard(newSelections)
+    localStorage.setItem('cardPlanSelections', JSON.stringify(newSelections))
+    setBanner(`Plan assigned to card successfully!`)
+    setTimeout(() => setBanner(''), 3000)
+    setShowCardPlanModal(false)
+  }
+
+  // Remove plan from card
+  const handleRemovePlanFromCard = (cardId) => {
+    const newSelections = { ...selectedPlanForCard }
+    delete newSelections[cardId]
+    setSelectedPlanForCard(newSelections)
+    localStorage.setItem('cardPlanSelections', JSON.stringify(newSelections))
+    setBanner(`Plan removed from card successfully!`)
+    setTimeout(() => setBanner(''), 3000)
+  }
+
+  // Get plan name by ID
+  const getPlanNameById = (planId) => {
+    const plan = subscriptions.find(sub => (sub._id || sub.id) === planId)
+    return plan ? (plan.planId?.name || plan.planName || plan.name || 'Unknown Plan') : 'Unknown Plan'
+  }
+
   useEffect(() => {
-    if (!statusFilter) {
-      setFilteredPlans(plans)
+    dispatch(fetchSubscriptions())
+  }, [dispatch])
+
+  // Debug logging for subscription data
+  useEffect(() => {
+    if (subscriptions.length > 0) {
+      console.log('Subscriptions loaded:', subscriptions)
+      console.log('Sample subscription structure:', subscriptions[0])
     } else {
-      const filtered = plans.filter(plan => {
+      console.log('No subscriptions loaded')
+    }
+  }, [subscriptions])
+
+  // Debug logging for filtered plans
+  useEffect(() => {
+    console.log('Filtered plans:', filteredPlans)
+    console.log('Status filter:', statusFilter)
+  }, [filteredPlans, statusFilter])
+
+  // ✅ filtering logic
+  useEffect(() => {
+    let list = subscriptions.filter(p => {
+      // Show all subscriptions, not just active ones
+      return true;
+    })
+
+    if (statusFilter) {
+      list = list.filter(plan => {
         const planStatus = (plan.status || '').toLowerCase()
-        // Handle pending status properly
-        const actualStatus = planStatus === 'pending' ? 'active' : planStatus
-        
-        switch (statusFilter) {
-          case 'active':
-            return actualStatus === 'active' || planStatus === 'pending'
-          case 'expired':
-            return actualStatus === 'expired'
-          case 'expiring':
-            return actualStatus === 'expiring' || actualStatus === 'expiring_soon'
-          case 'cancelled':
-            return actualStatus === 'cancelled' || actualStatus === 'canceled'
-          default:
-            return true
-        }
+        if (statusFilter === 'active') return planStatus === 'active'
+        if (statusFilter === 'pending') return planStatus === 'pending'
+        if (statusFilter === 'expired') return isPlanExpired(plan) || planStatus === 'expired'
+        if (statusFilter === 'cancelled') return planStatus === 'cancelled' || planStatus === 'canceled'
+        return true
       })
-      setFilteredPlans(filtered)
     }
-  }, [plans, statusFilter])
-  async function renew(sub) {
-    try {
-      const response = await subscriptionAPI.renewSubscription(sub.id || sub._id)
-      setBanner('Renewal initiated. Please complete payment.')
-      // Update local state
-      setPlans(plans.map(p => (p.id===sub.id||p._id===sub._id) ? { ...p, status: 'renewing' } : p))
-    } catch (error) {
-      console.error('Renewal failed:', error)
-      setBanner('Renewal failed. Please try again.')
+
+    setFilteredPlans(list)
+  }, [subscriptions, statusFilter])
+
+  // 🔄 Renew
+  function renew(sub) {
+    const startDate = new Date()
+    const planName = sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'
+    const expiryDate = calculateExpiryDate(planName, startDate)
+
+    // Get the plan price from the populated planId data
+    const planPrice = sub.planId?.price || sub.price || 0
+    
+    // Debug logging
+    console.log('Renewing subscription:', {
+      sub,
+      planId: sub.planId,
+      planPrice,
+      planName,
+      planType: sub.planType
+    })
+
+    if (!planPrice || planPrice <= 0) {
+      alert('Unable to determine plan price. Please contact support.')
+      return
     }
+
+    // Validate plan price format
+    if (typeof planPrice !== 'number' || isNaN(planPrice)) {
+      alert('Invalid plan price format. Please contact support.')
+      return
+    }
+
+    // Validate minimum price
+    if (planPrice < 1) {
+      alert('Plan price must be at least ₹1. Please contact support.')
+      return
+    }
+
+    // update immediately for UX
+    dispatch(updateSubscriptionLocal({
+      id: sub.id || sub._id,
+      updates: {
+        startDate: startDate.toISOString(),
+        expiryDate,
+        status: 'pending'
+      }
+    }))
+
+    navigate('/payment', {
+      state: {
+        paymentInfo: {
+          type: 'renewal',
+          subscriptionId: sub.id || sub._id,
+          userId: sub.user?.id || sub.user?._id || sub.userId,
+          description: `Renewal - ${planName}`,
+          amount: planPrice, // ✅ Use the actual plan price
+          planDetails: { ...sub, startDate, expiryDate, planName }
+        }
+      }
+    })
   }
+
+  // ❌ Cancel – stays on page, updates redux
   async function cancel(sub) {
+    const status = sub.status?.toLowerCase()
+    
+    console.log('Cancel function called for subscription:', {
+      id: sub.id || sub._id,
+      status: status,
+      sub: sub,
+      currentUrl: window.location.href
+    })
+    
+    if (status === 'cancelled' || status === 'canceled') {
+      setBanner('This subscription is already cancelled.')
+      setTimeout(() => setBanner(''), 3000)
+      return
+    }
+    
+    if (status === 'expired') {
+      setBanner('Expired subscriptions cannot be cancelled.')
+      setTimeout(() => setBanner(''), 3000)
+      return
+    }
+
+    if (status === 'active') {
+      setBanner('Active subscriptions cannot be cancelled. Please wait until they expire.')
+      setTimeout(() => setBanner(''), 5000)
+      return
+    }
+
+    const confirmMessage = 'Are you sure you want to cancel this subscription?'
+
+    if (!window.confirm(confirmMessage)) return
+
     try {
-      await subscriptionAPI.cancelSubscription(sub.id || sub._id)
-      setPlans(plans.map(p => (p.id===sub.id||p._id===sub._id) ? { ...p, status: 'cancelled' } : p))
+      console.log('Attempting to cancel subscription:', sub.id || sub._id)
+      console.log('Current URL before cancellation:', window.location.href)
+      
+      const result = await dispatch(cancelSubscription(sub.id || sub._id)).unwrap()
+      console.log('Cancel result:', result)
+      console.log('Current URL after cancellation:', window.location.href)
+      
+      // ✅ Update local state immediately for better UX
+      dispatch(updateSubscriptionLocal({
+        id: sub.id || sub._id,
+        updates: { status: 'cancelled' }
+      }))
+
       setBanner('Subscription cancelled successfully.')
-    } catch (error) {
-      console.error('Cancellation failed:', error)
-      setBanner('Cancellation failed. Please try again.')
+      setTimeout(() => setBanner(''), 3000)
+      
+      // Don't refresh immediately, let the local update handle it
+      console.log('Subscription cancelled locally, not refreshing from backend')
+      
+      // Verify we're still on the same page
+      setTimeout(() => {
+        console.log('Final URL check:', window.location.href)
+        if (!window.location.href.includes('/my-plans')) {
+          console.error('Navigation detected! Current URL:', window.location.href)
+        }
+      }, 100)
+      
+    } catch (err) {
+      console.error('Cancel failed:', err)
+      console.log('Current URL after error:', window.location.href)
+      // Handle specific backend errors
+      let errorMessage = 'Cancellation failed. Please try again.'
+      if (err?.error) {
+        if (err.error.includes('Cannot cancel active subscription')) {
+          errorMessage = 'Active subscriptions cannot be cancelled. Please wait until they expire.'
+        } else if (err.error.includes('Access denied')) {
+          errorMessage = 'Access denied. Please login again.'
+        } else if (err.error.includes('not found')) {
+          errorMessage = 'Subscription not found. Please refresh the page.'
+        } else {
+          errorMessage = err.error
+        }
+      }
+      setBanner(errorMessage)
+      setTimeout(() => setBanner(''), 5000)
     }
   }
+
+  // ✅ format date safely
+  function formatDate(date, fallback = 'N/A') {
+    if (!date) return fallback
+    try {
+      return new Date(date).toLocaleDateString()
+    } catch {
+      return fallback
+    }
+  }
+
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2><i className="fas fa-crown me-2"></i>My Plans</h2>
-        <div className="input-group" style={{ maxWidth: 300 }}>
-          <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">All Plans</option>
-            <option value="active">Active</option>
-            <option value="expired">Expired</option>
-            <option value="expiring">Expiring Soon</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+        <div className="d-flex gap-2">
+          <button 
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => dispatch(fetchSubscriptions())}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1"></span>
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-sync-alt me-1"></i>
+                Refresh
+              </>
+            )}
+          </button>
+          <div className="input-group" style={{ maxWidth: 300 }}>
+            <select
+              className="form-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Plans</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
         </div>
       </div>
-      {banner && <div className="alert alert-success">{banner}</div>}
-      <div className="row">
-        {filteredPlans.length === 0 && <p className="text-muted">No plans found.</p>}
-        {filteredPlans.map((plan, index) => (
-          <div className="col-md-6 mb-4" key={plan.id || plan._id || `plan-${index}`}>
-            <div className={`card border-0 shadow-sm hover-lift subscription-${plan.status}`}>
+
+      {banner && <div className="alert alert-info">{banner}</div>}
+      {error && <div className="alert alert-danger">
+        <i className="fas fa-exclamation-triangle me-2"></i>
+        {error}
+        <button 
+          className="btn btn-sm btn-outline-danger ms-3" 
+          onClick={() => dispatch(clearError())}
+        >
+          Dismiss
+        </button>
+      </div>}
+
+      {/* Card Plan Assignment Section */}
+      {cards.length > 0 && (
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-header">
+                <h5 className="mb-0">
+                  <i className="fas fa-credit-card text-primary me-2"></i>
+                  Card Plan Assignment
+                </h5>
+              </div>
               <div className="card-body">
-                <div className="d-flex justify-content-between align-items-start mb-3">
-                  <div>
-                    <h5 className="card-title mb-1">
-                      <i className="fas fa-crown text-warning me-2"></i>
-                      {plan.name}
-                    </h5>
-                    <p className="card-text text-muted mb-2">
-                      <i className="fas fa-calendar-alt me-1"></i>
-                      Valid until: {plan.expiryDate || 'N/A'}
-                    </p>
-                    <p className="card-text text-muted mb-0">
-                      <i className="fas fa-users me-1"></i>
-                      Members: {plan.members || 1}
-                    </p>
-                  </div>
-                  <span className={`badge ${getStatusBadgeClass(plan.status)}`}>
-                    {plan.status || 'Unknown'}
-                  </span>
+                <p className="text-muted mb-3">
+                  Assign subscription plans to your cards. Cards with assigned plans will use the subscription for journeys instead of deducting balance.
+                </p>
+                <div className="row">
+                  {cards.map(card => (
+                    <div className="col-md-6 mb-3" key={card._id || card.id}>
+                      <div className="border rounded p-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6 className="mb-0">
+                            <i className="fas fa-credit-card me-1"></i>
+                            {card.cardNumber || `Card ${card._id?.slice(-4) || 'Unknown'}`}
+                          </h6>
+                          <span className={`badge ${card.isPrimary ? 'bg-primary' : 'bg-secondary'}`}>
+                            {card.isPrimary ? 'Primary' : 'Secondary'}
+                          </span>
+                        </div>
+                        <div className="mb-2">
+                          <small className="text-muted">Balance: ₹{(card.balance || 0).toFixed(2)}</small>
+                        </div>
+                        {selectedPlanForCard[card._id || card.id] ? (
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <span className="badge bg-success me-2">Plan Assigned</span>
+                              <small>{getPlanNameById(selectedPlanForCard[card._id || card.id])}</small>
+                            </div>
+                            <button 
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => handleRemovePlanFromCard(card._id || card.id)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => {
+                              setSelectedCard(card)
+                              setShowCardPlanModal(true)
+                            }}
+                            disabled={subscriptions.filter(sub => sub.status === 'active').length === 0}
+                          >
+                            <i className="fas fa-plus me-1"></i>
+                            Assign Plan
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="mt-3 d-flex gap-2">
-                  <button 
-                    className="btn btn-outline-primary btn-sm" 
-                    onClick={() => renew(plan)}
-                    disabled={plan.status === 'cancelled'}
-                  >
-                    <i className="fas fa-sync-alt me-1"></i>Renew
-                  </button>
-                  <button 
-                    className="btn btn-outline-danger btn-sm" 
-                    onClick={() => cancel(plan)}
-                    disabled={plan.status === 'cancelled'}
-                  >
-                    <i className="fas fa-times me-1"></i>Cancel
-                  </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-4">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading your subscriptions...</p>
+          <small className="text-muted">Please wait while we fetch your subscription data</small>
+        </div>
+      )}
+
+      <div className="row">
+        {!loading && filteredPlans.length === 0 && (
+          <div className="col-12 text-center py-5">
+            <i className="fas fa-crown text-muted" style={{ fontSize: '3rem' }}></i>
+            <h4 className="text-muted mt-3">No subscriptions found</h4>
+            <p className="text-muted">
+              {subscriptions.length === 0 
+                ? "You don't have any subscriptions yet. Check out our plans to get started!"
+                : "No subscriptions match your current filter. Try changing the status filter above."
+              }
+            </p>
+            {subscriptions.length === 0 && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => navigate('/plans')}
+              >
+                <i className="fas fa-plus me-2"></i>Browse Plans
+              </button>
+            )}
+          </div>
+        )}
+        {filteredPlans.map((sub, i) => (
+          <div className="col-md-6 mb-4" key={sub.id || sub._id || i}>
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body d-flex flex-column">
+                <h5 className="card-title">
+                  <i className="fas fa-crown text-warning me-2"></i>
+                  {sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'}
+                </h5>
+                <div className="flex-grow-1">
+                  <p className="card-text text-muted mb-1">
+                    <i className="fas fa-calendar-plus me-1"></i>
+                    Started: {formatDate(sub.startDate || sub.createdAt)}
+                  </p>
+                  <p className="card-text text-muted mb-1">
+                    <i className="fas fa-calendar-alt me-1"></i>
+                    Expires: {formatDate(sub.expiryDate || sub.endDate || calculateExpiryDate(sub.planId?.name || sub.planName || sub.name, sub.startDate))}
+                  </p>
+                  <p className="card-text text-muted">
+                    <i className="fas fa-users me-1"></i>
+                    Members: {sub.planId?.maxMembers || sub.members || 1}
+                  </p>
+                  <p className="card-text text-muted">
+                    <i className="fas fa-rupee-sign me-1"></i>
+                    Price: ₹{sub.planId?.price || sub.price ? Number(sub.planId?.price || sub.price).toFixed(2) : 'N/A'}
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <span className={`badge ${getStatusBadgeClass(sub.status)} mb-3 d-block`}>
+                    {sub.status ? sub.status.charAt(0).toUpperCase() + sub.status.slice(1) : 'Unknown'}
+                  </span>
+
+                  <div className="d-flex gap-2">
+                    <button
+                      className="btn btn-outline-primary btn-sm flex-fill"
+                      onClick={() => renew(sub)}
+                      disabled={sub.status === 'cancelled' || sub.status === 'active' || sub.status === 'pending'}
+                      title={sub.status === 'active' ? 'Active subscriptions cannot be renewed' : 
+                             sub.status === 'pending' ? 'Renewal already in progress' : 
+                             sub.status === 'cancelled' ? 'Cancelled subscriptions cannot be renewed' : ''}
+                    >
+                      <i className="fas fa-sync-alt me-1"></i>Renew
+                    </button>
+                    <button
+                      className="btn btn-outline-danger btn-sm flex-fill"
+                      onClick={() => cancel(sub)}
+                      disabled={sub.status === 'cancelled' || sub.status === 'canceled' || sub.status === 'expired'}
+                      title={sub.status === 'cancelled' || sub.status === 'canceled' ? 'Already cancelled' : 
+                             sub.status === 'expired' ? 'Expired subscriptions cannot be cancelled' : ''}
+                    >
+                      <i className="fas fa-times me-1"></i>Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Card Plan Assignment Modal */}
+      {showCardPlanModal && selectedCard && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="fas fa-crown text-warning me-2"></i>
+                  Assign Plan to Card
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowCardPlanModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <h6>Card: {selectedCard.cardNumber || `Card ${selectedCard._id?.slice(-4) || 'Unknown'}`}</h6>
+                  <small className="text-muted">Balance: ₹{(selectedCard.balance || 0).toFixed(2)}</small>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Select Active Plan:</label>
+                  {subscriptions.filter(sub => sub.status === 'active').length > 0 ? (
+                    <div className="list-group">
+                      {subscriptions.filter(sub => sub.status === 'active').map(sub => (
+                        <button
+                          key={sub._id || sub.id}
+                          className="list-group-item list-group-item-action"
+                          onClick={() => handleSetPlanForCard(selectedCard._id || selectedCard.id, sub._id || sub.id)}
+                        >
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="mb-1">{sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'}</h6>
+                              <small className="text-muted">
+                                Expires: {formatDate(sub.expiryDate || sub.endDate)}
+                              </small>
+                            </div>
+                            <span className="badge bg-success">Active</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="alert alert-warning">
+                      <i className="fas fa-exclamation-triangle me-2"></i>
+                      No active plans available. Please purchase a plan first.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowCardPlanModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default MyPlansPage
-
-function getStatusBadgeClass(status) {
-  switch (status?.toLowerCase()) {
-    case 'active': return 'bg-success'
-    case 'expired': return 'bg-danger'
-    case 'expiring': return 'bg-warning'
-    case 'cancelled': return 'bg-secondary'
-    default: return 'bg-light text-dark'
-  }
-}
-
-// Add CSS for hover effects
-const styles = `
-  .hover-lift {
-    transition: transform 0.2s ease-in-out;
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-  .subscription-active {
-    border-left: 4px solid #28a745;
-  }
-  .subscription-expired {
-    border-left: 4px solid #dc3545;
-  }
-  .subscription-expiring {
-    border-left: 4px solid #ffc107;
-  }
-  .subscription-cancelled {
-    border-left: 4px solid #6c757d;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
-}

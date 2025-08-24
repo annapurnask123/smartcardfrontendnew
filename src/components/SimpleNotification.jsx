@@ -54,3 +54,4 @@ const SimpleNotification = ({ message, type = 'info', duration = 5000, onClose }
 };
 
 export default SimpleNotification;
+

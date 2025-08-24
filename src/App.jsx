@@ -15,7 +15,7 @@ import JourneyTrackingPage from './pages/JourneyTrackingPage.jsx'
 import HistoryPage from './pages/HistoryPage.jsx'
 import TransactionsPage from './pages/TransactionsPage.jsx'
 import SchedulesPage from './pages/SchedulesPage.jsx'
-import SchedulePage from './pages/SchedulePage.jsx'
+// import SchedulePage from './pages/SchedulePage.jsx'
 import MultiRouteBookingPage from './pages/MultiRouteBookingPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
@@ -30,7 +30,8 @@ import TermsPage from './pages/TermsPage.jsx'
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
-import PaymentTestPage from "./pages/PaymentTestPage";
+// import PaymentTestPage from "./pages/PaymentTestPage";
+import MultiTicketPage from './pages/MultiTicketPage.jsx'
 
 function App() {
   
@@ -64,7 +65,9 @@ function App() {
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
     <Route path="/payment-failed" element={<PaymentFailedPage />} />
      <Route path="/payment-result" element={<PaymentResultPage />} />
-     <Route path="/payment-test" element={<PaymentTestPage />} />
+   
+<Route path="/multi-tickets" element={<MultiTicketPage />} />
+     {/* <Route path="/payment-test" element={<PaymentTestPage />} /> */}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

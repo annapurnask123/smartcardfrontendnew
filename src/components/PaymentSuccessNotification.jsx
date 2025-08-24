@@ -52,3 +52,4 @@ const PaymentSuccessNotification = ({ message, type = 'success', onClose }) => {
 };
 
 export default PaymentSuccessNotification;
+

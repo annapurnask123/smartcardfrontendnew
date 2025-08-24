@@ -23,14 +23,42 @@ function RechargeByCardNumber({ show, onClose }) {
     setError('');
 
     try {
+      // First validate the card exists before proceeding to payment
+      const cleanCardNumber = cardNumber.trim().toUpperCase();
+      
+      // Check card format
+      if (!cleanCardNumber.startsWith('VM-')) {
+        setError('Invalid card number format. Card number should start with "VM-"');
+        setLoading(false);
+        return;
+      }
+
+      // Validate card exists by checking with backend
+      try {
+        const response = await cardAPI.getCardByNumber(cleanCardNumber);
+        if (!response.data) {
+          setError(`Card not found: ${cleanCardNumber}. Please check the card number.`);
+          setLoading(false);
+          return;
+        }
+      } catch (cardError) {
+        if (cardError.response?.status === 404) {
+          setError(`Card not found: ${cleanCardNumber}. Please check the card number.`);
+        } else {
+          setError('Unable to validate card. Please try again.');
+        }
+        setLoading(false);
+        return;
+      }
+
       // Navigate to payment page with recharge details
       navigate('/payment', {
         state: {
           paymentInfo: {
             type: 'recharge',
-            id: cardNumber.trim(),
+            id: cleanCardNumber,
             amount: amount,
-            description: `Card Recharge - ${cardNumber.trim()} - ₹${amount}`
+            description: `Card Recharge - ${cleanCardNumber} - ₹${amount}`
           }
         }
       });

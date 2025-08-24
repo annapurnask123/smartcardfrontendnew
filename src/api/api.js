@@ -270,54 +270,294 @@ export const routeAPI = {
 
 // Ticket API - Updated to match backend routes
 export const ticketAPI = {
-  bookTicket: (data) => api.post("/tickets/book", data),
-  bookMultiRouteTicket: (data) => api.post("/tickets/book-multi-route", data),
-  getUserTickets: (userId) => api.get(`/tickets/user/${userId}`),
-  getTicket: (ticketId) => api.get(`/tickets/${ticketId}`),
-  tapIn: (data) => api.post("/tickets/tapin", data),
-  tapOut: (data) => api.post("/tickets/tapout", data),
-  cancelTicket: (data) => api.post("/tickets/cancel", data),
-  dropEarly: (data) => api.post("/tickets/drop-early", data),
-  extendJourney: (data) => api.post("/tickets/extend", data),
-  validateQR: (data) => api.post("/tickets/validate-qr", data),
-  updateTicketStatus: (ticketId, data) =>
-    api.patch(`/tickets/${ticketId}/status`, data),
-
-  // QR Code Generation
-  generateQR: (ticketId) => api.get(`/tickets/${ticketId}/qr`),
-};
-
-// Payment API - Updated to match backend routes
-export const paymentAPI = {
-  // Payment Methods
-  getPaymentMethods: () => api.get("/payment-methods"),
-  addPaymentMethod: (data) => api.post("/payment-methods", data),
-  getPaymentMethod: (methodId) => api.get(`/payment-methods/${methodId}`),
-  updatePaymentMethod: (methodId, data) =>
-    api.put(`/payment-methods/${methodId}`, data),
-  deletePaymentMethod: (methodId) => api.delete(`/payment-methods/${methodId}`),
-
-  // Payment Processing
-  createPaymentOrder: (data) => {
-    console.log('Creating payment order with data:', data);
-    return api.post("/payments/create-order", {
-      type: data.type,
-      id: data.id,
-      userId: data.userId,
-      amount: data.amount,
-      paymentMethod: data.paymentMethod || "upi",
+  bookTicket: (data) => {
+    const payload = {
+      ...data,
+      // Ensure all IDs are strings to prevent ObjectId casting issues
+      userId: String(data.userId),
+      startStationId: String(data.startStationId),
+      endStationId: String(data.endStationId)
+    };
+    return api.post("/tickets/book", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
     });
   },
-  // Fallback for legacy endpoints
-  createPaymentOrderLegacy: (data) => api.post("/payments/orders", {
-    type: data.type,
-    id: data.id,
-    userId: data.userId,
-    amount: data.amount,
-    paymentMethod: data.paymentMethod || "upi",
+  
+  bookMultiRouteTicket: (data) => {
+    const payload = {
+      ...data,
+      userId: String(data.userId),
+      stations: data.stations.map(station => ({
+        ...station,
+        stationId: String(station.stationId)
+      }))
+    };
+    return api.post("/tickets/book-multi-route", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  getUserTickets: (userId) => api.get(`/tickets/user/${String(userId)}`, {
+    headers: {
+      'X-Id-Type': 'string'
+    }
   }),
-  verifyPayment: (data) => api.post("/payments/verify", data),
-  handleWebhook: (data) => api.post("/payments/webhook", data),
+  
+  getTicket: (ticketId) => api.get(`/tickets/${String(ticketId)}`, {
+    headers: {
+      'X-Id-Type': 'string'
+    }
+  }),
+  
+ tapIn: (data) => {
+  if (!data.ticketId || !data.stationId) {
+    throw new Error("ticketId and stationId are required");
+  }
+  const payload = {
+    ticketId: String(data.ticketId),
+    stationId: String(data.stationId),
+  };
+  return api.post("/tickets/tapin", payload, {
+    headers: { "X-Id-Type": "string" },
+  });
+},
+
+tapOut: (data) => {
+  if (!data.ticketId || !data.stationId) {
+    throw new Error("ticketId and stationId are required");
+  }
+  const payload = {
+    ticketId: String(data.ticketId),
+    stationId: String(data.stationId),
+  };
+  return api.post("/tickets/tapout", payload, {
+    headers: { "X-Id-Type": "string" },
+  });
+},
+
+  
+  cancelTicket: (data) => {
+    const payload = {
+      ...data,
+      ticketId: String(data.ticketId),
+      userId: String(data.userId)
+    };
+    return api.post("/tickets/cancel", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  dropEarly: (data) => {
+    const payload = {
+      ...data,
+      ticketId: String(data.ticketId),
+      userId: String(data.userId)
+    };
+    return api.post("/tickets/drop-early", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  extendTicket: (data) => {
+    const payload = {
+      ...data,
+      ticketId: String(data.ticketId),
+      userId: String(data.userId),
+      newEndStationId: String(data.newEndStationId),
+      additionalFare: data.additionalFare
+    };
+    return api.post("/tickets/extend", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  extendJourney: (data) => {
+    const payload = {
+      ...data,
+      ticketId: String(data.ticketId),
+      userId: String(data.userId),
+      newEndStationId: String(data.newEndStationId),
+      additionalFare: data.additionalFare,
+      amount: data.amount || data.additionalFare,
+      paymentMethod: data.paymentMethod || "card",
+      description: data.description
+    };
+    return api.post("/tickets/extend", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  validateQR: (data) => {
+    const payload = {
+      ...data,
+      ticketId: String(data.ticketId)
+    };
+    return api.post("/tickets/validate-qr", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  updateTicketStatus: (ticketId, data) => {
+    const payload = {
+      ...data,
+      userId: data.userId ? String(data.userId) : undefined
+    };
+    return api.patch(`/tickets/${String(ticketId)}/status`, payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  calculateFare: (data) => {
+    const payload = {
+      ...data,
+      startStationId: String(data.startStationId),
+      endStationId: String(data.endStationId)
+    };
+    return api.post('/tickets/calculate-fare', payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+
+  // QR Code Generation
+  generateQR: (ticketId) => api.get(`/tickets/${String(ticketId)}/qr`, {
+    headers: {
+      'X-Id-Type': 'string'
+    }
+  }),
+};
+
+// Payment API
+export const paymentAPI = {
+  createPaymentOrder: (data) => {
+    let payload;
+    
+    // Handle wallet_payment type by using the original type
+    const actualType = data.type === 'wallet_payment' ? (data.originalType || 'ticket') : data.type;
+    
+    switch (actualType) {
+      case 'subscription':
+        payload = {
+          type: 'subscription',
+          id: String(data.subscriptionId || data.id),
+          userId: String(data.userId),
+          amount: data.amount,
+          paymentMethod: data.paymentMethod || "razorpay"
+        };
+        break;
+        
+      case 'ticket':
+        // Ensure we have a valid ticket ID
+        const ticketId = data.ticketId || data.id;
+        if (!ticketId || ticketId === 'undefined') {
+          throw new Error('Valid ticket ID is required for ticket payments');
+        }
+        
+        payload = {
+          type: 'ticket',
+          id: String(ticketId),
+          userId: String(data.userId),
+          amount: data.amount,
+          paymentMethod: data.paymentMethod || "razorpay"
+        };
+        break;
+        
+      case 'ticket_extend':
+        const extendTicketId = data.ticketId || data.id;
+        if (!extendTicketId || extendTicketId === 'undefined') {
+          throw new Error('Valid ticket ID is required for ticket extension');
+        }
+        
+        payload = {
+          type: 'ticket',
+          id: String(extendTicketId),
+          userId: String(data.userId),
+          amount: data.amount || data.additionalFare,
+          paymentMethod: data.paymentMethod || "razorpay"
+        };
+        break;
+        
+      case 'recharge':
+      case 'card_recharge':
+      case 'card_recharge_by_number':
+        payload = {
+          type: 'recharge',
+          id: String(data.id),
+          userId: String(data.userId),
+          amount: data.amount,
+          paymentMethod: data.paymentMethod || "razorpay"
+        };
+        break;
+        
+      default:
+        payload = {
+          type: actualType,
+          id: String(data.id),
+          userId: String(data.userId),
+          amount: data.amount,
+          paymentMethod: data.paymentMethod || "razorpay"
+        };
+    }
+    
+    // Final validation
+    if (!payload.id || payload.id === 'undefined') {
+      throw new Error(`Invalid ID for payment type ${actualType}: ${payload.id}`);
+    }
+    
+    console.log('Payment API payload:', payload);
+    
+    return api.post("/payments/create-order", payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).catch(error => {
+      console.error('Payment order creation failed:', error);
+      console.error('Error response:', error.response?.data);
+      throw error;
+    });
+  },
+  
+  // Fallback for legacy endpoints
+  createPaymentOrderLegacy: (data) => {
+    const payload = {
+      type: data.type,
+      id: String(data.id),
+      userId: String(data.userId),
+      amount: data.amount,
+      paymentMethod: data.paymentMethod || "upi"
+    };
+    
+    return api.post("/payments/orders", payload, {
+      headers: {
+        'X-Id-Type': 'string'
+      }
+    });
+  },
+  
+  verifyPayment: (data) => api.post("/payments/verify", data, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }),
+  
+  handleWebhook: (data) => api.post("/payments/webhook", data)
 };
 
 export const subscriptionPlanAPI = {
@@ -381,10 +621,16 @@ export const transactionAPI = {
 
 // Wallet API
 export const walletAPI = {
-  getUserWallet: (userId) => api.get(`/wallet/user/${userId}`),
-  addToWallet: (data) => api.post("/wallet/add", data),
-  deductFromWallet: (data) => api.post("/wallet/deduct", data),
-  getWalletTransactions: (userId) => api.get(`/wallet/transactions/${userId}`),
+  getBalance: (userId) => api.get(`/wallet/${userId}/balance`),
+  addMoney: (userId, amount, description) => api.post(`/wallet/${userId}/add`, { amount, description }),
+  deductMoney: (userId, amount, description) => api.post(`/wallet/${userId}/deduct`, { amount, description }),
+  getTransactions: (userId, params = {}) => api.get(`/wallet/${userId}/transactions`, { params }),
+  
+  // Legacy wallet endpoints
+  getUserWallet: (userId) => api.get(`/wallet/${userId}`),
+  addToWallet: (userId, amount) => api.post(`/wallet/${userId}/add`, { amount }),
+  deductFromWallet: (userId, amount) => api.post(`/wallet/${userId}/deduct`, { amount }),
+  checkBalance: (userId) => api.get(`/wallet/${userId}/check`)
 };
 
 // Trip API - New backend feature

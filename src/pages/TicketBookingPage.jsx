@@ -1,8 +1,9 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ticketAPI } from '../api/api' // Your API client
+import { ticketAPI, walletAPI } from '../api/api'
 import { fetchStations } from '../slices/stationSlice'
+import Swal from 'sweetalert2'
 
 function useQuery() {
   const { search } = useLocation()
@@ -33,16 +34,43 @@ function TicketBookingPage() {
     }
   }, [stations, dispatch])
 
+  // Calculate fare when stations or details change
   useEffect(() => {
-    if (!sourceId || !destinationId) {
-      setFareQuote({ base: 0, total: 0 })
-      setBackendTotalFare(null)
-      return
-    }
-    const base = 25
-    const total = journeyType === 'two-way' ? base * passengers * 1.8 : base * passengers
-    setFareQuote({ base, total })
-  }, [sourceId, destinationId, passengers, journeyType])
+    const calculateFare = async () => {
+      if (!sourceId || !destinationId || sourceId === destinationId) {
+        setFareQuote({ base: 0, total: 0 });
+        setBackendTotalFare(null);
+        return;
+      }
+
+      try {
+        // Get fare from backend
+        const response = await ticketAPI.calculateFare({
+          startStationId: sourceId,
+          endStationId: destinationId,
+          ticketType: journeyType,
+          passengerCount: passengers,
+        });
+
+        if (response.data && response.data.amount) {
+          setBackendTotalFare(response.data.amount);
+          setFareQuote({ 
+            base: response.data.baseFare || response.data.amount / passengers,
+            total: response.data.amount 
+          });
+        }
+      } catch (error) {
+        console.error('Failed to calculate fare:', error);
+        // Fallback to client-side calculation
+        const base = 25;
+        const total = journeyType === 'two-way' ? base * passengers * 1.8 : base * passengers;
+        setFareQuote({ base, total });
+        setBackendTotalFare(total);
+      }
+    };
+
+    calculateFare();
+  }, [sourceId, destinationId, passengers, journeyType]);
 
   const handleBookTicket = async () => {
     if (!sourceId || !destinationId || sourceId === destinationId) {
@@ -56,27 +84,38 @@ function TicketBookingPage() {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       
-      const response = await ticketAPI.bookTicket({
-        userId: user.id || user._id,
-        trip_id: `trip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        startStationId: sourceId,
-        endStationId: destinationId,
-        ticketType: journeyType === 'single' ? 'one-way' : journeyType,
-        passengerCount: passengers,
-      });
+      // Create multiple tickets for multiple passengers
+      const tickets = [];
+      
+      for (let i = 0; i < passengers; i++) {
+        const response = await ticketAPI.bookTicket({
+          userId: user.id || user._id,
+          trip_id: `trip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`,
+          startStationId: sourceId,
+          endStationId: destinationId,
+          ticketType: journeyType,
+          passengerCount: 1, // Each ticket is for 1 passenger
+          passengerNumber: i + 1, // Track which passenger this is
+        });
 
-      const ticket = response.data.ticket || (response.data.tickets && response.data.tickets[0]);
-
-      if (!ticket || !(ticket.id || ticket._id)) {
-        throw new Error("Ticket creation failed: No ticket id returned");
+        const ticket = response.data.ticket || (response.data.tickets && response.data.tickets[0]);
+        
+        if (!ticket || !(ticket.id || ticket._id)) {
+          throw new Error(`Ticket creation failed for passenger ${i + 1}: No ticket id returned`);
+        }
+        
+        tickets.push(ticket);
       }
 
-      setBackendTotalFare(response.data.totalAmount || ticket.amount);
+      // Use the first ticket for payment (or calculate total amount)
+      const totalAmount = tickets.reduce((sum, ticket) => sum + (ticket.amount || 0), 0);
+      setBackendTotalFare(totalAmount);
 
       const paymentInfo = {
         type: "ticket",
-        amount: ticket.amount,
-        id: ticket.id || ticket._id,   
+        amount: totalAmount,
+        id: tickets[0].id || tickets[0]._id,   // Use first ticket ID for payment
+        ticketIds: tickets.map(t => t.id || t._id), // Store all ticket IDs
         booking: {
           sourceId,
           destinationId,
@@ -84,6 +123,7 @@ function TicketBookingPage() {
           journeyType,
           sourceName: stations.find(s => s._id === sourceId)?.name || "Unknown",
           destinationName: stations.find(s => s._id === destinationId)?.name || "Unknown",
+          tickets: tickets // Store all ticket data
         },
       };
 
@@ -100,7 +140,6 @@ function TicketBookingPage() {
     e.preventDefault();
     handleBookTicket();
   };
-
 
   return (
     <div className="container mt-5 pt-5">
@@ -130,14 +169,17 @@ function TicketBookingPage() {
           </select>
         </div>
         <div className="mb-3">
-          <label>Passengers</label>
+          <label className="form-label">Number of Passengers</label>
           <select className="form-select" value={passengers} onChange={e => setPassengers(parseInt(e.target.value))}>
-            {[1, 2, 3, 4, 5].map(n => (
+            {Array.from({length: 10}, (_, i) => i + 1).map(n => (
               <option key={n} value={n}>
                 {n} Passenger{n > 1 ? 's' : ''}
               </option>
             ))}
           </select>
+          <div className="form-text">
+            Select number of passengers (1-10). Each passenger will get a separate QR code.
+          </div>
         </div>
         <div className="mb-3">
           <label>Journey Type</label>

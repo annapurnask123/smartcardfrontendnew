@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { cardAPI, stationAPI } from '../api/api'
+import { cardAPI, stationAPI, subscriptionAPI } from '../api/api'
 import { fetchUserCard, createVirtualCard, setCards } from '../slices/cardSlice'
 import RechargeByCardNumber from '../components/RechargeByCardNumber'
 import SimpleNotification from '../components/SimpleNotification'
@@ -13,6 +13,8 @@ function CardsPage() {
   const { cards, loading, error } = useSelector(s => s.card)
   const user = useSelector(s => s.auth.user)
   const [stations, setStations] = useState([])
+  const [subscriptions, setSubscriptions] = useState([])
+  const [selectedSubscription, setSelectedSubscription] = useState('')
   const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '')
   const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '')
   const [showRechargeModal, setShowRechargeModal] = useState(false)
@@ -26,7 +28,9 @@ function CardsPage() {
     (async () => {
       try {
         const { data } = await stationAPI.getAllStations()
-        setStations(Array.isArray(data) ? data : data.items || [])
+        const stationList = Array.isArray(data) ? data : data.items || []
+        console.log('Loaded stations:', stationList.length, stationList.slice(0, 3))
+        setStations(stationList)
       } catch (error) {
         console.error('Failed to fetch stations:', error)
         setMessage('Failed to fetch stations. Please try again later.')
@@ -35,9 +39,14 @@ function CardsPage() {
       try {
         if (!user?.id && !user?._id) return
         dispatch(fetchUserCard(user.id || user._id))
+        
+        // Fetch user subscriptions
+        const subResponse = await subscriptionAPI.getUserSubscriptions(user.id || user._id)
+        const activeSubscriptions = (subResponse.data || []).filter(sub => sub.status === 'active')
+        setSubscriptions(activeSubscriptions)
       } catch (error) {
-        console.error('Failed to fetch user cards:', error)
-        setMessage('Failed to fetch user cards. Please try again later.')
+        console.error('Failed to fetch user cards or subscriptions:', error)
+        setMessage('Failed to fetch user data. Please try again later.')
         setMessageType('error')
       }
     })()
@@ -193,10 +202,12 @@ function CardsPage() {
       return;
     }
     
-    if (!cardId) {
-      alert('No card found. Please create a card first.');
-      return;
-    }
+    console.log('Tap-in attempt:', {
+      cardId,
+      tapInStation,
+      stationsCount: stations.length,
+      selectedStation: stations.find(s => (s._id || s.id) === tapInStation)
+    });
 
     try {
       setActionLoading(cardId);
@@ -208,44 +219,113 @@ function CardsPage() {
         return;
       }
       
-      // Check if card has sufficient balance
-      if (card.balance < 25) {
-        alert('Insufficient balance. Minimum ₹25 required for journey.');
+      // Get station details - try multiple ID fields
+      const station = stations.find(s => 
+        (s._id || s.id) === tapInStation || 
+        s.stop_id === tapInStation ||
+        String(s._id) === String(tapInStation) ||
+        String(s.id) === String(tapInStation)
+      );
+      
+      if (!station) {
+        console.error('Station not found:', {
+          tapInStation,
+          availableStations: stations.map(s => ({
+            id: s._id || s.id,
+            stop_id: s.stop_id,
+            name: s.name
+          }))
+        });
+        alert('Station not found. Please select a valid station.');
         return;
+      }
+
+      console.log('Found station:', station);
+
+      // Check for assigned plan from localStorage
+      const cardPlanSelections = JSON.parse(localStorage.getItem('cardPlanSelections') || '{}');
+      const assignedPlanId = cardPlanSelections[cardId];
+      
+      // Prepare tap-in data
+      const tapInData = {
+        stationIdentifier: station.stop_id || station._id || station.id,
+        deviceId: 'web-device-001',
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: 'web-token-' + Date.now()
+        })
+      };
+
+      // Determine payment method based on assigned plan or user selection
+      if (assignedPlanId) {
+        tapInData.chosenPlanId = assignedPlanId;
+        tapInData.paymentMethod = 'subscription';
+      } else if (selectedSubscription) {
+        tapInData.chosenPlanId = selectedSubscription;
+        tapInData.paymentMethod = 'subscription';
+      } else if (subscriptions.length === 0) {
+        // Check if card has sufficient balance for non-subscription users
+        if (card.balance < 25) {
+          alert('Insufficient balance. Minimum ₹25 required for journey. Please recharge your card or purchase a subscription.');
+          return;
+        }
+        tapInData.paymentMethod = 'balance';
+      } else {
+        tapInData.paymentMethod = 'balance';
       }
       
       console.log('Tap In:', {
-        cardId: cardId,
+        cardId,
         cardNumber: card.cardNumber,
-        station: tapInStation,
-        balance: card.balance,
+        station: station.name,
+        assignedPlanId,
+        selectedSubscription,
+        paymentMethod: tapInData.paymentMethod,
         timestamp: new Date().toISOString()
       });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend API
+      const response = await cardAPI.tapIn(cardId, tapInData);
       
-      // Deduct initial fare from card
-      const updatedCards = cards.map(c => {
-        if ((c.id || c._id) === cardId) {
-          return { ...c, balance: Math.max(0, c.balance - 25) };
-        }
-        return c;
-      });
-      dispatch(setCards(updatedCards));
+      // Handle subscription/payment selection response
+      if (response.data.requiresPaymentSelection || response.data.requiresSubscriptionSelection) {
+        console.log('Payment selection required:', response.data);
+        alert('Multiple payment options available. Please select your preferred payment method.');
+        return;
+      }
+
+      // Success handling
+      const successMessage = assignedPlanId || selectedSubscription 
+        ? `Tap-in successful at ${station.name} using subscription!`
+        : `Tap-in successful at ${station.name}! Balance: ₹${response.data.balance || card.balance}`;
       
-      alert("Tap In successful! ₹25 deducted as initial fare.");
+      setMessage(successMessage);
+      setMessageType('success');
+      
+      // Update card balance in Redux if balance was deducted
+      if (response.data.balance !== undefined) {
+        const updatedCards = cards.map(c => 
+          (c.id || c._id) === cardId ? { ...c, balance: response.data.balance } : c
+        );
+        dispatch(setCards(updatedCards));
+      }
+      
+      alert(successMessage);
       
       // Store tap in info
       localStorage.setItem('tapInStation', tapInStation);
       localStorage.setItem('tappedInCardId', cardId);
       localStorage.setItem('tapInTime', new Date().toISOString());
-      localStorage.setItem('initialFare', '25');
+      localStorage.setItem('selectedSubscription', selectedSubscription || '');
+      localStorage.setItem('assignedPlanId', assignedPlanId || '');
+      localStorage.setItem('paymentMethod', tapInData.paymentMethod);
       
     } catch (error) {
       console.error('Tap In error:', error);
-      setMessage('Tap In failed. Please try again.');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to tap in. Please try again.';
+      setMessage(errorMessage);
       setMessageType('error');
+      alert(errorMessage);
     } finally {
       setActionLoading(null);
     }
@@ -278,52 +358,55 @@ function CardsPage() {
         return;
       }
       
-      const tapInStation = localStorage.getItem('tapInStation');
-      const initialFare = parseInt(localStorage.getItem('initialFare') || '25');
+      // Get station details
+      const outStation = stations.find(s => (s._id || s.id) === tapOutStation);
+      if (!outStation) {
+        alert('Station not found');
+        return;
+      }
       
-      // Calculate final fare (simplified calculation)
-      const finalFare = initialFare; // In real app, calculate based on distance
+      // Prepare tap-out data
+      const tapOutData = {
+        endStation: outStation.stop_id || outStation._id || outStation.id,
+        deviceId: 'web-device-001',
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: 'web-token-' + Date.now()
+        })
+      };
       
       console.log('Tap Out:', {
         cardId: cardId,
         cardNumber: card.cardNumber,
-        tapInStation: tapInStation,
-        tapOutStation: tapOutStation,
-        initialFare: initialFare,
-        finalFare: finalFare,
+        endStation: outStation.name,
         timestamp: new Date().toISOString()
       });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend API
+      const response = await cardAPI.tapOut(cardId, tapOutData);
       
-      // Add journey to history
-      const journeyData = {
-        cardId: cardId,
-        cardNumber: card.cardNumber,
-        startStation: tapInStation,
-        endStation: tapOutStation,
-        fare: finalFare,
-        status: 'completed',
-        completedAt: new Date().toISOString()
-      };
+      // Update card balance from backend response
+      const updatedCards = cards.map(c => {
+        if ((c.id || c._id) === cardId) {
+          return { ...c, balance: response.data.balance || c.balance };
+        }
+        return c;
+      });
+      dispatch(setCards(updatedCards));
       
-      // Store in localStorage for journey page
-      const existingJourneys = JSON.parse(localStorage.getItem('journeys') || '[]');
-      existingJourneys.push(journeyData);
-      localStorage.setItem('journeys', JSON.stringify(existingJourneys));
-      
-      alert(`Tap Out successful! Journey completed. Fare: ₹${finalFare}`);
+      // Show success message
+      alert(response.data.message || 'Tap Out successful! Journey completed.');
       
       // Clear tap in info
       localStorage.removeItem('tapInStation');
       localStorage.removeItem('tappedInCardId');
       localStorage.removeItem('tapInTime');
-      localStorage.removeItem('initialFare');
+      localStorage.removeItem('selectedSubscription');
+      localStorage.removeItem('paymentMethod');
       
     } catch (error) {
       console.error('Tap Out error:', error);
-      setMessage('Tap Out failed. Please try again.');
+      setMessage(error.response?.data?.error || 'Tap Out failed. Please try again.');
       setMessageType('error');
     } finally {
       setActionLoading(null);
@@ -367,7 +450,11 @@ function CardsPage() {
         </div>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && (
+        <div className="alert alert-danger">
+          {typeof error === 'string' ? error : error.message || 'An error occurred'}
+        </div>
+      )}
       {message && (
         <div className={`alert alert-${messageType === 'error' ? 'danger' : 'success'}`}>
           {message}
@@ -474,6 +561,42 @@ function CardsPage() {
           </div>
         </div>
       </div>
+
+      {subscriptions.length > 0 && (
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body">
+                <h6 className="card-title">
+                  <i className="fas fa-crown text-warning me-2"></i>
+                  Active Subscriptions
+                </h6>
+                <div className="row align-items-center">
+                  <div className="col-md-8">
+                    <select 
+                      className="form-select" 
+                      value={selectedSubscription} 
+                      onChange={(e) => setSelectedSubscription(e.target.value)}
+                    >
+                      <option value="">Use Card Balance (Pay per journey)</option>
+                      {subscriptions.map(sub => (
+                        <option key={sub._id || sub.id} value={sub._id || sub.id}>
+                          {sub.planName || sub.name} - Valid until {new Date(sub.endDate || sub.expiryDate).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <span className="badge bg-success">
+                      {selectedSubscription ? 'Free Journey' : 'Pay per Journey'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="row">
         <div className="col-12">

@@ -10,6 +10,7 @@ import transactionReducer from "../slices/transactionSlice";
 import journeyReducer from "../slices/journeySlice";
 import tripReducer from "../slices/tripSlice";
 import cardReducer from "../slices/cardSlice";
+import subscriptionReducer from '../slices/subscriptionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     stations: stationReducer,
     subscriptionPlans: subscriptionplanReducer, // Fixed: Changed from subscriptionplan to subscriptionPlans
     wallet: walletReducer,
+    subscription: subscriptionReducer,
     ui: uiReducer,
     tickets: ticketReducer,
     notifications: notificationReducer,

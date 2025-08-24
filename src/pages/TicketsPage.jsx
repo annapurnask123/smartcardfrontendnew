@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchTickets } from '../slices/ticketSlice'
 import { useNavigate } from 'react-router-dom'
 import { fetchStations } from '../slices/stationSlice'
+import { FaSpinner } from 'react-icons/fa';
 
 function TicketsPage() {
   const dispatch = useDispatch()
@@ -11,6 +12,7 @@ function TicketsPage() {
   const user = useSelector(state => state.auth.user)
   const q = useSelector(state => state.ui.query)
   const [statusFilter, setStatusFilter] = useState('')
+  const [loading, setLoading] = useState(true)
 
   // station slice can be items | list | stations depending on how you set it up
   const stationState = useSelector(s => s.stations || {})
@@ -28,7 +30,10 @@ function TicketsPage() {
 
   useEffect(() => {
     if (!user?.id && !user?._id) return
-    dispatch(fetchTickets())
+    setLoading(true)
+    dispatch(fetchTickets()).finally(() => {
+      setLoading(false)
+    })
   }, [dispatch, user])
 
   useEffect(() => {
@@ -45,12 +50,13 @@ function TicketsPage() {
     return !q || text.includes(q.toLowerCase())
   })
 
-  // Group tickets by status for sections: Booked, Ended, Pending, Cancelled
+  // Group tickets by status for sections: Booked, In Progress, Ended, Pending, Cancelled
   const grouped = useMemo(() => {
-    const map = { booked: [], ended: [], pending: [], cancelled: [] }
+    const map = { booked: [], inprogress: [], ended: [], pending: [], cancelled: [] }
     tickets.forEach(t => {
       const status = (t.status || '').toLowerCase()
-      if (status === 'active' || status === 'inprogress' || status === 'booked') map.booked.push(t)
+      if (status === 'active' || status === 'booked') map.booked.push(t)
+      else if (status === 'inprogress' || status === 'in_progress' || status === 'ongoing' || status === 'started' || status === 'tapped_in') map.inprogress.push(t)
       else if (status === 'ended' || status === 'completed') map.ended.push(t)
       else if (status === 'pending') map.pending.push(t)
       else if (status === 'cancelled' || status === 'canceled') map.cancelled.push(t)
@@ -58,6 +64,17 @@ function TicketsPage() {
     })
     return map
   }, [tickets])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Loading your tickets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mt-5 pt-5">
@@ -67,13 +84,14 @@ function TicketsPage() {
           <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Tickets</option>
             <option value="booked">Booked</option>
+            <option value="inprogress">In Progress</option>
             <option value="ended">Completed</option>
             <option value="pending">Pending</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
       </div>
-      {['booked','ended','pending','cancelled'].map(section => {
+      {['booked','inprogress','ended','pending','cancelled'].map(section => {
         const sectionTickets = grouped[section].filter(t => {
           const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId || ''
           const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId || ''
@@ -83,7 +101,7 @@ function TicketsPage() {
           return matchesSearch && matchesFilter
         })
         if (sectionTickets.length === 0) return null
-        const title = section.charAt(0).toUpperCase() + section.slice(1)
+        const title = section === 'inprogress' ? 'In Progress' : section.charAt(0).toUpperCase() + section.slice(1)
         return (
           <div className="mt-4" key={section}>
             <h5 className="mb-3">{title}</h5>
@@ -92,15 +110,23 @@ function TicketsPage() {
                 const id = t.id || t._id
                 const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId
                 const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId
-                const isActive = (t.status || '').toLowerCase() === 'active' || (t.status||'').toLowerCase() === 'inprogress'
+                const isActive = (t.status || '').toLowerCase() === 'active' || (t.status||'').toLowerCase() === 'booked'
+                const isInProgress = (t.status || '').toLowerCase() === 'inprogress' || (t.status||'').toLowerCase() === 'in_progress' || (t.status||'').toLowerCase() === 'ongoing' || (t.status||'').toLowerCase() === 'started' || (t.status||'').toLowerCase() === 'tapped_in'
                 return (
                   <li key={id} className="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                       <div className="fw-bold">{fromName} → {toName}</div>
                       <small className="text-muted">{t.date || new Date(t.createdAt || Date.now()).toLocaleString()}</small>
+                      {isInProgress && (
+                        <div className="mt-1">
+                          <span className="badge bg-warning text-dark">
+                            <i className="fas fa-clock me-1"></i>Journey in Progress
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="d-flex align-items-center gap-3">
-                      <span className={`badge bg-${isActive ? 'success' : section === 'ended' ? 'dark' : section === 'cancelled' ? 'danger' : 'secondary'}`}>
+                      <span className={`badge bg-${isActive ? 'success' : isInProgress ? 'warning' : section === 'ended' ? 'dark' : section === 'cancelled' ? 'danger' : 'secondary'}`}>
                         {t.status}
                       </span>
                       <strong>₹{t.amount}</strong>
