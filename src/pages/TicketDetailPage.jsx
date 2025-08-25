@@ -511,47 +511,73 @@ function TicketDetailPage() {
         setActionLoading(true);
         
         // Call backend API to extend ticket
-        const extendResponse = await ticketAPI.extendTicket({
+        const extendResponse = await ticketAPI.extendJourney({
           ticketId: ticket.ticketId || ticket._id || ticket.id,
+          userId: ticket.userId,
           newEndStationId: newStationId,
-          newEndStationName: selectedExtendStation.name,
           additionalFare: additionalFare
         });
         
-        // Update ticket locally with new destination
-        setTicket(prevTicket => ({
-          ...prevTicket,
-          endStationId: newStationId,
-          endStationName: selectedExtendStation.name,
-          endStation: selectedExtendStation.name,
-          extended: true,
-          additionalFare: additionalFare
-        }));
+        console.log('Extend response:', extendResponse);
         
-        // Show success message
-        Swal.fire({
-          icon: 'success',
-          title: 'Journey Extended Successfully!',
-          text: `New destination: ${selectedExtendStation.name}. Additional fare: ₹${additionalFare}`,
-          confirmButtonText: 'OK'
-        });
+        // If backend requires payment, navigate to payment page
+        if (extendResponse.data && extendResponse.data.paymentOrder) {
+          navigate('/payment', {
+            state: {
+              paymentInfo: {
+                type: 'ticket_extend',
+                originalType: 'ticket',
+                id: ticket.ticketId || ticket._id || ticket.id,
+                ticketId: ticket.ticketId || ticket._id || ticket.id,
+                userId: ticket.userId,
+                amount: additionalFare,
+                paymentMethod: "razorpay",
+                description: `Extend journey to ${selectedExtendStation.name}`,
+                returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}`,
+                paymentOrder: extendResponse.data.paymentOrder
+              }
+            }
+          });
+        } else {
+          // Update ticket locally with new destination
+          setTicket(prevTicket => ({
+            ...prevTicket,
+            endStationId: newStationId,
+            endStationName: selectedExtendStation.name,
+            endStation: selectedExtendStation.name,
+            extended: true,
+            additionalFare: additionalFare
+          }));
+          
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: 'Journey Extended Successfully!',
+            text: `New destination: ${selectedExtendStation.name}. Additional fare: ₹${additionalFare}`,
+            confirmButtonText: 'OK'
+          });
+        }
         
         setIsExtendSelected(true);
         
       } catch (error) {
         console.error('Extend ticket error:', error);
         
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
         // If backend fails, navigate to payment as fallback
         navigate('/payment', {
           state: {
             paymentInfo: {
-              type: 'ticket',
+              type: 'ticket_extend',
+              originalType: 'ticket',
               id: ticket.ticketId || ticket._id || ticket.id,
-              userId: ticket.userId,
+              ticketId: ticket.ticketId || ticket._id || ticket.id,
+              userId: user.id || user._id,
               amount: additionalFare,
-              paymentMethod: "upi",
-              description: `Extend journey to ${selectedExtendStation.name} (Additional fare: ₹${additionalFare})`,
-              returnUrl: `/ticket-details/${ticket.ticketId || ticket._id || ticket.id}`
+              paymentMethod: "razorpay",
+              description: `Extend journey to ${selectedExtendStation.name}`,
+              returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}`
             }
           }
         });
@@ -979,18 +1005,98 @@ function TicketDetailPage() {
   };
 
   // WhatsApp sharing functionality
-  const handleWhatsAppShare = () => {
-    const ticketDetails = `🎫 *Metro Ticket Details*\n\n` +
+  const handleWhatsAppShare = async () => {
+    const fromStation = getStationName(ticket.startStationId) || ticket.startStationName || ticket.source || 'Unknown Station';
+    const toStation = getStationName(ticket.endStationId) || ticket.endStationName || ticket.destination || 'Unknown Station';
+    
+    // Generate QR code as data URL using canvas
+    let qrCodeDataUrl = '';
+    try {
+      const qrData = JSON.stringify({
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: ticket.userId || 'user123',
+        timestamp: Date.now(),
+        type: 'ticket',
+        status: ticket.status
+      });
+      
+      // Create a temporary div to render QR code
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+      
+      // Create QR code SVG
+      const qrSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      qrSvg.setAttribute('width', '200');
+      qrSvg.setAttribute('height', '200');
+      
+      // Simple QR code placeholder (you can enhance this)
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('width', '200');
+      rect.setAttribute('height', '200');
+      rect.setAttribute('fill', 'white');
+      qrSvg.appendChild(rect);
+      
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', '100');
+      text.setAttribute('y', '100');
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '12');
+      text.textContent = 'QR Code';
+      qrSvg.appendChild(text);
+      
+      tempDiv.appendChild(qrSvg);
+      
+      // Convert SVG to canvas and then to data URL
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      
+      const svgData = new XMLSerializer().serializeToString(qrSvg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        qrCodeDataUrl = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+      
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error('QR code generation failed:', error);
+    }
+    
+    const ticketDetails = 
+      `🎫 *SmartMetroCard Ticket*\n\n` +
       `📍 *From:* ${fromStation}\n` +
       `📍 *To:* ${toStation}\n` +
       `💰 *Price:* ₹${ticket.price || 0}\n` +
       `📅 *Date:* ${new Date(ticket.createdAt).toLocaleDateString()}\n` +
       `🆔 *Ticket ID:* ${ticket.ticketId || ticket._id || ticket.id}\n` +
       `📊 *Status:* ${ticket.status}\n\n` +
-      `🚇 SmartMetroCard - Your Digital Metro Companion`;
+      `Scan the QR code at the station gate for entry.\n\n` +
+      `_Powered by SmartMetroCard_`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(ticketDetails)}`;
-    window.open(whatsappUrl, '_blank');
+    
+    if (navigator.share && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({
+          title: 'SmartMetroCard Ticket',
+          text: ticketDetails,
+        });
+      } catch (err) {
+        console.log('Native sharing failed, falling back to WhatsApp');
+        window.open(whatsappUrl, '_blank');
+      }
+    } else {
+      window.open(whatsappUrl, '_blank');
+    }
   };
 
   // Copy ticket details to clipboard

@@ -225,8 +225,30 @@ export const cardAPI = {
   checkBalance: (cardId) => api.get(`/virtualcards/${cardId}/balance`),
   rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
   rechargeByCardNumber: (data) => api.post("/virtualcards/recharge-by-number", data),
-  tapIn: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-in`, data),
-  tapOut: (cardId, data) => api.post(`/virtualcards/${cardId}/tap-out`, data),
+  tapIn: (cardId, data) => {
+    const payload = {
+      stationIdentifier: data.stationIdentifier || data.stationId,
+      deviceId: data.deviceId || getDeviceId(),
+      qrData: data.qrData || JSON.stringify({
+        cardNumber: data.cardNumber || 'VM-DEFAULT',
+        token: data.token || `web-token-${Date.now()}`
+      }),
+      chosenPlanId: data.chosenPlanId || data.subscriptionId || null,
+      paymentMethod: data.paymentMethod || 'subscription'
+    };
+    return api.post(`/virtualcards/${cardId}/tap-in`, payload);
+  },
+  tapOut: (cardId, data) => {
+    const payload = {
+      endStation: data.endStation || data.stationId,
+      deviceId: data.deviceId || getDeviceId(),
+      qrData: data.qrData || JSON.stringify({
+        cardNumber: data.cardNumber || 'VM-DEFAULT',
+        token: data.token || `web-token-${Date.now()}`
+      })
+    };
+    return api.post(`/virtualcards/${cardId}/tap-out`, payload);
+  },
   // Device assignment endpoints commented out for future implementation
   // assignDevice: (data) => api.post("/virtualcards/assign-device", data),
   // unassignDevice: (data) => api.post("/virtualcards/unassign-device", data),
@@ -234,6 +256,16 @@ export const cardAPI = {
   // QR Code Generation
   generateQR: (cardId) => api.get(`/virtualcards/${cardId}/qr`),
 };
+
+// Helper function to generate device ID
+function getDeviceId() {
+  let deviceId = localStorage.getItem('deviceId');
+  if (!deviceId) {
+    deviceId = `web-${navigator.userAgent.slice(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}`;
+    localStorage.setItem('deviceId', deviceId);
+  }
+  return deviceId;
+}
 
 // Station API - Updated to match backend routes
 export const stationAPI = {
@@ -313,31 +345,32 @@ export const ticketAPI = {
     }
   }),
   
- tapIn: (data) => {
-  if (!data.ticketId || !data.stationId) {
-    throw new Error("ticketId and stationId are required");
-  }
-  const payload = {
-    ticketId: String(data.ticketId),
-    stationId: String(data.stationId),
-  };
-  return api.post("/tickets/tapin", payload, {
-    headers: { "X-Id-Type": "string" },
-  });
-},
+  tapIn: (data) => {
+    if (!data.ticketId || !data.stationId) {
+      throw new Error("ticketId and stationId are required");
+    }
+    const payload = {
+      ticketId: String(data.ticketId),
+      stationId: String(data.stationId),
+      timestamp: data.timestamp || new Date().toISOString()
+    };
+    return api.post("/tickets/tapin", payload, {
+      headers: { "X-Id-Type": "string" },
+    });
+  },
 
-tapOut: (data) => {
-  if (!data.ticketId || !data.stationId) {
-    throw new Error("ticketId and stationId are required");
-  }
-  const payload = {
-    ticketId: String(data.ticketId),
-    stationId: String(data.stationId),
-  };
-  return api.post("/tickets/tapout", payload, {
-    headers: { "X-Id-Type": "string" },
-  });
-},
+  tapOut: (data) => {
+    if (!data.ticketId || !data.stationId) {
+      throw new Error("ticketId and stationId are required");
+    }
+    const payload = {
+      ticketId: String(data.ticketId),
+      stationId: String(data.stationId),
+    };
+    return api.post("/tickets/tapout", payload, {
+      headers: { "X-Id-Type": "string" },
+    });
+  },
 
   
   cancelTicket: (data) => {
