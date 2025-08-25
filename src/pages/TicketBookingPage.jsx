@@ -17,9 +17,11 @@ function TicketBookingPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const query = useQuery()
+  const location = useLocation()
 
-  const [sourceId, setSourceId] = useState(query.get('sourceId') || '')
-  const [destinationId, setDestinationId] = useState('')
+  const [sourceId, setSourceId] = useState(location.state?.sourceId || query.get('sourceId') || '')
+  const [destinationId, setDestinationId] = useState(location.state?.destinationId || '')
+  const [selectedSchedule, setSelectedSchedule] = useState(location.state?.selectedSchedule || null)
   const [passengers, setPassengers] = useState(1)
   const [journeyType, setJourneyType] = useState('one-way')
 
@@ -33,6 +35,12 @@ function TicketBookingPage() {
       dispatch(fetchStations())
     }
   }, [stations, dispatch])
+
+  useEffect(() => {
+    if (location.state?.sourceName || location.state?.destinationName) {
+      // no-op for now, can be used to display preselected names
+    }
+  }, [location.state])
 
   // Calculate fare when stations or details change
   useEffect(() => {
@@ -73,8 +81,13 @@ function TicketBookingPage() {
   }, [sourceId, destinationId, passengers, journeyType]);
 
   const handleBookTicket = async () => {
-    if (!sourceId || !destinationId || sourceId === destinationId) {
-      setError('Please select valid source and destination');
+    if (!sourceId || !destinationId) {
+      setError('Please select both source and destination stations');
+      return;
+    }
+    
+    if (sourceId === destinationId) {
+      setError('Source and destination stations cannot be the same');
       return;
     }
 
@@ -98,7 +111,15 @@ function TicketBookingPage() {
           passengerNumber: i + 1, // Track which passenger this is
         });
 
-        const ticket = response.data.ticket || (response.data.tickets && response.data.tickets[0]);
+        // Handle different response formats
+        let ticket;
+        if (response.data.ticket) {
+          ticket = response.data.ticket;
+        } else if (response.data.tickets && response.data.tickets.length > 0) {
+          ticket = response.data.tickets[0];
+        } else if (response.data) {
+          ticket = response.data; // Assume the response is the ticket itself
+        }
         
         if (!ticket || !(ticket.id || ticket._id)) {
           throw new Error(`Ticket creation failed for passenger ${i + 1}: No ticket id returned`);
@@ -107,26 +128,43 @@ function TicketBookingPage() {
         tickets.push(ticket);
       }
 
-      // Use the first ticket for payment (or calculate total amount)
+      // Calculate total amount
       const totalAmount = tickets.reduce((sum, ticket) => sum + (ticket.amount || 0), 0);
-      setBackendTotalFare(totalAmount);
+      
+      // Get station names
+      const sourceStation = stations.find(s => String(s._id || s.id || s.stop_id) === String(sourceId));
+      const destinationStation = stations.find(s => String(s._id || s.id || s.stop_id) === String(destinationId));
+
+      const sourceStationName = (stations.find(s => (s._id === sourceId) || (s.id === sourceId))?.name) || location.state?.sourceName
+      const destinationStationName = (stations.find(s => (s._id === destinationId) || (s.id === destinationId))?.name) || location.state?.destinationName
 
       const paymentInfo = {
         type: "ticket",
         amount: totalAmount,
-        id: tickets[0].id || tickets[0]._id,   // Use first ticket ID for payment
+        id: `multi-ticket-${Date.now()}`, // Create a unique ID for this multi-ticket purchase
         ticketIds: tickets.map(t => t.id || t._id), // Store all ticket IDs
         booking: {
           sourceId,
           destinationId,
           passengerCount: passengers,
           journeyType,
-          sourceName: stations.find(s => s._id === sourceId)?.name || "Unknown",
-          destinationName: stations.find(s => s._id === destinationId)?.name || "Unknown",
+          sourceName: sourceStationName || sourceStation?.name || sourceStation?.title || "Unknown",
+          destinationName: destinationStationName || destinationStation?.name || destinationStation?.title || "Unknown",
           tickets: tickets // Store all ticket data
         },
+        selectedTrain: selectedSchedule ? {
+          number: selectedSchedule.trainNumber || selectedSchedule.trainNo || selectedSchedule.number,
+          from: sourceStationName,
+          to: destinationStationName,
+          legs: Array.isArray(selectedSchedule.stations)
+            ? selectedSchedule.stations.map(s => s?.station?.name || s?.name || s?.stationName).filter(Boolean)
+            : undefined
+        } : undefined
       };
 
+      // Store the tickets temporarily in localStorage for the payment page to access
+      localStorage.setItem('pendingTickets', JSON.stringify(tickets));
+      
       navigate('/payment', { state: { paymentInfo } });
     } catch (error) {
       console.error('Booking failed:', error);
@@ -144,6 +182,12 @@ function TicketBookingPage() {
   return (
     <div className="container mt-5 pt-5">
       <h3>Book Ticket</h3>
+      {selectedSchedule && (
+        <div className="alert alert-info">
+          <div className="fw-bold">Selected Train: {selectedSchedule.trainNumber || selectedSchedule.trainName}</div>
+          <div>From: {location.state?.sourceName} → To: {location.state?.destinationName}</div>
+        </div>
+      )}
       {error && <div className="alert alert-danger">{error}</div>}
       <form onSubmit={submit}>
         <div className="mb-3">
@@ -152,7 +196,7 @@ function TicketBookingPage() {
             <option value="">Select source</option>
             {stations.map(st => (
               <option key={st._id || st.id} value={st._id || st.id}>
-                {st.name}
+                {st.name || st.title}
               </option>
             ))}
           </select>
@@ -163,7 +207,7 @@ function TicketBookingPage() {
             <option value="">Select destination</option>
             {stations.map(st => (
               <option key={st._id || st.id} value={st._id || st.id}>
-                {st.name}
+                {st.name || st.title}
               </option>
             ))}
           </select>
@@ -191,6 +235,7 @@ function TicketBookingPage() {
         <div className="mb-3">
           <strong>Base Fare:</strong> ₹{fareQuote.base} <br />
           <strong>Total Fare:</strong> ₹{backendTotalFare ?? fareQuote.total}
+          {passengers > 1 && <div className="form-text">({passengers} passengers × ₹{fareQuote.base})</div>}
         </div>
         <button className="btn btn-primary" type="submit" disabled={loading}>
           {loading ? 'Booking...' : 'Confirm Booking'}

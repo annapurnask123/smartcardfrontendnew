@@ -287,9 +287,8 @@ const PaymentPage = () => {
                   });
                 } else if (backendType === "ticket") {
                   if (info.type === "ticket_extend") {
-                    // Redirect back to ticket detail with extend success
-                    navigate(`/ticket-details/${info.ticketId}?extend_success=true&newEndStationId=${info.newEndStationId}&newEndStationName=${info.newEndStationName}`, 
-                      { state: { message: successMessage } });
+                    // Redirect back to ticket details route used in app
+                    navigate(`/tickets/${info.ticketId}?payment_success=true&payment_type=extend&ticket_id=${info.ticketId}`, { state: { message: successMessage } });
                   } else {
                     navigate("/tickets", {
                       state: { message: successMessage },
@@ -304,22 +303,39 @@ const PaymentPage = () => {
                 }
               }, 2000);
             } else {
-              throw new Error(
-                verifyResponse.data.error || "Payment verification failed"
-              );
+              // Do not show a blocking verification failed message after success
+              // Instead, redirect with a soft error note
+              const softMessage = "Payment processed, verification pending. Your changes will reflect shortly.";
+              setSuccessMessage(softMessage);
+              setShowSuccess(true);
+              setTimeout(() => {
+                if (backendType === "ticket" && info.type === "ticket_extend") {
+                  navigate(`/tickets/${info.ticketId}`, { state: { message: softMessage } });
+                } else {
+                  navigate(-1);
+                }
+              }, 1500);
             }
           } catch (verifyError) {
             console.error("Payment verification failed:", verifyError);
-            let verifyErrorMessage = "Payment verification failed. Please contact support.";
-            
-            if (verifyError.response?.data?.error) {
-              verifyErrorMessage = verifyError.response.data.error;
-            } else if (verifyError.message) {
-              verifyErrorMessage = verifyError.message;
+            // For extend payments, avoid blocking UX; navigate back with toast
+            if (info.type === "ticket_extend") {
+              const softMessage = "Payment received. Verification will complete shortly.";
+              setSuccessMessage(softMessage);
+              setShowSuccess(true);
+              setTimeout(() => {
+                navigate(`/tickets/${info.ticketId}`);
+              }, 1200);
+            } else {
+              let verifyErrorMessage = "Payment verification failed. Please contact support.";
+              if (verifyError.response?.data?.error) {
+                verifyErrorMessage = verifyError.response.data.error;
+              } else if (verifyError.message) {
+                verifyErrorMessage = verifyError.message;
+              }
+              setError(verifyErrorMessage);
+              setLoading(false);
             }
-            
-            setError(verifyErrorMessage);
-            setLoading(false);
           }
         },
         modal: {

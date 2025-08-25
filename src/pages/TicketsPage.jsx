@@ -17,13 +17,15 @@ function TicketsPage() {
   // station slice can be items | list | stations depending on how you set it up
   const stationState = useSelector(s => s.stations || {})
   const stations = stationState.items || stationState.list || stationState.stations || []
-
+  console.log("THe stations received ",stations)
   // Build a quick lookup map: id -> name
   const stationById = useMemo(() => {
     const map = {}
     stations.forEach(s => {
       const key = s.id || s._id || s.code
+      console.log(key)
       if (key) map[key] = s.name || s.title || s.displayName || key
+      console.log("The map is ",map)
     })
     return map
   }, [stations])
@@ -43,9 +45,23 @@ function TicketsPage() {
     }
   }, [dispatch, stations])
 
+  console.log("The tickets received ",tickets)
+
   const filtered = tickets.filter(t => {
-    const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId || ''
-    const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId || ''
+    console.log("The ticket is ",t)
+    let fromName ;
+    // const fromName = stationById[t.sourceId] || t.sourceName || t.source || t.sourceId || ''
+
+    for (let i = 0; i < stations.length; i++) {
+      if (stations[i].id === t.sourceId) {
+        fromName = stations[i].name
+        break
+      }
+    }
+    
+
+    console.log("The from name is ",fromName)
+    const toName = stationById[t.destinationId] || t.destinationName || t.destination || t.destinationId || ''
     const text = `${fromName} ${toName}`.toLowerCase()
     return !q || text.includes(q.toLowerCase())
   })
@@ -93,8 +109,8 @@ function TicketsPage() {
       </div>
       {['booked','inprogress','ended','pending','cancelled'].map(section => {
         const sectionTickets = grouped[section].filter(t => {
-          const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId || ''
-          const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId || ''
+          const fromName = stationById[t.sourceId] || t.sourceName || t.source || t.sourceId || ''
+          const toName = stationById[t.destinationId] || t.destinationName || t.destination || t.destinationId || ''
           const text = `${fromName} ${toName}`.toLowerCase()
           const matchesSearch = !q || text.includes((q||'').toLowerCase())
           const matchesFilter = !statusFilter || section === statusFilter
@@ -108,13 +124,19 @@ function TicketsPage() {
             <ul className="list-group">
               {sectionTickets.map(t => {
                 const id = t.id || t._id
-                const fromName = t.sourceName || stationById[t.sourceId] || t.source || t.sourceId
-                const toName = t.destinationName || stationById[t.destinationId] || t.destination || t.destinationId
+
+                // ✅ Always resolve station names
+                const fromName = stationById[t.sourceId] || t.startStationName
+                || t.source || t.sourceId || "Unknown"
+                const toName = stationById[t.destinationId] || t.endStationName|| t.destination || t.destinationId || "Unknown"
+
                 const isActive = (t.status || '').toLowerCase() === 'active' || (t.status||'').toLowerCase() === 'booked'
-                const isInProgress = (t.status || '').toLowerCase() === 'inprogress' || (t.status||'').toLowerCase() === 'in_progress' || (t.status||'').toLowerCase() === 'ongoing' || (t.status||'').toLowerCase() === 'started' || (t.status||'').toLowerCase() === 'tapped_in'
+                const isInProgress = ['inprogress','in_progress','ongoing','started','tapped_in'].includes((t.status||'').toLowerCase())
+
                 return (
                   <li key={id} className="list-group-item d-flex justify-content-between align-items-center">
                     <div>
+                      {/* ✅ Now always shows "From → To" */}
                       <div className="fw-bold">{fromName} → {toName}</div>
                       <small className="text-muted">{t.date || new Date(t.createdAt || Date.now()).toLocaleString()}</small>
                       {isInProgress && (

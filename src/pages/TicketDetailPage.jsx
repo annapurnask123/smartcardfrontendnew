@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import QRCode from "react-qr-code";
@@ -15,24 +15,28 @@ function TicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [journey, setJourney] = useState(null);
-  const [fareCalculated, setFareCalculated] = useState(false);
   const [selectedExtendStation, setSelectedExtendStation] = useState(null);
   const [showExtendDropdown, setShowExtendDropdown] = useState(false);
   const [selectedEarlyDropStation, setSelectedEarlyDropStation] = useState(null);
   const [showEarlyDropDropdown, setShowEarlyDropDropdown] = useState(false);
   const [isExtendSelected, setIsExtendSelected] = useState(false);
   const [isEarlyDropSelected, setIsEarlyDropSelected] = useState(false);
-  const [selectedSubscription, setSelectedSubscription] = useState(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [paymentOptions, setPaymentOptions] = useState(null);
-  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [qrCodeValue, setQrCodeValue] = useState('');
 
-  // Calculate fare between stations
-  const calculateFare = (fromStationId, toStationId) => {
+  const stationsState = useSelector((state) => state.stations);
+  const stations = stationsState?.allItems || stationsState?.items || [];
+
+  // Status logic for ticket actions
+  const isActive = ticket?.status === 'Active' || ticket?.status === 'booked' || ticket?.status === 'active' || ticket?.status === 'confirmed';
+  const isInProgress = ticket?.status === 'InProgress' || ticket?.status === 'in_progress' || ticket?.status === 'ongoing' || ticket?.status === 'started' || ticket?.status === 'tapped_in';
+  const isCompleted = ticket?.status === 'Completed' || ticket?.status === 'completed' || ticket?.status === 'finished' || ticket?.status === 'ended';
+  const isCancelled = ticket?.status === 'Cancelled' || ticket?.status === 'cancelled';
+
+  // Calculate fare between stations - memoized for performance
+  const calculateFare = useCallback((fromStationId, toStationId) => {
     const baseFare = 10;
     const perStationFare = 5;
     
@@ -44,7 +48,37 @@ function TicketDetailPage() {
     
     const stationDistance = Math.abs(fromIndex - toIndex);
     return baseFare + (stationDistance * perStationFare);
-  };
+  }, [stations]);
+
+  // Simplified station name resolution
+  const resolveStationName = useCallback((stationId, fallbackName) => {
+    if (!stationId) return fallbackName || "Unknown Station";
+    
+    // If it's already a name, return it
+    if (typeof stationId === 'string' && !stationId.match(/^[0-9a-fA-F]{24}$/)) {
+      return stationId;
+    }
+    
+    // Find station by ID
+    const station = stations.find(s => 
+      (s.id || s._id) === stationId || 
+      String(s._id) === String(stationId) ||
+      String(s.id) === String(stationId)
+    );
+    
+    return station?.name || station?.station_name || station?.stop_name || fallbackName || "Unknown Station";
+  }, [stations]);
+
+  // Get from and to station names
+  const fromStation = resolveStationName(
+    ticket?.startStationId || ticket?.sourceStationId, 
+    ticket?.startStationName || ticket?.sourceStation || ticket?.fromStation || ticket?.from
+  );
+  
+  const toStation = resolveStationName(
+    ticket?.endStationId || ticket?.destinationStationId,
+    ticket?.endStationName || ticket?.destinationStation || ticket?.toStation || ticket?.to
+  );
 
   // Check if extend/early drop has been used based on ticket properties
   useEffect(() => {
@@ -59,6 +93,16 @@ function TicketDetailPage() {
       if (ticket.earlyDrop || ticket.isEarlyDrop) {
         setIsEarlyDropSelected(true);
       }
+
+      // Generate QR code value
+      const qrData = JSON.stringify({
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: ticket.userId || 'user123',
+        timestamp: Date.now(),
+        type: 'ticket',
+        status: ticket.status
+      });
+      setQrCodeValue(qrData);
     }
   }, [ticket]);
 
@@ -70,14 +114,55 @@ function TicketDetailPage() {
     }
   }, []);
 
-  const stationsState = useSelector((state) => state.stations);
-  const stations = stationsState?.allItems || stationsState?.items || [];
+  // Check for payment success on component mount
+  useEffect(() => {
+    const checkPaymentStatus = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const paymentType = urlParams.get('payment_type');
+      const ticketId = urlParams.get('ticket_id');
+      
+      if (paymentSuccess === 'true' && paymentType === 'extend' && ticketId === id) {
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Payment Successful!',
+          text: 'Your journey has been extended successfully.',
+          confirmButtonText: 'OK'
+        }).then(() => {
+          // Refresh ticket data
+          fetchTicketData();
+        });
+      }
+    };
+    
+    checkPaymentStatus();
+  }, [id]);
 
-  // Status logic for ticket actions
-  const isActive = ticket?.status === 'Active' || ticket?.status === 'booked' || ticket?.status === 'active' || ticket?.status === 'confirmed';
-  const isInProgress = ticket?.status === 'InProgress' || ticket?.status === 'in_progress' || ticket?.status === 'ongoing' || ticket?.status === 'started' || ticket?.status === 'tapped_in';
-  const isCompleted = ticket?.status === 'Completed' || ticket?.status === 'completed' || ticket?.status === 'finished' || ticket?.status === 'ended';
-  const isCancelled = ticket?.status === 'Cancelled' || ticket?.status === 'cancelled';
+  // Fetch ticket data
+  const fetchTicketData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await ticketAPI.getTicket(id);
+      const ticketData = res.data || res.ticket;
+      
+      if (ticketData) {
+        // Ensure ticket has proper fields
+        ticketData.price = ticketData.price || ticketData.amount || ticketData.fare || 25;
+        ticketData.status = ticketData.status || 'Active';
+        
+        setTicket(ticketData);
+      }
+    } catch (err) {
+      console.error('Error fetching ticket:', err);
+      setError("Failed to load ticket details. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   // Fetch ticket + stations
   useEffect(() => {
@@ -91,73 +176,9 @@ function TicketDetailPage() {
           await dispatch(fetchStations());
         } catch (stationError) {
           console.error('Failed to fetch stations:', stationError);
-          // Continue with fallback stations if needed
         }
         
-        // Try different API endpoints
-        let ticketData = null;
-        try {
-          const res = await ticketAPI.getTicket(id);
-          ticketData = res.data || res.ticket;
-          
-          // Ensure ticket has proper fields
-          if (ticketData) {
-            ticketData.price = ticketData.price || ticketData.amount || ticketData.fare || 25;
-            ticketData.status = ticketData.status || 'Active';
-            
-            // Generate QR code data only for booked tickets
-            if (ticketData.status === 'booked' || ticketData.status === 'Active') {
-              const qrData = {
-                ticketId: ticketData._id || ticketData.id,
-                userId: ticketData.userId || ticketData.user,
-                timestamp: Date.now(),
-                type: 'ticket'
-              };
-              ticketData.qrCodeData = JSON.stringify(qrData);
-            }
-          }
-        } catch (err) {
-          console.warn('getTicket failed, using fallback data');
-          ticketData = {
-            id: id,
-            _id: id,
-            startStationId: 'station1',
-            endStationId: 'station2', 
-            price: 25,
-            amount: 25,
-            status: 'Active',
-            createdAt: new Date().toISOString(),
-            qrCodeData: JSON.stringify({
-              ticketId: id,
-              userId: 'user123',
-              timestamp: Date.now(),
-              type: 'ticket'
-            })
-          };
-        }
-        
-        // Generate QR code if missing
-        if (!ticketData.qrCode) {
-          const qrData = {
-            ticketId: ticketData.ticketId || ticketData._id || ticketData.id,
-            userId: ticketData.userId,
-            timestamp: Date.now(),
-            type: 'ticket'
-          };
-          const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData));
-          ticketData = {
-            ...ticketData,
-            qrCode: qrCodeDataUrl,
-            qrData: JSON.stringify({
-              ticketId: ticketData.ticketId || ticketData._id || ticketData.id,
-              userId: ticketData.userId,
-              timestamp: Date.now(),
-              type: 'ticket'
-            })
-          };
-        }
-        
-        setTicket(ticketData);
+        await fetchTicketData();
         
         // Check for journey data
         const journeyData = localStorage.getItem('currentJourney');
@@ -165,170 +186,18 @@ function TicketDetailPage() {
           setJourney(JSON.parse(journeyData));
         }
         
-        // Check if returning from extend journey payment
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentSuccess = urlParams.get('extend_success');
-        const newEndStationId = urlParams.get('newEndStationId');
-        const newEndStationName = urlParams.get('newEndStationName');
-        
-        if (paymentSuccess === 'true' && newEndStationId && newEndStationName) {
-          // Update ticket destination after successful extend payment
-          ticketData = {
-            ...ticketData,
-            endStationId: newEndStationId,
-            endStationName: newEndStationName,
-            endStation: newEndStationName
-          };
-          setTicket(ticketData);
-          
-          // Clear URL parameters
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Journey extended successfully!',
-            text: `New destination: ${newEndStationName}\nYou can now tap out at the new destination.`,
-            confirmButtonText: 'OK'
-          });
-        }
-        
       } catch (err) {
-        console.error('Error fetching ticket:', err);
+        console.error('Error in fetchData:', err);
         setError("Failed to load ticket details. Please try again.");
       } finally {
         setLoading(false);
       }
-    }
+    };
     fetchData();
-  }, [id, dispatch]);
-
-  const fromStation = (() => {
-    // Debug ticket data structure
-    console.log('Ticket data for station resolution:', {
-      ticket,
-      startStationId: ticket?.startStationId,
-      startStationName: ticket?.startStationName,
-      sourceStation: ticket?.sourceStation,
-      fromStation: ticket?.fromStation,
-      from: ticket?.from,
-      stations: stations.length
-    });
-
-    // Try multiple approaches to find station name
-    let stationName = "Unknown Station";
-    
-    // Method 1: Direct station name from ticket
-    if (ticket?.startStationName) {
-      stationName = ticket.startStationName;
-      console.log('Found station name from ticket.startStationName:', stationName);
-      return stationName;
-    }
-    
-    if (ticket?.sourceStation) {
-      stationName = ticket.sourceStation;
-      console.log('Found station name from ticket.sourceStation:', stationName);
-      return stationName;
-    }
-    
-    if (ticket?.fromStation) {
-      stationName = ticket.fromStation;
-      console.log('Found station name from ticket.fromStation:', stationName);
-      return stationName;
-    }
-    
-    if (ticket?.from) {
-      stationName = typeof ticket.from === 'string' ? ticket.from : ticket.from?.name;
-      if (stationName && stationName !== 'Unknown Station') {
-        console.log('Found station name from ticket.from:', stationName);
-        return stationName;
-      }
-    }
-    
-    // Method 2: Find by station ID
-    if (ticket?.startStationId && stations.length > 0) {
-      let startStationId = ticket.startStationId;
-      
-      // Handle object IDs
-      if (typeof startStationId === 'object' && startStationId !== null) {
-        startStationId = startStationId._id || startStationId.id || startStationId.stop_id;
-      }
-      
-      const foundStation = stations.find((s) => 
-        (s.id || s._id) === startStationId || 
-        s.stop_id === startStationId ||
-        String(s._id) === String(startStationId) ||
-        String(s.id) === String(startStationId)
-      );
-      
-      if (foundStation) {
-        stationName = foundStation.name || foundStation.station_name || foundStation.stop_name;
-        console.log('Found station by ID:', { foundStation, stationName });
-        return stationName;
-      }
-    }
-    
-    console.log('Could not resolve station name, using fallback');
-    return "Unknown Station";
-  })();
-
-  const toStation = (() => {
-    // Debug end station data
-    console.log('End station data:', {
-      endStationId: ticket?.endStationId,
-      endStationName: ticket?.endStationName,
-      destinationStation: ticket?.destinationStation,
-      toStation: ticket?.toStation,
-      to: ticket?.to
-    });
-
-    let stationName = "Unknown Station";
-    
-    // Method 1: Direct station name from ticket
-    if (ticket?.endStationName) {
-      return ticket.endStationName;
-    }
-    
-    if (ticket?.destinationStation) {
-      return ticket.destinationStation;
-    }
-    
-    if (ticket?.toStation) {
-      return ticket.toStation;
-    }
-    
-    if (ticket?.to) {
-      stationName = typeof ticket.to === 'string' ? ticket.to : ticket.to?.name;
-      if (stationName && stationName !== 'Unknown Station') {
-        return stationName;
-      }
-    }
-    
-    // Method 2: Find by station ID
-    if (ticket?.endStationId && stations.length > 0) {
-      let endStationId = ticket.endStationId;
-      
-      // Handle object IDs
-      if (typeof endStationId === 'object' && endStationId !== null) {
-        endStationId = endStationId._id || endStationId.id || endStationId.stop_id;
-      }
-      
-      const foundStation = stations.find((s) => 
-        (s.id || s._id) === endStationId || 
-        s.stop_id === endStationId ||
-        String(s._id) === String(endStationId) ||
-        String(s.id) === String(endStationId)
-      );
-      
-      if (foundStation) {
-        return foundStation.name || foundStation.station_name || foundStation.stop_name;
-      }
-    }
-    
-    return "Unknown Station";
-  })();
+  }, [id, dispatch, fetchTicketData]);
 
   // Get stations available for extending (stations after current end station)
-  const getExtendStations = () => {
+  const getExtendStations = useCallback(() => {
     if (stations.length === 0) return [];
     
     const currentEndId = String(ticket?.endStationId?._id || ticket?.endStationId?.id || ticket?.endStationId);
@@ -336,10 +205,10 @@ function TicketDetailPage() {
       const stationId = String(s._id || s.id);
       return stationId !== currentEndId;
     });
-  };
+  }, [stations, ticket]);
 
   // Get stations available for early drop (only stations between start and end)
-  const getEarlyDropStations = () => {
+  const getEarlyDropStations = useCallback(() => {
     if (stations.length === 0) return [];
     
     const startId = String(ticket?.startStationId?._id || ticket?.startStationId?.id || ticket?.startStationId);
@@ -350,7 +219,7 @@ function TicketDetailPage() {
       const stationId = String(s._id || s.id);
       return stationId !== startId && stationId !== endId;
     });
-  };
+  }, [stations, ticket]);
 
   // ===== Ticket Actions =====
   const handleCancel = async () => {
@@ -358,12 +227,25 @@ function TicketDetailPage() {
     if (isInProgress) {
       Swal.fire({
         icon: 'error',
-        title: 'You cannot cancel after journey has started.',
+        title: 'Cannot Cancel Ticket',
+        text: 'You cannot cancel after journey has started.',
         confirmButtonText: 'OK'
       });
       return;
     }
-    if (!confirm("Are you sure you want to cancel this ticket?")) return;
+    
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "Do you want to cancel this ticket?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, cancel it!'
+    });
+    
+    if (!result.isConfirmed) return;
+    
     try {
       setActionLoading(true);
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -371,10 +253,12 @@ function TicketDetailPage() {
         ticketId: ticket.ticketId || ticket._id || ticket.id,
         userId: user.id || user._id
       });
+      
       if (response?.data?.error) {
         Swal.fire({
           icon: 'error',
-          title: `Cancel failed: ${response.data.error}`,
+          title: 'Cancel Failed',
+          text: response.data.error,
           confirmButtonText: 'OK'
         });
       } else {
@@ -388,34 +272,41 @@ function TicketDetailPage() {
               reason: 'Ticket cancelled refund',
               ticketId: ticket.ticketId || ticket._id || ticket.id
             });
+            
             Swal.fire({
               icon: 'success',
-              title: "Ticket cancelled and amount refunded to wallet!",
+              title: 'Ticket Cancelled!',
+              html: `Ticket cancelled successfully!<br>₹${ticket.price} has been refunded to your wallet.`,
               confirmButtonText: 'OK'
             });
           } catch (walletError) {
             Swal.fire({
-              icon: 'error',
-              title: "Ticket cancelled, but failed to refund to wallet.",
+              icon: 'warning',
+              title: 'Partial Success',
+              html: `Ticket cancelled but refund failed.<br>Please contact support for refund.`,
               confirmButtonText: 'OK'
             });
           }
         } else {
           Swal.fire({
             icon: 'success',
-            title: "Ticket cancelled successfully!",
+            title: 'Ticket Cancelled!',
+            text: 'Ticket cancelled successfully!',
             confirmButtonText: 'OK'
           });
         }
+        
         setTicket({...ticket, status: 'Cancelled'});
         setTimeout(() => navigate('/tickets'), 1500);
       }
     } catch (error) {
       console.error('Cancel error:', error);
       const errorMsg = error.response?.data?.error || error.message || "Failed to cancel ticket";
+      
       Swal.fire({
         icon: 'error',
-        title: `Cancel failed: ${errorMsg}`,
+        title: 'Cancel Failed',
+        text: errorMsg,
         confirmButtonText: 'OK'
       });
     } finally {
@@ -424,14 +315,32 @@ function TicketDetailPage() {
   };
 
   const handleExtendJourney = async () => {
+    // Allow extension only after journey has started
+    if (!isInProgress) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Start Journey First',
+        text: 'You can extend your destination after you tap in and start the journey.',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
     if (!selectedExtendStation) {
       setShowExtendDropdown(true);
       return;
     }
 
-    if (!confirm(`Extend journey to ${selectedExtendStation.name}? Additional fare will be charged.`)) {
-      return;
-    }
+    const result = await Swal.fire({
+      title: 'Extend Journey?',
+      html: `Extend your journey to <b>${selectedExtendStation.name}</b>?<br>Additional fare will be charged.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, extend it!'
+    });
+    
+    if (!result.isConfirmed) return;
 
     try {
       setActionLoading(true);
@@ -446,8 +355,6 @@ function TicketDetailPage() {
       // Extract new station ID
       let newStationId = selectedExtendStation._id || selectedExtendStation.id;
       newStationId = String(newStationId);
-      
-      console.log('Extend journey:', { currentEndStationId, newStationId, selectedStation: selectedExtendStation.name });
       
       // Calculate additional fare
       const additionalFare = calculateFare(currentEndStationId, newStationId);
@@ -464,16 +371,17 @@ function TicketDetailPage() {
             additionalFare: additionalFare,
             amount: additionalFare,
             description: `Extend journey to ${selectedExtendStation.name}`,
-            autoTapOut: true // Flag to automatically tap out after payment
+            returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}?payment_success=true&payment_type=extend&ticket_id=${ticket.ticketId || ticket._id || ticket.id}`
           }
         }
       });
-      setIsExtendSelected(true);
+      
     } catch (error) {
       console.error('Extend error:', error);
       Swal.fire({
         icon: 'error',
-        title: "Failed to extend ticket. Please try again.",
+        title: 'Extension Failed',
+        text: "Failed to extend ticket. Please try again.",
         confirmButtonText: 'OK'
       });
     } finally {
@@ -482,8 +390,14 @@ function TicketDetailPage() {
   };
 
   const handleConfirmExtend = async () => {
-    if (selectedExtendStation) {
-      setShowExtendDropdown(false);
+    if (!selectedExtendStation) {
+      setMessage('Please select a station to extend your journey to');
+      setMessageType('error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
       
       // Extract current end station ID
       let currentEndStationId = ticket.endStationId;
@@ -499,73 +413,16 @@ function TicketDetailPage() {
       // Calculate additional fare between current end and new end station
       const additionalFare = calculateFare(currentEndStationId, newStationId);
       
-      console.log('Extend journey fare calculation:', { 
-        currentEndStationId, 
-        newStationId, 
-        selectedStation: selectedExtendStation.name,
-        additionalFare,
-        presentTicketId: ticket.ticketId || ticket._id || ticket.id
+      // Call backend API to extend ticket
+      const extendResponse = await ticketAPI.extendJourney({
+        ticketId: ticket.ticketId || ticket._id || ticket.id,
+        userId: ticket.userId,
+        newEndStationId: newStationId,
+        additionalFare: additionalFare
       });
       
-      try {
-        setActionLoading(true);
-        
-        // Call backend API to extend ticket
-        const extendResponse = await ticketAPI.extendJourney({
-          ticketId: ticket.ticketId || ticket._id || ticket.id,
-          userId: ticket.userId,
-          newEndStationId: newStationId,
-          additionalFare: additionalFare
-        });
-        
-        console.log('Extend response:', extendResponse);
-        
-        // If backend requires payment, navigate to payment page
-        if (extendResponse.data && extendResponse.data.paymentOrder) {
-          navigate('/payment', {
-            state: {
-              paymentInfo: {
-                type: 'ticket_extend',
-                originalType: 'ticket',
-                id: ticket.ticketId || ticket._id || ticket.id,
-                ticketId: ticket.ticketId || ticket._id || ticket.id,
-                userId: ticket.userId,
-                amount: additionalFare,
-                paymentMethod: "razorpay",
-                description: `Extend journey to ${selectedExtendStation.name}`,
-                returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}`,
-                paymentOrder: extendResponse.data.paymentOrder
-              }
-            }
-          });
-        } else {
-          // Update ticket locally with new destination
-          setTicket(prevTicket => ({
-            ...prevTicket,
-            endStationId: newStationId,
-            endStationName: selectedExtendStation.name,
-            endStation: selectedExtendStation.name,
-            extended: true,
-            additionalFare: additionalFare
-          }));
-          
-          // Show success message
-          Swal.fire({
-            icon: 'success',
-            title: 'Journey Extended Successfully!',
-            text: `New destination: ${selectedExtendStation.name}. Additional fare: ₹${additionalFare}`,
-            confirmButtonText: 'OK'
-          });
-        }
-        
-        setIsExtendSelected(true);
-        
-      } catch (error) {
-        console.error('Extend ticket error:', error);
-        
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        
-        // If backend fails, navigate to payment as fallback
+      // If backend requires payment, navigate to payment page
+      if (extendResponse.data && extendResponse.data.paymentOrder) {
         navigate('/payment', {
           state: {
             paymentInfo: {
@@ -573,19 +430,62 @@ function TicketDetailPage() {
               originalType: 'ticket',
               id: ticket.ticketId || ticket._id || ticket.id,
               ticketId: ticket.ticketId || ticket._id || ticket.id,
-              userId: user.id || user._id,
+              userId: ticket.userId,
               amount: additionalFare,
               paymentMethod: "razorpay",
               description: `Extend journey to ${selectedExtendStation.name}`,
-              returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}`
+              returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}?payment_success=true&payment_type=extend&ticket_id=${ticket.ticketId || ticket._id || ticket.id}`,
+              paymentOrder: extendResponse.data.paymentOrder
             }
           }
         });
+      } else {
+        // Update ticket locally with new destination
+        setTicket(prevTicket => ({
+          ...prevTicket,
+          endStationId: newStationId,
+          endStationName: selectedExtendStation.name,
+          endStation: selectedExtendStation.name,
+          extended: true,
+          additionalFare: additionalFare
+        }));
         
-        setIsExtendSelected(true);
-      } finally {
-        setActionLoading(false);
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Journey Extended!',
+          html: `Your journey has been extended to <b>${selectedExtendStation.name}</b>.<br>Additional fare: ₹${additionalFare}`,
+          confirmButtonText: 'OK'
+        });
       }
+      
+      setIsExtendSelected(true);
+      setShowExtendDropdown(false);
+      
+    } catch (error) {
+      console.error('Extend ticket error:', error);
+      
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // If backend fails, navigate to payment as fallback
+      navigate('/payment', {
+        state: {
+          paymentInfo: {
+            type: 'ticket_extend',
+            originalType: 'ticket',
+            id: ticket.ticketId || ticket._id || ticket.id,
+            ticketId: ticket.ticketId || ticket._id || ticket.id,
+            userId: user.id || user._id,
+            amount: additionalFare,
+            paymentMethod: "razorpay",
+            description: `Extend journey to ${selectedExtendStation.name}`,
+            returnUrl: `/tickets/${ticket.ticketId || ticket._id || ticket.id}?payment_success=true&payment_type=extend&ticket_id=${ticket.ticketId || ticket._id || ticket.id}`
+          }
+        }
+      });
+      
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -614,24 +514,25 @@ function TicketDetailPage() {
     const originalFare = calculateFare(startStationId, originalEndStationId);
     const savings = originalFare - earlyDropFare;
 
-    if (!confirm(`End your journey early at ${selectedEarlyDropStation.name}?\n\nReduced fare: ₹${earlyDropFare} (you save ₹${savings})\nOriginal fare to ${toStation}: ₹${originalFare}`)) {
-      return;
-    }
+    const result = await Swal.fire({
+      title: 'Early Drop?',
+      html: `End your journey early at <b>${selectedEarlyDropStation.name}</b>?<br><br>
+             Reduced fare: ₹${earlyDropFare} (you save ₹${savings})<br>
+             Original fare to ${toStation}: ₹${originalFare}`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, drop early!'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       setActionLoading(true);
       
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const currentJourneyData = JSON.parse(localStorage.getItem('currentJourney') || '{}');
-      
-      console.log('Early drop:', { 
-        startStationId, 
-        earlyDropStationId, 
-        selectedStation: selectedEarlyDropStation.name,
-        earlyDropFare,
-        originalFare,
-        savings
-      });
       
       // Update ticket status to completed with early drop
       const completedJourney = {
@@ -670,7 +571,9 @@ function TicketDetailPage() {
       
       Swal.fire({
         icon: 'success',
-        title: 'Early Drop Completed',
+        title: 'Early Drop Completed!',
+        html: `You've successfully ended your journey at <b>${selectedEarlyDropStation.name}</b>.<br>
+               You saved ₹${savings} on your fare.`,
         confirmButtonText: 'OK'
       });
       
@@ -683,7 +586,8 @@ function TicketDetailPage() {
       const errorMsg = error.response?.data?.error || error.message || "Failed to Early Drop";
       Swal.fire({
         icon: 'error',
-        title: `Failed to Early Drop: ${errorMsg}`,
+        title: 'Early Drop Failed',
+        text: errorMsg,
         confirmButtonText: 'OK'
       });
     } finally {
@@ -732,8 +636,6 @@ function TicketDetailPage() {
         refundAmount: savings
       });
       
-      console.log('Early drop response:', response.data);
-      
       // Update ticket locally
       setTicket(prevTicket => ({
         ...prevTicket,
@@ -742,23 +644,32 @@ function TicketDetailPage() {
         endStation: selectedEarlyDropStation.name,
         price: earlyDropFare,
         refundAmount: savings,
-        earlyDrop: true
+        earlyDrop: true,
+        status: 'completed'
       }));
       
       // Show success message with refund info
-      setMessage(`Early drop successful! New destination: ${selectedEarlyDropStation.name}. Refund of ₹${savings} will be processed to your wallet.`);
-      setMessageType('success');
+      Swal.fire({
+        icon: 'success',
+        title: 'Early Drop Successful!',
+        html: `New destination: <b>${selectedEarlyDropStation.name}</b>.<br>
+               Refund of ₹${savings} will be processed to your wallet.`,
+        confirmButtonText: 'OK'
+      });
       
       setIsEarlyDropSelected(true);
       setShowEarlyDropDropdown(false);
       
-      // Stay on detail page - don't navigate away
-      
     } catch (error) {
       console.error('Early drop error:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to process early drop. Please try again.';
-      setMessage(errorMessage);
-      setMessageType('error');
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Early Drop Failed',
+        text: errorMessage,
+        confirmButtonText: 'OK'
+      });
     } finally {
       setActionLoading(null);
     }
@@ -861,8 +772,12 @@ function TicketDetailPage() {
         tapInStation: startStation._id || startStation.id
       }));
 
-      setMessage(`Successfully tapped in at ${startStation.name}!`);
-      setMessageType('success');
+      Swal.fire({
+        icon: 'success',
+        title: 'Tap In Successful!',
+        html: `Successfully tapped in at <b>${startStation.name}</b>!<br>Your journey has started.`,
+        confirmButtonText: 'OK'
+      });
 
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || "Failed to tap in. Please try again.";
@@ -872,6 +787,7 @@ function TicketDetailPage() {
         text: errorMessage,
         confirmButtonText: 'OK'
       });
+    } finally {
       setActionLoading(null);
     }
   };
@@ -902,7 +818,8 @@ function TicketDetailPage() {
         console.error('Missing data for tap out:', { ticketId, stationId, ticket });
         Swal.fire({
           icon: 'error',
-          title: 'Ticket or station information missing. Please contact support.',
+          title: 'Cannot Tap Out',
+          text: 'Ticket or station information missing. Please contact support.',
           confirmButtonText: 'OK'
         });
         setActionLoading(false);
@@ -912,8 +829,6 @@ function TicketDetailPage() {
       // If stationId is not a valid ObjectId, try to find it by name
       const objectIdRegex = /^[0-9a-fA-F]{24}$/;
       if (!objectIdRegex.test(stationId)) {
-        console.log('End station ID not in ObjectId format, trying to find by name...');
-        
         // Try to find station by name or other identifier
         const foundStation = stations.find(s => 
           s.name === toStation || 
@@ -924,32 +839,18 @@ function TicketDetailPage() {
         
         if (foundStation) {
           stationId = String(foundStation._id || foundStation.id);
-          console.log('Found end station by lookup:', stationId);
         } else {
           console.error('Could not find end station:', { stationId, toStation, stations });
           Swal.fire({
             icon: 'error',
-            title: `Could not find station "${toStation}". Please refresh and try again.`,
+            title: 'Cannot Find Station',
+            text: `Could not find station "${toStation}". Please refresh and try again.`,
             confirmButtonText: 'OK'
           });
           setActionLoading(false);
           return;
         }
       }
-      
-      // Final validation
-      if (!objectIdRegex.test(stationId)) {
-        console.error('Final end station ID still invalid:', stationId);
-        Swal.fire({
-          icon: 'error',
-          title: 'Invalid station ID format. Please contact support.',
-          confirmButtonText: 'OK'
-        });
-        setActionLoading(false);
-        return;
-      }
-      
-      console.log('Tap Out with:', { ticketId, stationId, userId: user.id || user._id });
       
       const response = await ticketAPI.tapOut({ 
         ticketId: ticketId,
@@ -961,7 +862,8 @@ function TicketDetailPage() {
       if (response?.data?.error) {
         Swal.fire({
           icon: 'error',
-          title: `Tap Out failed: ${response.data.error}`,
+          title: 'Tap Out Failed',
+          text: response.data.error,
           confirmButtonText: 'OK'
         });
       } else {
@@ -982,11 +884,11 @@ function TicketDetailPage() {
         // Clear current journey
         localStorage.removeItem('currentJourney');
         setJourney(null);
-        setFareCalculated(true);
         
         Swal.fire({
           icon: 'success',
-          title: 'Tap Out Successful',
+          title: 'Tap Out Successful!',
+          html: `You've successfully completed your journey to <b>${toStation}</b>.<br>Fare: ₹${calculatedFare}`,
           confirmButtonText: 'OK'
         });
         setTicket({...ticket, status: 'completed', actualFare: calculatedFare});
@@ -996,7 +898,8 @@ function TicketDetailPage() {
       const errorMsg = error.response?.data?.error || error.message || "Failed to Tap Out";
       Swal.fire({
         icon: 'error',
-        title: `Failed to Tap Out: ${errorMsg}`,
+        title: 'Tap Out Failed',
+        text: errorMsg,
         confirmButtonText: 'OK'
       });
     } finally {
@@ -1006,71 +909,6 @@ function TicketDetailPage() {
 
   // WhatsApp sharing functionality
   const handleWhatsAppShare = async () => {
-    const fromStation = getStationName(ticket.startStationId) || ticket.startStationName || ticket.source || 'Unknown Station';
-    const toStation = getStationName(ticket.endStationId) || ticket.endStationName || ticket.destination || 'Unknown Station';
-    
-    // Generate QR code as data URL using canvas
-    let qrCodeDataUrl = '';
-    try {
-      const qrData = JSON.stringify({
-        ticketId: ticket.ticketId || ticket._id || ticket.id,
-        userId: ticket.userId || 'user123',
-        timestamp: Date.now(),
-        type: 'ticket',
-        status: ticket.status
-      });
-      
-      // Create a temporary div to render QR code
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      document.body.appendChild(tempDiv);
-      
-      // Create QR code SVG
-      const qrSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      qrSvg.setAttribute('width', '200');
-      qrSvg.setAttribute('height', '200');
-      
-      // Simple QR code placeholder (you can enhance this)
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('width', '200');
-      rect.setAttribute('height', '200');
-      rect.setAttribute('fill', 'white');
-      qrSvg.appendChild(rect);
-      
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', '100');
-      text.setAttribute('y', '100');
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('font-size', '12');
-      text.textContent = 'QR Code';
-      qrSvg.appendChild(text);
-      
-      tempDiv.appendChild(qrSvg);
-      
-      // Convert SVG to canvas and then to data URL
-      const canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 200;
-      const ctx = canvas.getContext('2d');
-      
-      const svgData = new XMLSerializer().serializeToString(qrSvg);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-        qrCodeDataUrl = canvas.toDataURL('image/png');
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-      
-      document.body.removeChild(tempDiv);
-    } catch (error) {
-      console.error('QR code generation failed:', error);
-    }
-    
     const ticketDetails = 
       `🎫 *SmartMetroCard Ticket*\n\n` +
       `📍 *From:* ${fromStation}\n` +
@@ -1113,7 +951,8 @@ function TicketDetailPage() {
       await navigator.clipboard.writeText(ticketDetails);
       Swal.fire({
         icon: 'success',
-        title: 'Ticket details copied to clipboard!',
+        title: 'Copied to Clipboard!',
+        text: 'Ticket details copied to clipboard!',
         confirmButtonText: 'OK'
       });
     } catch (err) {
@@ -1126,7 +965,8 @@ function TicketDetailPage() {
       document.body.removeChild(textArea);
       Swal.fire({
         icon: 'success',
-        title: 'Ticket details copied to clipboard!',
+        title: 'Copied to Clipboard!',
+        text: 'Ticket details copied to clipboard!',
         confirmButtonText: 'OK'
       });
     }
@@ -1186,7 +1026,13 @@ function TicketDetailPage() {
                 </h4>
                 <button 
                   className="btn btn-outline-light btn-sm"
-                  onClick={() => navigate('/tickets')}
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      navigate(-1)
+                    } else {
+                      navigate('/tickets')
+                    }
+                  }}
                 >
                   <i className="fas fa-arrow-left me-1"></i>Back
                 </button>
@@ -1194,6 +1040,13 @@ function TicketDetailPage() {
             </div>
             
             <div className="card-body p-4">
+              {/* Message Alert */}
+              {message && (
+                <div className={`alert alert-${messageType === 'success' ? 'success' : 'danger'} mb-4`}>
+                  {message}
+                </div>
+              )}
+              
               <div className="row">
                 <div className="col-md-6">
                   <div className="mb-4">
@@ -1245,6 +1098,18 @@ function TicketDetailPage() {
                       <small className="text-muted">Created</small>
                       <div>{new Date(ticket.createdAt).toLocaleString()}</div>
                     </div>
+                    {ticket.extended && (
+                      <div className="mb-3">
+                        <small className="text-muted">Extended</small>
+                        <div className="text-success">Yes</div>
+                      </div>
+                    )}
+                    {ticket.earlyDrop && (
+                      <div className="mb-3">
+                        <small className="text-muted">Early Drop</small>
+                        <div className="text-info">Yes</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1253,17 +1118,19 @@ function TicketDetailPage() {
               <div className="text-center mb-4">
                 <h6 className="text-muted mb-3">QR Code for Entry</h6>
                 <div className="qr-container p-3 border rounded bg-light">
-                  <QRCode 
-                    value={JSON.stringify({
-                      ticketId: ticket.ticketId || ticket._id || ticket.id,
-                      userId: ticket.userId || 'user123',
-                      timestamp: Date.now(),
-                      type: 'ticket',
-                      status: ticket.status
-                    })} 
-                    size={200}
-                    level="M"
-                  />
+                  {qrCodeValue ? (
+                    <QRCode 
+                      value={qrCodeValue}
+                      size={200}
+                      level="M"
+                    />
+                  ) : (
+                    <div className="d-flex justify-content-center align-items-center" style={{height: '200px'}}>
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading QR Code...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <small className="text-muted mt-2 d-block">
                   Scan this QR code at the station gate
@@ -1283,6 +1150,7 @@ function TicketDetailPage() {
                     <button
                       onClick={() => handleWhatsAppShare()}
                       className="btn btn-success w-100"
+                      disabled={actionLoading}
                     >
                       <i className="fab fa-whatsapp me-2"></i>
                       Share via WhatsApp
@@ -1292,6 +1160,7 @@ function TicketDetailPage() {
                     <button
                       onClick={() => handleCopyTicketDetails()}
                       className="btn btn-outline-primary w-100"
+                      disabled={actionLoading}
                     >
                       <i className="fas fa-copy me-2"></i>
                       Copy Details
@@ -1312,12 +1181,17 @@ function TicketDetailPage() {
                         disabled={actionLoading}
                         className="btn btn-success w-100"
                       >
-                        {actionLoading ? (
-                          <span className="spinner-border spinner-border-sm me-2"></span>
+                        {actionLoading === 'tapIn' ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
                         ) : (
-                          <i className="fas fa-sign-in-alt me-2"></i>
+                          <>
+                            <i className="fas fa-sign-in-alt me-2"></i>
+                            Tap In at {fromStation}
+                          </>
                         )}
-                        Tap In at {fromStation}
                       </button>
                     </div>
                   )}
@@ -1331,11 +1205,16 @@ function TicketDetailPage() {
                         className="btn btn-success w-100"
                       >
                         {actionLoading ? (
-                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
                         ) : (
-                          <i className="fas fa-sign-out-alt me-2"></i>
+                          <>
+                            <i className="fas fa-sign-out-alt me-2"></i>
+                            Tap Out at {toStation}
+                          </>
                         )}
-                        Tap Out at {toStation}
                       </button>
                     </div>
                   )}
@@ -1349,17 +1228,22 @@ function TicketDetailPage() {
                         className="btn btn-danger w-100"
                       >
                         {actionLoading ? (
-                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
                         ) : (
-                          <i className="fas fa-times me-2"></i>
+                          <>
+                            <i className="fas fa-times me-2"></i>
+                            Cancel Ticket
+                          </>
                         )}
-                        Cancel Ticket
                       </button>
                     </div>
                   )}
 
-                  {/* Extend Journey - only for active/in-progress tickets, not completed */}
-                  {(isActive || isInProgress) && !isCompleted && (
+                  {/* Extend Journey - only for in-progress tickets, not completed */}
+                  {isInProgress && !isCompleted && !isExtendSelected && (
                     <div className="col-md-6 col-sm-12">
                       <button
                         onClick={() => setShowExtendDropdown(true)}
@@ -1367,17 +1251,22 @@ function TicketDetailPage() {
                         className="btn btn-info w-100"
                       >
                         {actionLoading ? (
-                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
                         ) : (
-                          <i className="fas fa-expand-arrows-alt me-2"></i>
+                          <>
+                            <i className="fas fa-expand-arrows-alt me-2"></i>
+                            Extend Journey
+                          </>
                         )}
-                        Extend Journey
                       </button>
                     </div>
                   )}
 
                   {/* Early Drop - only for active/in-progress tickets, not completed */}
-                  {(isActive || isInProgress) && !isCompleted && (
+                  {(isActive || isInProgress) && !isCompleted && !isEarlyDropSelected && (
                     <div className="col-md-6 col-sm-12">
                       <button
                         onClick={() => setShowEarlyDropDropdown(true)}
@@ -1385,11 +1274,16 @@ function TicketDetailPage() {
                         className="btn btn-warning w-100"
                       >
                         {actionLoading ? (
-                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
                         ) : (
-                          <i className="fas fa-stop-circle me-2"></i>
+                          <>
+                            <i className="fas fa-stop-circle me-2"></i>
+                            Early Drop
+                          </>
                         )}
-                        Early Drop
                       </button>
                     </div>
                   )}
@@ -1400,198 +1294,136 @@ function TicketDetailPage() {
         </div>
       </div>
 
+      {/* Extend Journey Modal */}
       {showExtendDropdown && (
-        <div className="modal fade show" style={{ display: 'block' }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Extend Journey</h5>
-                <button type="button" className="btn-close" onClick={() => setShowExtendDropdown(false)}></button>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowExtendDropdown(false)}
+                  disabled={actionLoading}
+                ></button>
               </div>
               <div className="modal-body">
                 <p>Select a station to extend your journey:</p>
-                <select className="form-select" onChange={(e) => setSelectedExtendStation(JSON.parse(e.target.value))}>
+                {!isInProgress && (
+                  <div className="alert alert-info py-2">
+                    You can extend only after starting the journey (Tap In).
+                  </div>
+                )}
+                <select 
+                  className="form-select" 
+                  onChange={(e) => setSelectedExtendStation(JSON.parse(e.target.value))}
+                  value={selectedExtendStation ? JSON.stringify(selectedExtendStation) : ''}
+                  disabled={actionLoading || !isInProgress}
+                >
                   <option value="">Select Station</option>
                   {getExtendStations().map((station) => (
-                    <option value={JSON.stringify(station)} key={station._id || station.id}>{station.name}</option>
+                    <option value={JSON.stringify(station)} key={station._id || station.id}>
+                      {station.name}
+                    </option>
                   ))}
                 </select>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowExtendDropdown(false)}>Close</button>
-                <button type="button" className="btn btn-primary" onClick={handleConfirmExtend}>Confirm</button>
-                <button type="button" className="btn btn-success" onClick={handleTapOut}>Tap Out</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showEarlyDropDropdown && (
-        <div className="modal fade show" style={{ display: 'block' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Early Drop</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEarlyDropDropdown(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p>Select a station to end your journey early:</p>
-                <select className="form-select" onChange={(e) => setSelectedEarlyDropStation(JSON.parse(e.target.value))}>
-                  <option value="">Select Station</option>
-                  {getEarlyDropStations().map((station) => (
-                    <option value={JSON.stringify(station)} key={station._id || station.id}>{station.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEarlyDropDropdown(false)}>Close</button>
-                <button type="button" className="btn btn-primary" onClick={handleConfirmEarlyDrop}>Confirm</button>
-                <button type="button" className="btn btn-success" onClick={handleTapOut}>Tap Out</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPaymentOptions && paymentOptions && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Choose Payment Method</h5>
-                <button type="button" className="btn-close" onClick={() => setShowPaymentOptions(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p className="mb-3">{paymentOptions.message}</p>
-                
-                {/* Subscription Options */}
-                {paymentOptions.options && paymentOptions.options.find(opt => opt.type === 'subscription') && (
-                  <div className="mb-4">
-                    <h6 className="fw-bold text-primary">Use Active Subscription (Free)</h6>
-                    {paymentOptions.options.find(opt => opt.type === 'subscription').subscriptions.map((sub) => (
-                      <div key={sub.subscriptionId} className="card mb-2">
-                        <div className="card-body p-3">
-                          <div className="form-check">
-                            <input 
-                              className="form-check-input" 
-                              type="radio" 
-                              name="paymentMethod" 
-                              value={`subscription-${sub.subscriptionId}`}
-                              onChange={() => {
-                                setSelectedPaymentMethod('subscription');
-                                setSelectedSubscription(sub.subscriptionId);
-                              }}
-                            />
-                            <label className="form-check-label">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <div>
-                                  <strong>{sub.planName}</strong>
-                                  <br />
-                                  <small className="text-muted">{sub.description}</small>
-                                  <br />
-                                  <small className="text-success">Valid until: {new Date(sub.validUntil).toLocaleDateString()}</small>
-                                </div>
-                                <span className="badge bg-success">₹0</span>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Card Balance Option */}
-                {paymentOptions.options && paymentOptions.options.find(opt => opt.type === 'balance') && (
-                  <div className="mb-4">
-                    <h6 className="fw-bold text-warning">Pay from Card Balance</h6>
-                    <div className="card">
-                      <div className="card-body p-3">
-                        <div className="form-check">
-                          <input 
-                            className="form-check-input" 
-                            type="radio" 
-                            name="paymentMethod" 
-                            value="balance"
-                            onChange={() => {
-                              setSelectedPaymentMethod('balance');
-                              setSelectedSubscription(null);
-                            }}
-                          />
-                          <label className="form-check-label">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <div>
-                                <strong>Card Balance</strong>
-                                <br />
-                                <small className="text-muted">
-                                  Current Balance: ₹{paymentOptions.card?.balance || 0}
-                                </small>
-                                <br />
-                                <small className="text-info">Fare will be calculated at destination</small>
-                              </div>
-                              <span className="badge bg-warning">Pay as you go</span>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Direct Subscription Selection (for multiple subscriptions) */}
-                {paymentOptions.subscriptions && (
-                  <div className="mb-4">
-                    <h6 className="fw-bold text-primary">Select Subscription</h6>
-                    {paymentOptions.subscriptions.map((sub) => (
-                      <div key={sub.subscriptionId} className="card mb-2">
-                        <div className="card-body p-3">
-                          <div className="form-check">
-                            <input 
-                              className="form-check-input" 
-                              type="radio" 
-                              name="subscription" 
-                              value={sub.subscriptionId}
-                              onChange={() => {
-                                setSelectedPaymentMethod('subscription');
-                                setSelectedSubscription(sub.subscriptionId);
-                              }}
-                            />
-                            <label className="form-check-label">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <div>
-                                  <strong>{sub.planName}</strong> ({sub.planType})
-                                  <br />
-                                  <small className="text-muted">{sub.description}</small>
-                                  <br />
-                                  <small className="text-success">Valid until: {new Date(sub.validUntil).toLocaleDateString()}</small>
-                                  {sub.benefits && sub.benefits.length > 0 && (
-                                    <div>
-                                      <small className="text-info">Benefits: {sub.benefits.join(', ')}</small>
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="badge bg-success">Free</span>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                {selectedExtendStation && (
+                  <div className="mt-3 p-2 bg-light rounded">
+                    <small>
+                      Additional fare: ₹{calculateFare(
+                        ticket.endStationId?._id || ticket.endStationId?.id || ticket.endStationId,
+                        selectedExtendStation._id || selectedExtendStation.id
+                      )}
+                    </small>
                   </div>
                 )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPaymentOptions(false)}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowExtendDropdown(false)}
+                  disabled={actionLoading}
+                >
                   Cancel
                 </button>
                 <button 
                   type="button" 
                   className="btn btn-primary" 
-                  onClick={handleTapIn}
-                  disabled={!selectedPaymentMethod && !selectedSubscription}
+                  onClick={handleConfirmExtend}
+                  disabled={!isInProgress || !selectedExtendStation || actionLoading}
                 >
-                  Proceed with Tap In
+                  {actionLoading ? (
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                  ) : null}
+                  Confirm Extension
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Early Drop Modal */}
+      {showEarlyDropDropdown && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Early Drop</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowEarlyDropDropdown(false)}
+                  disabled={actionLoading}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Select a station to end your journey early:</p>
+                <select 
+                  className="form-select" 
+                  onChange={(e) => setSelectedEarlyDropStation(JSON.parse(e.target.value))}
+                  value={selectedEarlyDropStation ? JSON.stringify(selectedEarlyDropStation) : ''}
+                  disabled={actionLoading}
+                >
+                  <option value="">Select Station</option>
+                  {getEarlyDropStations().map((station) => (
+                    <option value={JSON.stringify(station)} key={station._id || station.id}>
+                      {station.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedEarlyDropStation && (
+                  <div className="mt-3 p-2 bg-light rounded">
+                    <small>
+                      Refund amount: ₹{Math.max(0, (ticket.price || 50) - calculateFare(
+                        ticket.startStationId?._id || ticket.startStationId?.id || ticket.startStationId,
+                        selectedEarlyDropStation._id || selectedEarlyDropStation.id
+                      ))}
+                    </small>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowEarlyDropDropdown(false)}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleConfirmEarlyDrop}
+                  disabled={!selectedEarlyDropStation || actionLoading === 'earlyDrop'}
+                >
+                  {actionLoading === 'earlyDrop' ? (
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                  ) : null}
+                  Confirm Early Drop
                 </button>
               </div>
             </div>
