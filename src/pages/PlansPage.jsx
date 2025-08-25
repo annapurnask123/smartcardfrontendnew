@@ -1,14 +1,16 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchSubscriptionPlans } from "../slices/subscriptionplanSlice";
-import { openRazorpayCheckout } from "../utils/razorpay";
-import { paymentAPI, subscriptionAPI } from "../api/api";
-import { useSelector as useReduxSelector } from 'react-redux'
+import { subscriptionAPI } from "../api/api";
 
 function PlansPage() {
   const dispatch = useDispatch();
-  const { plans = [], loading, error } = useSelector(state => state.subscriptionPlans);
-  const q = useSelector(state => state.ui.query)
+  const { plans = [], loading, error } = useSelector(
+    (state) => state.subscriptionPlans
+  );
+  const q = useSelector((state) => state.ui.query);
+  const navigate = useNavigate();
 
   useEffect(() => {
     dispatch(fetchSubscriptionPlans());
@@ -16,88 +18,99 @@ function PlansPage() {
 
   async function purchasePlan(plan) {
     try {
-      const amountPaise = Math.round((plan.price || plan.amount || 0) * 100)
-      let order
-      try {
-        const res = await paymentAPI.createPaymentOrder({ 
-        amount: amountPaise, 
-        currency: 'INR', 
-        purpose: 'subscription', 
-        meta: { planId: plan.id || plan._id } 
-        })
-        order = res.data
-      } catch (e) {
-        // fallback to legacy endpoint
-        const res2 = await paymentAPI.createPaymentOrderLegacy({
-          amount: amountPaise,
-          currency: 'INR',
-          purpose: 'subscription',
-          meta: { planId: plan.id || plan._id }
-        })
-        order = res2.data
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // 1. Create subscription record in backend
+      const subscriptionResponse = await subscriptionAPI.createSubscription({
+        planId: String(plan.id || plan._id),
+        userId: String(user.id || user._id),
+        planName: plan.name || plan.planName || "",
+        planType: plan.planType || plan.type || "monthly",
+      });
+
+      const subscription =
+        subscriptionResponse.data.subscription || subscriptionResponse.data;
+      const subscriptionId = subscription.id || subscription._id;
+
+      if (!subscriptionId) {
+        alert("Subscription creation failed: No ID returned from backend.");
+        return;
       }
-      
-      await openRazorpayCheckout({
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
-        amount: order.amount,
-        name: 'SmartMetroCard',
-        description: `Purchase ${plan.name}`,
-        orderId: order.id,
-        handler: async (response) => {
-          try {
-            await paymentAPI.verifyPayment({
-              orderId: order.id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpaySignature: response.razorpay_signature,
-            })
-            await subscriptionAPI.createSubscription({ 
-              planId: plan.id || plan._id, 
-              paymentOrderId: order.id 
-            })
-            alert('Subscription purchased successfully!')
-            // Navigate to My Plans page
-            window.location.href = '/my-plans'
-          } catch (error) {
-            console.error('Payment verification failed:', error)
-            alert('Payment verification failed. Please contact support.')
-          }
+
+      // 2. Navigate to Payment Page with correct subscriptionId
+      navigate("/payment", {
+        state: {
+          paymentInfo: {
+            type: "subscription",
+            subscriptionId, // ✅ Pass separately
+            userId: user.id || user._id,
+            paymentMethod: "card",
+            description: `Subscription - ${plan.name}`,
+            planDetails: plan,
+          },
         },
-      })
+      });
     } catch (error) {
-      console.error('Payment order creation failed:', error)
-      alert('Failed to create payment order. Please try again.')
+      console.error("Failed to create subscription:", error);
+      alert("Failed to initiate subscription. Please try again.");
     }
   }
 
   return (
     <div className="container mt-5 pt-5">
-      {/* ...existing code... */}
-      <div className="row">
-  {plans.filter(p => !q || (p.name||'').toLowerCase().includes(q.toLowerCase())).map((plan, idx) => (
-    <div className="col-md-4 mb-4" key={plan.id || plan._id || idx}>
-      <div className="card h-100">
-        <div className="card-body d-flex flex-column">
-          <h5 className="card-title">{plan.name}</h5>
-          <p className="card-text">₹{plan.price || plan.amount} / {plan.duration || 'period'}</p>
-         {Array.isArray(plan.features) && (
-  <ul>
-    {plan.features.map((f) => (
-      <li key={f}>{f}</li>
-    ))}
-  </ul>
-)}
-
-          <div className="mt-auto d-grid">
-            <button className="btn btn-primary" onClick={() => purchasePlan(plan)}>
-              <i className="fas fa-check me-2"></i>Purchase
-            </button>
-          </div>
-        </div>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+          <i className="fas fa-credit-card me-2"></i>Subscription Plans
+        </h2>
       </div>
-    </div>
-  ))}
-</div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+      {loading && (
+        <div className="text-center">
+          <div className="spinner-border" role="status"></div>
+        </div>
+      )}
+
+      <div className="row">
+        {plans
+          .filter(
+            (p) =>
+              !q || (p.name || "").toLowerCase().includes(q.toLowerCase())
+          )
+          .map((plan, idx) => (
+            <div className="col-md-4 mb-4" key={plan.id || plan._id || idx}>
+              <div className="card h-100">
+                <div className="card-body d-flex flex-column">
+                  <h5 className="card-title">{plan.name}</h5>
+                  <p className="card-text">
+                    ₹{plan.price || plan.amount} / {plan.duration || "period"}
+                  </p>
+                  {Array.isArray(plan.features) && (
+                    <ul>
+                      {plan.features.map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-auto d-grid">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => purchasePlan(plan)}
+                    >
+                      <i className="fas fa-check me-2"></i>Purchase
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+
+      {plans.length === 0 && !loading && (
+        <div className="text-center text-muted mt-4">
+          <p>No subscription plans available at the moment.</p>
+        </div>
+      )}
     </div>
   );
 }

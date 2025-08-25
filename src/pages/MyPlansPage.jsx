@@ -1,40 +1,67 @@
 import { useEffect, useState } from 'react'
 import { subscriptionAPI } from '../api/api'
+import { useNavigate } from 'react-router-dom'
 
 function MyPlansPage() {
   const [plans, setPlans] = useState([])
   const [filteredPlans, setFilteredPlans] = useState([])
   const [banner, setBanner] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  
+  const navigate = useNavigate()
+
   useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await subscriptionAPI.getAllSubscriptions()
-        const plansData = Array.isArray(data) ? data : data?.items || []
-        setPlans(plansData)
-        setFilteredPlans(plansData)
-        const url = new URL(window.location.href)
-        if (url.searchParams.get('activated') === '1') setBanner('Your plan is activated successfully')
-      } catch {}
-    })()
+    fetchPlans()
   }, [])
-  
+
+  // ...existing code...
+function getStatusBadgeClass(status) {
+  switch ((status || '').toLowerCase()) {
+    case 'active':
+    case 'pending':
+      return 'bg-success';
+    case 'expired':
+      return 'bg-secondary';
+    case 'expiring':
+    case 'expiring_soon':
+      return 'bg-warning text-dark';
+    case 'cancelled':
+    case 'canceled':
+      return 'bg-danger';
+    default:
+      return 'bg-light text-dark';
+  }
+}
+// ...existing code...
+  async function fetchPlans() {
+    try {
+      const { data } = await subscriptionAPI.getAllSubscriptions()
+      const plansData = Array.isArray(data) ? data : data?.items || []
+      setPlans(plansData)
+      setFilteredPlans(plansData)
+    } catch (error) {
+      console.error('Failed to fetch subscriptions:', error)
+      setPlans([])
+      setFilteredPlans([])
+    }
+  }
+
   useEffect(() => {
     if (!statusFilter) {
       setFilteredPlans(plans)
     } else {
       const filtered = plans.filter(plan => {
         const planStatus = (plan.status || '').toLowerCase()
+        const actualStatus = planStatus === 'pending' ? 'active' : planStatus
+
         switch (statusFilter) {
           case 'active':
-            return planStatus === 'active'
+            return actualStatus === 'active' || planStatus === 'pending'
           case 'expired':
-            return planStatus === 'expired'
+            return actualStatus === 'expired'
           case 'expiring':
-            return planStatus === 'expiring' || planStatus === 'expiring_soon'
+            return actualStatus === 'expiring' || actualStatus === 'expiring_soon'
           case 'cancelled':
-            return planStatus === 'cancelled' || planStatus === 'canceled'
+            return actualStatus === 'cancelled' || actualStatus === 'canceled'
           default:
             return true
         }
@@ -42,18 +69,47 @@ function MyPlansPage() {
       setFilteredPlans(filtered)
     }
   }, [plans, statusFilter])
+
+  // 🔄 Renew
   async function renew(sub) {
     try {
-      await subscriptionAPI.renewSubscription(sub.id || sub._id)
-      setBanner('Renewal initiated. Please complete payment.')
-    } catch {}
+      const { data } = await subscriptionAPI.renewSubscription(sub.id || sub._id)
+      const renewal = data.subscription || data
+
+      // 👇 Redirect to payment page
+      navigate('/payment', {
+        state: {
+          paymentInfo: {
+            type: 'subscription',
+            subscriptionId: renewal.id || renewal._id,
+            userId: renewal.userId,
+            paymentMethod: 'card',
+            description: `Renewal - ${renewal.planName || renewal.name}`,
+            planDetails: renewal
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Renewal failed:', error)
+      setBanner('Renewal failed. Please try again.')
+    }
   }
+
+  // ❌ Cancel
   async function cancel(sub) {
     try {
-      await subscriptionAPI.cancelSubscription(sub.id || sub._id)
-      setPlans(plans.map(p => (p.id===sub.id||p._id===sub._id) ? { ...p, status: 'cancelled' } : p))
-    } catch {}
+      const { data } = await subscriptionAPI.cancelSubscription(sub.id || sub._id)
+      const cancelled = data.subscription || data
+
+      // update state with latest info from backend
+      setPlans(plans.map(p => (p.id === cancelled.id || p._id === cancelled._id) ? cancelled : p))
+      setBanner('Subscription cancelled successfully.')
+    } catch (error) {
+      console.error('Cancellation failed:', error)
+      setBanner('Cancellation failed. Please try again.')
+    }
   }
+
   return (
     <div className="container mt-5 pt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -79,7 +135,7 @@ function MyPlansPage() {
                   <div>
                     <h5 className="card-title mb-1">
                       <i className="fas fa-crown text-warning me-2"></i>
-                      {plan.name}
+                      {plan.name || plan.planName}
                     </h5>
                     <p className="card-text text-muted mb-2">
                       <i className="fas fa-calendar-alt me-1"></i>
@@ -120,43 +176,3 @@ function MyPlansPage() {
 }
 
 export default MyPlansPage
-
-function getStatusBadgeClass(status) {
-  switch (status?.toLowerCase()) {
-    case 'active': return 'bg-success'
-    case 'expired': return 'bg-danger'
-    case 'expiring': return 'bg-warning'
-    case 'cancelled': return 'bg-secondary'
-    default: return 'bg-light text-dark'
-  }
-}
-
-// Add CSS for hover effects
-const styles = `
-  .hover-lift {
-    transition: transform 0.2s ease-in-out;
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-  .subscription-active {
-    border-left: 4px solid #28a745;
-  }
-  .subscription-expired {
-    border-left: 4px solid #dc3545;
-  }
-  .subscription-expiring {
-    border-left: 4px solid #ffc107;
-  }
-  .subscription-cancelled {
-    border-left: 4px solid #6c757d;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
-}
-

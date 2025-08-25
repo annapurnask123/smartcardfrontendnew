@@ -1,283 +1,366 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { useState, useEffect } from "react";
+import { paymentAPI } from "../api/api";
+import PaymentSuccessNotification from "../components/PaymentSuccessNotification";
 
-import { addTicket } from "../slices/ticketSlice";
-import { addSubscription } from "../slices/subscriptionSlice";
-import { fetchWallet, deductFare } from "../slices/walletSlice";
-import { cardAPI } from "../api/api";
-
-import { paymentAPI, ticketAPI, subscriptionAPI } from "../api/api";
-import { openRazorpayCheckout } from "../utils/razorpay";
-
-export default function PaymentPage() {
-  const { state } = useLocation();
+const PaymentPage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  const user = useSelector((s) => s.auth.user);
-  const wallet = useSelector((s) => s.wallet);
+  const user = useSelector((state) => state.auth.user);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const paymentInfo = state?.paymentInfo;
+  // Get payment info from navigation state
+  const paymentInfo = location.state?.paymentInfo;
+
+  // Get user from Redux or localStorage
+  const currentUser =
+    user || JSON.parse(localStorage.getItem("user") || "null");
 
   useEffect(() => {
-    if (!paymentInfo) setError("Payment info missing");
-    if (!user) setError("User not logged in");
-    if (user && paymentInfo) dispatch(fetchWallet(user.id));
-  }, [paymentInfo, user, dispatch]);
-
-  if (!paymentInfo) return <div className="container mt-5">Payment info missing</div>;
-  if (!user) return <div className="container mt-5">User not logged in</div>;
-
-  const goToResult = (success, message = "") => {
-    const result = { success, method: paymentInfo.paymentMethod || "razorpay", message };
-    localStorage.setItem("lastPaymentResult", JSON.stringify({ ...result, paymentInfo }));
-    navigate("/payment-result");
-  };
-
-  // Wallet Payment
-  async function payWithWallet() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (wallet.balance < paymentInfo.amount) {
-        return goToResult(false, "Insufficient wallet balance.");
-      }
-
-      await dispatch(deductFare({ userId: user.id, amount: paymentInfo.amount })).unwrap();
-
-      if (paymentInfo.type === "ticket") {
-        const ticketPayload = {
-          userId: user.id,
-          trip_id: '100', // Replace with real tripId if needed
-          startStationId: paymentInfo.booking.sourceId,
-          endStationId: paymentInfo.booking.destinationId,
-          ticketType: paymentInfo.booking.journeyType,
-          passengerCount: Number(paymentInfo.booking.passengerCount),
-          amount: Number(paymentInfo.amount),
-          paymentMethod: "wallet",
-        };
-
-        const { data: ticket } = await ticketAPI.bookTicket(ticketPayload);
-        dispatch(addTicket({
-          id: ticket.id || ticket._id || `TKT${Date.now()}`,
-          source: paymentInfo.booking.sourceName,
-          destination: paymentInfo.booking.destinationName,
-          date: new Date().toLocaleDateString(),
-          status: ticket.status || "active",
-          amount: paymentInfo.amount,
-        }));
-      } else if (paymentInfo.type === "subscription") {
-        const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
-        dispatch(addSubscription(subscription));
-                  } else if (paymentInfo.type === "card_recharge") {
-              // Handle card recharge
-              try {
-                await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
-                // Navigate back to cards page with success message
-                navigate('/cards', { 
-                  state: { 
-                    message: `Card recharged successfully with ₹${paymentInfo.amount}`,
-                    type: 'success'
-                  } 
-                });
-              } catch (error) {
-                console.error('Card recharge failed:', error);
-                navigate('/cards', { 
-                  state: { 
-                    message: 'Card recharge failed. Please try again.',
-                    type: 'error'
-                  } 
-                });
-              }
-            }
-
-      goToResult(true);
-    } catch (err) {
-      console.error("Wallet payment error:", err);
-      goToResult(false, "Wallet payment failed.");
-    } finally {
-      setLoading(false);
+    if (!paymentInfo) {
+      setError("Payment information is missing. Please go back and try again.");
     }
-  }
+  }, [paymentInfo]);
 
-  // Razorpay Payment
-  async function pay() {
+  // Main payment function
+  const handlePayment = async (overrideInfo) => {
+    const info = overrideInfo || paymentInfo;
+
+    if (!info) {
+      setError("No payment information available");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const amountPaise = Math.round(Number(paymentInfo.amount) * 100);
-
-      const payload = {
-        amount: amountPaise,
-        currency: "INR",
-        purpose: paymentInfo.type,
-        type: paymentInfo.type,
-        id: paymentInfo.id,
-        userId: user.id || user._id,
-        meta: paymentInfo.booking
-          ? {
-              startStationId: paymentInfo.booking.sourceId,
-              endStationId: paymentInfo.booking.destinationId,
-              passengerCount: Number(paymentInfo.booking.passengerCount),
-              ticketType: paymentInfo.booking.journeyType,
-            }
-          : {},
-      };
-
-      let order
-      try {
-        const res = await paymentAPI.createPaymentOrder(payload);
-        order = res.data
-      } catch (e) {
-        // fallback to legacy endpoint path
-        const res2 = await paymentAPI.createPaymentOrderLegacy(payload)
-        order = res2.data
+      // Get user ID
+      const userId = currentUser?.id || currentUser?._id;
+      if (!userId) {
+        throw new Error("User authentication required. Please login again.");
       }
 
-      if (!order?.order_id && !order?.id) {
-        throw new Error("Invalid payment order returned");
+      // Map payment type
+      let backendType = info.type;
+      if (info.type === "card_recharge" || info.type === "card_recharge_by_number") {
+        backendType = "recharge";
       }
 
-      await openRazorpayCheckout({
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: order.amount,
+      // Extract correct IDs
+      let paymentId = info.id;
+      let subscriptionId = info.subscriptionId;
+
+      // Validate subscription ID
+      if (backendType === "subscription" && !subscriptionId) {
+        setError("Subscription ID missing. Please try again or contact support.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Processing payment:", {
+        type: backendType,
+        paymentId,
+        subscriptionId,
+        userId,
+        amount: info.amount,
+      });
+
+      // Wallet payment
+      if (info.type === "wallet_payment") {
+        try {
+          const walletResponse = await paymentAPI.createPaymentOrder({
+            type: info.originalType || backendType,
+            id: paymentId,
+            subscriptionId,
+            userId,
+            amount: info.amount,
+            paymentMethod: "wallet",
+          });
+
+          if (walletResponse.data.success) {
+            setSuccessMessage("Payment completed successfully!");
+            setShowSuccess(true);
+
+            // Redirect after success
+            setTimeout(() => {
+              if (backendType === "subscription") {
+                navigate("/my-plans?activated=1");
+              } else if (backendType === "ticket") {
+                navigate("/tickets");
+              } else if (backendType === "recharge") {
+                navigate("/cards");
+              } else {
+                navigate("/dashboard");
+              }
+            }, 2000);
+            return;
+          } else {
+            throw new Error(walletResponse.data.error || "Wallet payment failed");
+          }
+        } catch (walletError) {
+          console.error("Wallet payment failed:", walletError);
+          setError(walletError.response?.data?.error || "Wallet payment failed");
+          return;
+        }
+      }
+
+      // Build payment payload
+      let paymentPayload;
+      if (backendType === "subscription") {
+        paymentPayload = {
+          type: "subscription",
+          id: subscriptionId, // ✅ use correct subscriptionId
+          userId,
+          paymentMethod: info.paymentMethod || "card",
+        };
+      } else {
+        paymentPayload = {
+          type: backendType,
+          id: paymentId,
+          userId,
+          amount: info.amount || 100,
+          paymentMethod: info.paymentMethod || "upi",
+        };
+      }
+
+      console.log("Payment payload:", paymentPayload);
+      const response = await paymentAPI.createPaymentOrder(paymentPayload);
+
+      const order = response.data;
+      console.log("Payment order created:", order);
+
+      // Razorpay options
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_demo",
+        amount: order.amount || info.amount * 100,
         currency: "INR",
         name: "SmartMetroCard",
-        description: `Payment for ${paymentInfo.type}`,
-        orderId: order.order_id || order.id,
+        description: info.description || `Payment for ${info.type}`,
+        order_id: order.order_id || order.id,
         prefill: {
-          name: user.name,
-          email: user.email,
-          contact: user.phone,
+          name: currentUser?.name || "",
+          email: currentUser?.email || "",
+          contact: currentUser?.phone || "",
         },
-        handler: async (response) => {
+        handler: async function (response) {
           try {
-            const { data: verifyResult } = await paymentAPI.verifyPayment({
+            console.log("Payment successful:", response);
+
+            // Verify payment with backend
+            const verifyResponse = await paymentAPI.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              type: backendType,
+              subscriptionId:
+                backendType === "subscription" ? subscriptionId : undefined,
             });
 
-            if (!verifyResult?.success) {
-              console.error("Payment verification failed", verifyResult);
-              return goToResult(false, "Payment verification failed.");
+            if (verifyResponse.data.success) {
+              setSuccessMessage("Payment completed successfully!");
+              setShowSuccess(true);
+              setTimeout(() => {
+                if (backendType === "subscription") {
+                  navigate("/my-plans?activated=1", {
+                    state: { message: "Subscription activated!" },
+                  });
+                } else if (backendType === "ticket") {
+                  navigate("/tickets", {
+                    state: { message: "Ticket booked successfully!" },
+                  });
+                } else if (backendType === "recharge") {
+                  navigate("/cards", {
+                    state: { message: "Card recharged successfully!" },
+                  });
+                } else {
+                  navigate("/dashboard", { state: { message: "Payment completed!" } });
+                }
+              }, 2000);
+            } else {
+              throw new Error(
+                verifyResponse.data.error || "Payment verification failed"
+              );
             }
-
-            if (paymentInfo.type === "ticket") {
-              const ticketPayload = {
-                userId: user.id,
-                trip_id: '100', // Replace with real tripId if needed
-                startStationId: paymentInfo.booking.sourceId,
-                endStationId: paymentInfo.booking.destinationId,
-                ticketType: paymentInfo.booking.journeyType,
-                passengerCount: Number(paymentInfo.booking.passengerCount),
-                amount: Number(paymentInfo.amount),
-                paymentMethod: "razorpay",
-                paymentOrderId: order.order_id || order.id,
-              };
-
-              console.log("Booking payload:", ticketPayload); // Debug
-
-              const { data: ticket } = await ticketAPI.bookTicket(ticketPayload);
-              const ticketId = ticket.id || ticket._id;
-              dispatch(addTicket({
-                id: ticketId || `TKT${Date.now()}`,
-                source: paymentInfo.booking.sourceName,
-                destination: paymentInfo.booking.destinationName,
-                date: new Date().toLocaleDateString(),
-                status: ticket.status || "active",
-                amount: paymentInfo.amount,
-              }));
-              // Navigate to Ticket Details page after successful ticket payment
-              localStorage.setItem("lastPaymentResult", JSON.stringify({ success: true, method: "razorpay", paymentInfo }));
-              return navigate(`/tickets/${encodeURIComponent(ticketId)}`);
-            } else if (paymentInfo.type === "subscription") {
-              const { data: subscription } = await subscriptionAPI.getSubscription(paymentInfo.id);
-              dispatch(addSubscription(subscription));
-            } else if (paymentInfo.type === "card_recharge") {
-              // Handle card recharge
-              try {
-                await cardAPI.rechargeCard(paymentInfo.cardId, { amount: paymentInfo.amount });
-                // Navigate back to cards page with success message
-                navigate('/cards', { 
-                  state: { 
-                    message: `Card recharged successfully with ₹${paymentInfo.amount}`,
-                    type: 'success'
-                  } 
-                });
-              } catch (error) {
-                console.error('Card recharge failed:', error);
-                navigate('/cards', { 
-                  state: { 
-                    message: 'Card recharge failed. Please try again.',
-                    type: 'error'
-                  } 
-                });
-              }
-            }
-
-            goToResult(true);
-          } catch (err) {
-            console.error("Payment handler error:", err);
-            goToResult(false, "Payment verification failed.");
-          } finally {
-            setLoading(false);
+          } catch (verifyError) {
+            console.error("Payment verification failed:", verifyError);
+            setError("Payment verification failed. Please contact support.");
           }
         },
         modal: {
-          ondismiss: () => setLoading(false),
+          ondismiss: () => {
+            setLoading(false);
+          },
         },
-      });
-    } catch (err) {
-      console.error("Payment initiation error:", err);
-      goToResult(false, "Payment initiation failed.");
+      };
+
+      // Open Razorpay or simulate if unavailable
+      if (typeof window.Razorpay === "undefined") {
+        console.log("Razorpay not available, simulating payment...");
+        setTimeout(() => {
+          setSuccessMessage("Payment processed successfully! (Simulated)");
+          setShowSuccess(true);
+          if (info.type === "subscription") {
+            navigate("/my-plans", { state: { message: "Subscription activated!" } });
+          } else if (info.type === "ticket") {
+            navigate("/tickets", { state: { message: "Ticket booked successfully!" } });
+          } else if (info.type === "card_recharge") {
+            navigate("/cards", { state: { message: "Card recharged successfully!" } });
+          } else {
+            navigate("/dashboard", { state: { message: "Payment completed!" } });
+          }
+        }, 2000);
+      } else {
+        const razorpay = new window.Razorpay(options);
+        razorpay.open();
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      setError(error.response?.data?.error || error.message || "Payment failed");
+    } finally {
       setLoading(false);
     }
+  };
+
+  if (!paymentInfo) {
+    return (
+      <div className="container mt-5 pt-5">
+        <div className="alert alert-danger">
+          <i className="fas fa-exclamation-triangle me-2"></i>
+          Payment information is missing. Please go back and try again.
+        </div>
+        <button className="btn btn-primary" onClick={() => navigate(-1)}>
+          <i className="fas fa-arrow-left me-2"></i>Go Back
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="container mt-5 pt-5">
+      {showSuccess && (
+        <PaymentSuccessNotification
+          message={successMessage}
+          type="success"
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
       <div className="row justify-content-center">
-        <div className="col-md-8">
-          <div className="card">
-            <div className="card-header bg-success text-white">
-              <h5><i className="fas fa-credit-card me-2"></i>Payment</h5>
+        <div className="col-lg-8">
+          <div className="card border-0 shadow">
+            <div className="card-header bg-primary text-white">
+              <h4 className="mb-0">
+                <i className="fas fa-credit-card me-2"></i>
+                Complete Payment
+              </h4>
             </div>
-            <div className="card-body">
-              {error && <div className="alert alert-danger">{error}</div>}
-              <div className="mb-4">
-                <h6>Payment Summary</h6>
-                <div className="card bg-light p-3">
-                  <p>Type: {paymentInfo.type}</p>
-                  <p>Amount: {paymentInfo.amount} INR</p>
-                  {paymentInfo.booking && <>
-                    <p>From: <strong>{paymentInfo.booking.sourceName}</strong></p>
-                    <p>To: <strong>{paymentInfo.booking.destinationName}</strong></p>
-                    <p>Passengers: {paymentInfo.booking.passengerCount}</p>
-                    <p>Journey Type: {paymentInfo.booking.journeyType}</p>
-                  </>}
-                  {paymentInfo.type === "card_recharge" && (
-                    <>
-                      <p>Card ID: {paymentInfo.cardId}</p>
-                      <p>Recharge Amount: ₹{paymentInfo.amount}</p>
-                    </>
-                  )}
-                  <p>Wallet Balance: ₹{wallet.balance}</p>
+
+            <div className="card-body p-4">
+              {error && (
+                <div className="alert alert-danger">
+                  <i className="fas fa-exclamation-triangle me-2"></i>
+                  {error}
+                </div>
+              )}
+
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="card">
+                    <div className="card-body">
+                      <h5 className="card-title">
+                        <i className="fas fa-credit-card text-primary me-2"></i>
+                        Payment Details
+                      </h5>
+                      <div className="mb-3">
+                        <strong>Type:</strong> {paymentInfo.type}
+                      </div>
+                      <div className="mb-3">
+                        <strong>Amount:</strong> ₹{paymentInfo.amount || 100}
+                      </div>
+                      <div className="mb-3">
+                        <strong>Description:</strong>{" "}
+                        {paymentInfo.description || "Payment"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="card">
+                    <div className="card-header bg-light">
+                      <h6>User Info</h6>
+                    </div>
+                    <div className="card-body">
+                      <p>
+                        <strong>User ID:</strong>{" "}
+                        {currentUser?.id
+                          ? "***" + currentUser.id.slice(-4)
+                          : currentUser?._id
+                          ? "***" + currentUser._id.slice(-4)
+                          : "Not available"}
+                      </p>
+                      <p>
+                        <strong>Name:</strong>{" "}
+                        {currentUser?.name || "Not available"}
+                      </p>
+                      <p>
+                        <strong>Email:</strong>{" "}
+                        {currentUser?.email || "Not available"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="d-grid gap-2">
-                <button className="btn btn-success" onClick={pay} disabled={loading}>
-                  {loading ? "Processing..." : "Pay with Card/UPI"}
-                </button>
-                <button className="btn btn-outline-primary" onClick={payWithWallet} disabled={loading}>
-                  Pay with Wallet
-                </button>
+
+              <div className="mt-4">
+                <div className="d-grid gap-3">
+                  <button
+                    className="btn btn-primary btn-lg"
+                    onClick={() => handlePayment()}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Processing Payment...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-credit-card me-2"></i>
+                        Pay ₹{paymentInfo.amount || 100}
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    className="btn btn-success btn-lg"
+                    onClick={() => {
+                      const walletPaymentInfo = {
+                        ...paymentInfo,
+                        type: "wallet_payment",
+                        originalType: paymentInfo.type,
+                      };
+                      handlePayment(walletPaymentInfo);
+                    }}
+                    disabled={loading}
+                  >
+                    <i className="fas fa-wallet me-2"></i>
+                    Pay with Wallet
+                  </button>
+
+                  <button
+                    className="btn btn-outline-secondary"
+                    onClick={() => navigate(-1)}
+                    disabled={loading}
+                  >
+                    <i className="fas fa-arrow-left me-2"></i>
+                    Go Back
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -285,4 +368,6 @@ export default function PaymentPage() {
       </div>
     </div>
   );
-}
+};
+
+export default PaymentPage;
