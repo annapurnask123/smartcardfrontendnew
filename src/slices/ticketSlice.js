@@ -27,7 +27,14 @@ const ticketSlice = createSlice({
     addTicket: (state, action) => {
       state.tickets.push(action.payload);
     },
-    // You can add more reducers like updateTicket, removeTicket if needed
+    // Reducer to update a ticket by id
+    updateTicket: (state, action) => {
+      const updated = action.payload;
+      const idx = state.tickets.findIndex(t => t.id === updated.id || t._id === updated.id || t.id === updated._id);
+      if (idx !== -1) {
+        state.tickets[idx] = { ...state.tickets[idx], ...updated };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -46,7 +53,7 @@ const ticketSlice = createSlice({
 });
 
 // Export the addTicket action creator
-export const { addTicket } = ticketSlice.actions;
+export const { addTicket, updateTicket } = ticketSlice.actions;
 
 // Export the reducer as default export
 export default ticketSlice.reducer;

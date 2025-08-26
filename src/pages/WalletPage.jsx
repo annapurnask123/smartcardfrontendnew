@@ -1,19 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchWallet, clearWalletError } from "../slices/walletSlice";
+import { 
+  fetchWallet, 
+  clearWalletError, 
+  createWalletRechargeOrder, 
+  addMoney,
+  clearRechargeOrder,
+  getWalletTransactions 
+} from "../slices/walletSlice";
+import api from "../api/api";
+import PaymentSuccessNotification from "../components/PaymentSuccessNotification";
 
 export default function WalletPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
-  const { balance, transactions, loading, error } = useSelector((state) => state.wallet);
+  const { 
+    walletId, 
+    balance, 
+    transactions, 
+    loading, 
+    error, 
+    rechargeOrder, 
+    rechargeLoading 
+  } = useSelector((state) => state.wallet);
+  
   const [rechargeAmount, setRechargeAmount] = useState(100);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showPaymentSuccessNotification, setShowPaymentSuccessNotification] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       dispatch(fetchWallet(user.id));
+      dispatch(getWalletTransactions({ userId: user.id }));
     }
   }, [dispatch, user]);
 
@@ -26,21 +47,117 @@ export default function WalletPage() {
     }
   }, [dispatch, error]);
 
-  const handleRecharge = () => {
-    // Navigate to payment page with recharge amount
-    navigate('/payment', { 
-      state: { 
-        type: 'recharge', 
-        amount: rechargeAmount,
-        description: `Wallet Recharge - ₹${rechargeAmount}`
-      } 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
     });
   };
 
-  const quickRechargeAmounts = [50, 100, 200, 500, 1000];
+  const handleRecharge = async () => {
+    if (rechargeAmount < 10) {
+      alert('Minimum recharge amount is ₹10');
+      return;
+    }
 
+    if (rechargeAmount > 10000) {
+      alert('Maximum recharge amount is ₹10,000');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert('Razorpay SDK failed to load. Please check your internet connection.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create wallet recharge order
+      const orderResult = await dispatch(createWalletRechargeOrder({
+        userId: user.id,
+        amount: rechargeAmount
+      })).unwrap();
+
+      if (!orderResult.success) {
+        throw new Error(orderResult.error || 'Failed to create payment order');
+      }
+
+      // Razorpay options
+      const options = {
+        key: orderResult.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderResult.amount,
+        currency: orderResult.currency || 'INR',
+        name: "Smart Metro Card",
+        description: `Wallet Recharge - ₹${rechargeAmount}`,
+        image: "/logo.png",
+        order_id: orderResult.order_id,
+        handler: async function (response) {
+          try {
+            // Verify payment on backend
+            const verificationResponse = await api.post('/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verificationResponse.data.success) {
+              // Refresh wallet data
+              await dispatch(fetchWallet(user.id));
+              await dispatch(getWalletTransactions({ userId: user.id }));
+              
+              setShowPaymentSuccessNotification(true);
+              setTimeout(() => setShowPaymentSuccessNotification(false), 5000);
+              setShowRechargeModal(false);
+              dispatch(clearRechargeOrder());
+            } else {
+              alert('Payment verification failed. Please contact support.');
+            }
+          } catch (verifyError) {
+            console.error('Payment verification error:', verifyError);
+            alert('Payment verification failed. Please contact support.');
+          }
+          setIsProcessing(false);
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || ''
+        },
+        notes: {
+          type: "wallet_recharge",
+          userId: user.id,
+          amount: rechargeAmount
+        },
+        theme: {
+          color: "#667eea"
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      
+      razorpay.on('payment.failed', function (response) {
+        alert(`Payment failed: ${response.error.description}`);
+        setIsProcessing(false);
+      });
+
+      razorpay.open();
+
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert(error.message || 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  const quickRechargeAmounts = [50, 100, 200, 500, 1000];
   const recentTransactions = transactions?.slice(0, 5) || [];
-  const allTransactions = transactions || [];
 
   if (loading) {
     return (
@@ -89,9 +206,19 @@ export default function WalletPage() {
                   <button 
                     className="btn btn-primary btn-lg"
                     onClick={() => setShowRechargeModal(true)}
+                    disabled={isProcessing || rechargeLoading}
                   >
-                    <i className="fas fa-plus me-2"></i>
-                    Recharge Wallet
+                    {isProcessing || rechargeLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-plus me-2"></i>
+                        Recharge Wallet
+                      </>
+                    )}
                   </button>
                   <button 
                     className="btn btn-outline-secondary"
@@ -121,6 +248,7 @@ export default function WalletPage() {
                         setRechargeAmount(amount);
                         setShowRechargeModal(true);
                       }}
+                      disabled={isProcessing || rechargeLoading}
                     >
                       <div className="recharge-amount">₹{amount}</div>
                       <small className="text-muted">Quick Add</small>
@@ -160,31 +288,31 @@ export default function WalletPage() {
                         </thead>
                         <tbody>
                           {recentTransactions.map((transaction, index) => (
-                            <tr key={transaction.id || `transaction-${index}`}>
+                            <tr key={transaction.id || transaction._id || `transaction-${index}`}>
                               <td>
                                 <div className="d-flex align-items-center">
                                   <div className="transaction-icon-small me-2">
-                                    <i className={`fas fa-${getTransactionIcon(transaction.type)} ${getTransactionColor(transaction.type)}`}></i>
+                                    <i className={`fas fa-${getTransactionIcon(transaction.transactionType)} ${getTransactionColor(transaction.transactionType)}`}></i>
                                   </div>
                                   <div>
                                     <div className="fw-bold">
-                                      {transaction.description || 'Transaction'}
+                                      {transaction.remarks || transaction.description || 'Transaction'}
                                     </div>
                                     <small className="text-muted">
-                                      {transaction.reference || 'No reference'}
+                                      {transaction.paymentGatewayTransactionId || 'No reference'}
                                     </small>
                                   </div>
                                 </div>
                               </td>
-                              <td>{formatDate(transaction.date || transaction.createdAt)}</td>
+                              <td>{formatDate(transaction.createdAt)}</td>
                               <td>
-                                <span className={`badge ${getTypeBadgeClass(transaction.type)}`}>
-                                  {transaction.type || 'Unknown'}
+                                <span className={`badge ${getTypeBadgeClass(transaction.transactionType)}`}>
+                                  {transaction.transactionType || 'Unknown'}
                                 </span>
                               </td>
                               <td>
-                                <span className={`fw-bold ${transaction.type === 'credit' ? 'text-success' : 'text-danger'}`}>
-                                  {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount || 0}
+                                <span className={`fw-bold ${transaction.transactionType?.includes('credit') ? 'text-success' : 'text-danger'}`}>
+                                  {transaction.transactionType?.includes('credit') ? '+' : '-'}₹{transaction.amount || 0}
                                 </span>
                               </td>
                               <td>
@@ -219,6 +347,7 @@ export default function WalletPage() {
                   type="button" 
                   className="btn-close" 
                   onClick={() => setShowRechargeModal(false)}
+                  disabled={isProcessing || rechargeLoading}
                 ></button>
               </div>
               <div className="modal-body">
@@ -230,12 +359,15 @@ export default function WalletPage() {
                     value={rechargeAmount}
                     onChange={(e) => setRechargeAmount(Number(e.target.value))}
                     min="10"
+                    max="10000"
                     step="10"
+                    disabled={isProcessing || rechargeLoading}
                   />
                 </div>
+                
                 <div className="alert alert-info">
                   <i className="fas fa-info-circle me-2"></i>
-                  Minimum recharge amount is ₹10
+                  Minimum recharge amount is ₹10. Maximum is ₹10,000. You will be redirected to Razorpay secure payment gateway.
                 </div>
               </div>
               <div className="modal-footer">
@@ -243,6 +375,7 @@ export default function WalletPage() {
                   type="button" 
                   className="btn btn-secondary" 
                   onClick={() => setShowRechargeModal(false)}
+                  disabled={isProcessing || rechargeLoading}
                 >
                   Cancel
                 </button>
@@ -250,15 +383,28 @@ export default function WalletPage() {
                   type="button" 
                   className="btn btn-primary" 
                   onClick={handleRecharge}
-                  disabled={rechargeAmount < 10}
+                  disabled={rechargeAmount < 10 || rechargeAmount > 10000 || isProcessing || rechargeLoading}
                 >
-                  <i className="fas fa-credit-card me-2"></i>
-                  Proceed to Payment
+                  {isProcessing || rechargeLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-credit-card me-2"></i>
+                      Proceed to Payment
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {showPaymentSuccessNotification && (
+        <PaymentSuccessNotification />
       )}
 
       <style jsx>{`
@@ -280,12 +426,6 @@ export default function WalletPage() {
           width: 200%;
           height: 200%;
           background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-          animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
         }
 
         .balance-header {
@@ -376,6 +516,7 @@ export default function WalletPage() {
   );
 }
 
+// Helper functions remain the same as before
 function getTransactionIcon(type) {
   switch (type?.toLowerCase()) {
     case 'credit': return 'arrow-down'

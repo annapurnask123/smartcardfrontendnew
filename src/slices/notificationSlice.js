@@ -54,6 +54,15 @@ const notificationSlice = createSlice({
     markAllNotificationsRead: (state) => {
       state.messages = state.messages.map((n) => ({ ...n, read: true }));
     },
+    // Add this new action
+    markNotificationRead: (state, action) => {
+      const notificationId = action.payload;
+      state.messages = state.messages.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, read: true }
+          : notification
+      );
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -90,5 +99,6 @@ export const {
   clearNotifications,
   setNotifications,
   markAllNotificationsRead,
+  markNotificationRead, // Export the new action
 } = notificationSlice.actions;
 export default notificationSlice.reducer;

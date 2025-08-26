@@ -11,10 +11,28 @@ function NearbyStationsFinder({ show, onClose }) {
   const stationsState = useSelector(state => state.stations);
   const stations = stationsState?.allItems || stationsState?.items || [];
 
+  useEffect(() => {
+    // Add event listener for escape key
+    const handleEscKey = (e) => {
+      if (e.keyCode === 27) onClose();
+    };
+    
+    if (show) {
+      document.addEventListener('keydown', handleEscKey);
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [show, onClose]);
+
   const getCurrentLocation = () => {
     setLoading(true);
     setError('');
     setPermissionDenied(false);
+    setNearbyStations([]);
 
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by this browser');
@@ -44,7 +62,7 @@ function NearbyStationsFinder({ show, onClose }) {
             setError('Location information is unavailable.');
             break;
           case error.TIMEOUT:
-            setError('Location request timed out.');
+            setError('Location request timed out. Please try again.');
             break;
           default:
             setError('An unknown error occurred while retrieving location.');
@@ -53,7 +71,7 @@ function NearbyStationsFinder({ show, onClose }) {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 300000 // 5 minutes
       }
     );
@@ -131,74 +149,91 @@ function NearbyStationsFinder({ show, onClose }) {
   return (
     <div 
       className="modal fade show d-block" 
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-      onClick={(e) => {
-        // Close modal when clicking on backdrop
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+      style={{ 
+        backgroundColor: 'rgba(0,0,0,0.5)', 
+        backdropFilter: 'blur(3px)',
+        zIndex: 1050 
       }}
+      tabIndex="-1"
+      role="dialog"
+      aria-labelledby="nearbyStationsModalLabel"
+      aria-hidden="true"
     >
-      <div className="modal-dialog modal-lg modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              <i className="fas fa-map-marker-alt text-primary me-2"></i>
+      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-content shadow-lg border-0">
+          <div className="modal-header bg-gradient-primary text-white">
+            <h5 className="modal-title fw-bold" id="nearbyStationsModalLabel">
+              <i className="fas fa-map-marker-alt me-2"></i>
               Nearby Metro Stations
             </h5>
             <button 
               type="button" 
-              className="btn-close" 
+              className="btn-close btn-close-white"
               onClick={onClose}
               aria-label="Close"
             ></button>
           </div>
-          <div className="modal-body">
-            {!location && !loading && (
-              <div className="text-center py-4">
-                <i className="fas fa-location-arrow fa-3x text-muted mb-3"></i>
-                <h6>Find stations near you</h6>
+          
+          <div className="modal-body p-4">
+            {!location && !loading && nearbyStations.length === 0 && (
+              <div className="text-center py-5">
+                <div className="mb-4">
+                  <i className="fas fa-location-arrow fa-4x text-primary opacity-75"></i>
+                </div>
+                <h5 className="fw-bold mb-3">Find Stations Near You</h5>
                 <p className="text-muted mb-4">
-                  We'll use your location to show the nearest metro stations
+                  Allow location access to discover the nearest metro stations to your current position
                 </p>
                 <button 
-                  className="btn btn-primary"
+                  className="btn btn-primary btn-lg px-4 py-2 rounded-pill fw-semibold"
                   onClick={getCurrentLocation}
                 >
                   <i className="fas fa-crosshairs me-2"></i>
-                  Get My Location
+                  Detect My Location
                 </button>
+                
+                <div className="mt-4">
+                  <small className="text-muted">
+                    <i className="fas fa-info-circle me-1"></i>
+                    Your location is only used to find nearby stations and is not stored
+                  </small>
+                </div>
               </div>
             )}
 
             {loading && (
-              <div className="text-center py-4">
-                <div className="spinner-border text-primary mb-3" role="status">
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary mb-3" style={{width: '3rem', height: '3rem'}} role="status">
                   <span className="visually-hidden">Loading...</span>
                 </div>
-                <p>Finding your location...</p>
+                <h6 className="fw-semibold">Locating you...</h6>
+                <p className="text-muted small">Please allow location access when prompted</p>
               </div>
             )}
 
             {error && (
-              <div className="alert alert-danger">
-                <i className="fas fa-exclamation-triangle me-2"></i>
-                {error}
-                {permissionDenied && (
-                  <div className="mt-2">
-                    <small>
-                      To enable location access:
-                      <br />• Click the location icon in your browser's address bar
-                      <br />• Select "Allow" for location access
-                      <br />• Refresh the page and try again
-                    </small>
+              <div className="alert alert-warning border-0 rounded-3 shadow-sm">
+                <div className="d-flex align-items-center">
+                  <i className="fas fa-exclamation-circle fa-lg text-warning me-3"></i>
+                  <div className="flex-grow-1">
+                    <h6 className="alert-heading fw-semibold mb-1">Location Access Needed</h6>
+                    <p className="mb-2">{error}</p>
+                    {permissionDenied && (
+                      <div className="bg-light p-3 rounded-2 mt-2">
+                        <small className="d-block mb-1 fw-semibold">To enable location access:</small>
+                        <small className="d-block">• Click the location icon in your browser's address bar</small>
+                        <small className="d-block">• Select "Allow" for location access</small>
+                        <small className="d-block">• Refresh the page and try again</small>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="mt-3">
+                </div>
+                <div className="mt-3 text-end">
                   <button 
-                    className="btn btn-outline-primary btn-sm"
+                    className="btn btn-outline-primary btn-sm rounded-pill px-3"
                     onClick={getCurrentLocation}
                   >
+                    <i className="fas fa-redo me-1"></i>
                     Try Again
                   </button>
                 </div>
@@ -207,69 +242,93 @@ function NearbyStationsFinder({ show, onClose }) {
 
             {nearbyStations.length > 0 && (
               <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h6 className="mb-0">
-                    <i className="fas fa-train me-2"></i>
-                    Stations near you
-                  </h6>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <h6 className="fw-bold mb-1 text-dark">
+                      <i className="fas fa-train-subway text-primary me-2"></i>
+                      Stations Near Your Location
+                    </h6>
+                    <small className="text-muted">
+                      Sorted by distance from your current position
+                    </small>
+                  </div>
                   <button 
-                    className="btn btn-outline-secondary btn-sm"
+                    className="btn btn-outline-primary btn-sm rounded-pill"
                     onClick={getCurrentLocation}
+                    title="Refresh location"
                   >
                     <i className="fas fa-sync-alt me-1"></i>
                     Refresh
                   </button>
                 </div>
                 
-                <div className="list-group">
+                <div className="stations-list">
                   {nearbyStations.map((station, index) => (
-                    <div key={station._id || station.id || index} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="flex-grow-1">
-                          <h6 className="mb-1">
-                            {station.name || station.stationName || 'Unknown Station'}
-                          </h6>
-                          <p className="mb-1 text-muted small">
-                            <i className="fas fa-route me-1"></i>
-                            {station.distance < 1 
-                              ? `${Math.round(station.distance * 1000)}m away`
-                              : `${station.distance.toFixed(1)}km away`
-                            }
-                          </p>
-                          {station.code && (
-                            <small className="text-muted">Code: {station.code}</small>
-                          )}
-                        </div>
-                        <div className="d-flex flex-column gap-1">
-                          <button
-                            className="btn btn-outline-primary btn-sm"
-                            onClick={() => openInMaps(station)}
-                            title="Get directions"
-                          >
-                            <i className="fas fa-directions"></i>
-                          </button>
-                          <span className="badge bg-secondary">
-                            #{index + 1}
-                          </span>
+                    <div 
+                      key={station._id || station.id || index} 
+                      className="card border-0 shadow-sm mb-3 station-card"
+                    >
+                      <div className="card-body p-3">
+                        <div className="d-flex align-items-center">
+                          <div className="station-rank me-3">
+                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                 style={{width: '36px', height: '36px'}}>
+                              <span className="fw-bold">{index + 1}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex-grow-1 me-3">
+                            <h6 className="card-title fw-semibold mb-1 text-dark">
+                              {station.name || station.stationName || 'Unknown Station'}
+                            </h6>
+                            <div className="d-flex flex-wrap align-items-center text-muted small">
+                              <span className="me-3">
+                                <i className="fas fa-route me-1 text-primary"></i>
+                                {station.distance < 1 
+                                  ? `${Math.round(station.distance * 1000)}m away`
+                                  : `${station.distance.toFixed(1)}km away`
+                                }
+                              </span>
+                              {station.code && (
+                                <span className="badge bg-light text-dark border">
+                                  Code: {station.code}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="station-actions">
+                            <button
+                              className="btn btn-primary btn-sm rounded-pill px-3"
+                              onClick={() => openInMaps(station)}
+                              title="Get directions"
+                            >
+                              <i className="fas fa-directions me-1"></i>
+                              Directions
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-3 text-center">
-                  <small className="text-muted">
-                    <i className="fas fa-info-circle me-1"></i>
-                    Distances are calculated as straight-line distance
-                  </small>
+                <div className="mt-4 text-center">
+                  <div className="bg-light p-3 rounded-3">
+                    <small className="text-muted">
+                      <i className="fas fa-info-circle me-1 text-primary"></i>
+                      Distances are calculated as straight-line distance. Actual walking distance may vary.
+                    </small>
+                  </div>
                 </div>
               </div>
             )}
           </div>
-          <div className="modal-footer">
+          
+          <div className="modal-footer border-top-0 bg-light">
             <button 
               type="button" 
-              className="btn btn-secondary" 
+              className="btn btn-outline-secondary rounded-pill px-4"
               onClick={onClose}
             >
               Close

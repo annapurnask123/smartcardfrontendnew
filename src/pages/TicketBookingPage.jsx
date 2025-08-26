@@ -138,11 +138,15 @@ function TicketBookingPage() {
       const sourceStationName = (stations.find(s => (s._id === sourceId) || (s.id === sourceId))?.name) || location.state?.sourceName
       const destinationStationName = (stations.find(s => (s._id === destinationId) || (s.id === destinationId))?.name) || location.state?.destinationName
 
+      // For single passenger, use the ticket ID directly
+      // For multiple passengers, use the first ticket ID (backend should handle the rest)
+      const firstTicketId = tickets[0].id || tickets[0]._id;
+      
       const paymentInfo = {
         type: "ticket",
         amount: totalAmount,
-        id: `multi-ticket-${Date.now()}`, // Create a unique ID for this multi-ticket purchase
-        ticketIds: tickets.map(t => t.id || t._id), // Store all ticket IDs
+        id: firstTicketId,
+        ticketIds: tickets.map(t => t.id || t._id),
         booking: {
           sourceId,
           destinationId,

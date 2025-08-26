@@ -17,11 +17,13 @@ import TransactionsPage from './pages/TransactionsPage.jsx'
 import SchedulesPage from './pages/SchedulesPage.jsx'
 // import SchedulePage from './pages/SchedulePage.jsx'
 import MultiRouteBookingPage from './pages/MultiRouteBookingPage.jsx'
-import NotificationsPage from './pages/NotificationsPage.jsx'
+import NotificationPage from './pages/NotificationPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import RoutesPage from './pages/RoutesPage.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
+import AdminLayout from './layouts/AdminLayout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import AdminProtectedRoute from './components/AdminProtectedRoute.jsx'
 import TicketDetailPage from './pages/TicketDetailPage.jsx'
 import SearchPage from './pages/SearchPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
@@ -32,6 +34,11 @@ import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
 // import PaymentTestPage from "./pages/PaymentTestPage";
 import MultiTicketPage from './pages/MultiTicketPage.jsx'
+import AdminLogin from './pages/AdminLogin.jsx'
+import AdminRegister from './pages/AdminRegister.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
+import AdminUserManagement from './pages/AdminUserManagement.jsx'
+import AdminModelManagement from './pages/AdminModelManagement';
 
 function App() {
   
@@ -57,17 +64,42 @@ function App() {
         <Route path="/multi-route" element={<RequireAuth><MultiRouteBookingPage /></RequireAuth>} />
         <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
-        <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
+        <Route path="/notification" element={<RequireAuth><NotificationPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
-          <Route path="/payment-success" element={<PaymentSuccessPage />} />
-    <Route path="/payment-failed" element={<PaymentFailedPage />} />
-     <Route path="/payment-result" element={<PaymentResultPage />} />
-   
-<Route path="/multi-tickets" element={<MultiTicketPage />} />
-     {/* <Route path="/payment-test" element={<PaymentTestPage />} /> */}
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path="/payment-failed" element={<PaymentFailedPage />} />
+        <Route path="/payment-result" element={<PaymentResultPage />} />
+        <Route path="/multi-ticket/:multiTicketId" element={<RequireAuth><MultiTicketPage /></RequireAuth>} />
+      </Route>
+      
+      {/* Admin Routes */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/register" element={<AdminRegister />} />
+      <Route path="/admin" element={
+        <AdminProtectedRoute>
+          <AdminLayout />
+        </AdminProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminUserManagement />
+            </AdminLayout>
+          </AdminProtectedRoute>
+        } />
+        <Route path="models" element={
+          <AdminProtectedRoute>
+            <AdminLayout>
+              <AdminModelManagement />
+            </AdminLayout>
+          </AdminProtectedRoute>
+        } />
+        <Route path="analytics" element={<AdminDashboard />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

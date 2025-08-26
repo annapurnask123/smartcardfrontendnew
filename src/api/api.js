@@ -711,4 +711,74 @@ export const scheduleAPI = {
   deleteSchedule: (scheduleId) => api.delete(`/train-schedules/${scheduleId}`),
 };
 
+// Admin API endpoints
+export const adminAPI = {
+  register: (data) => {
+    return axios.post(`${apiBase}/admin/register`, data);
+  },
+
+  login: (data) => {
+    return axios.post(`${apiBase}/admin/login`, data);
+  },
+
+  getDashboardStats: () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getSystemHealth: () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/dashboard/health`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getUsers: (params) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/users`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getUserDetails: (userId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/users/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getPaymentAnalytics: (params) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/analytics/payments`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getModelData: (modelName, params) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/models/${modelName}`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
+  getModelItem: (modelName, itemId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/models/${modelName}/${itemId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
+  deleteModelItem: (modelName, itemId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.delete(`${apiBase}/admin/models/${modelName}/${itemId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+};
+
 export default api;

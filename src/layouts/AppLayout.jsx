@@ -280,7 +280,7 @@ function AppLayout({ children }) {
 
       <NearbyStationsFinder 
         show={showNearbyStations} 
-        onHide={() => setShowNearbyStations(false)} 
+        onClose={() => setShowNearbyStations(false)} 
       />
 
       <main style={{ marginTop: '76px', minHeight: 'calc(100vh - 76px)' }}>
