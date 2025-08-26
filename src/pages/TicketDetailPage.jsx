@@ -262,39 +262,12 @@ function TicketDetailPage() {
           confirmButtonText: 'OK'
         });
       } else {
-        // Add ticket amount to wallet
-        if (ticket.price > 0) {
-          try {
-            const { walletAPI } = require('../api/api');
-            await walletAPI.addToWallet({
-              userId: user.id || user._id,
-              amount: ticket.price,
-              reason: 'Ticket cancelled refund',
-              ticketId: ticket.ticketId || ticket._id || ticket.id
-            });
-            
-            Swal.fire({
-              icon: 'success',
-              title: 'Ticket Cancelled!',
-              html: `Ticket cancelled successfully!<br>₹${ticket.price} has been refunded to your wallet.`,
-              confirmButtonText: 'OK'
-            });
-          } catch (walletError) {
-            Swal.fire({
-              icon: 'warning',
-              title: 'Partial Success',
-              html: `Ticket cancelled but refund failed.<br>Please contact support for refund.`,
-              confirmButtonText: 'OK'
-            });
-          }
-        } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Ticket Cancelled!',
-            text: 'Ticket cancelled successfully!',
-            confirmButtonText: 'OK'
-          });
-        }
+        Swal.fire({
+          icon: 'success',
+          title: 'Ticket Cancelled!',
+          text: 'Ticket cancelled successfully! Refund (if any) will reflect in your wallet.',
+          confirmButtonText: 'OK'
+        });
         
         setTicket({...ticket, status: 'Cancelled'});
         setTimeout(() => navigate('/tickets'), 1500);
@@ -631,9 +604,8 @@ function TicketDetailPage() {
       // Call backend API to process early drop
       const response = await ticketAPI.dropEarly({
         ticketId: ticket.ticketId || ticket._id || ticket.id,
-        newEndStationId: selectedEarlyDropStation._id || selectedEarlyDropStation.id,
-        newEndStationName: selectedEarlyDropStation.name,
-        refundAmount: savings
+        userId: user.id || user._id,
+        stationId: selectedEarlyDropStation._id || selectedEarlyDropStation.id
       });
       
       // Update ticket locally
@@ -647,6 +619,28 @@ function TicketDetailPage() {
         earlyDrop: true,
         status: 'completed'
       }));
+      
+      // End backend journey and persist to local history
+      try {
+        const { userJourneyAPI } = await import('../api/api');
+        const currentJourneyData = JSON.parse(localStorage.getItem('currentJourney') || '{}');
+        if (currentJourneyData?._id) {
+          await userJourneyAPI.endJourney(currentJourneyData._id, 'completed');
+        }
+        const completedJourney = {
+          ...currentJourneyData,
+          tapOutTime: new Date().toISOString(),
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          earlyDrop: true,
+          earlyDropStation: selectedEarlyDropStation.name
+        };
+        const existingJourneys = JSON.parse(localStorage.getItem('journeys') || '[]');
+        existingJourneys.push(completedJourney);
+        localStorage.setItem('journeys', JSON.stringify(existingJourneys));
+        localStorage.removeItem('currentJourney');
+        setJourney(null);
+      } catch (_) {}
       
       // Show success message with refund info
       Swal.fire({
@@ -751,18 +745,39 @@ function TicketDetailPage() {
         return;
       }
 
-      // Store journey information for tracking
-      const journeyData = {
-        ticketId: ticket.ticketId || ticket._id || ticket.id,
-        startStation: startStation.name,
-        startStationId: startStation._id || startStation.id,
-        startTime: new Date().toISOString(),
-        status: 'in_progress',
-        paymentMethod: 'ticket'
-      };
-
-      localStorage.setItem('currentJourney', JSON.stringify(journeyData));
-      setJourney(journeyData);
+      // Start backend journey record and persist locally
+      try {
+        const { userJourneyAPI } = await import('../api/api');
+        const startRes = await userJourneyAPI.startJourney({
+          userId: user.id || user._id,
+          tripId: ticket.trip_id,
+          sourceStationId: startStation._id || startStation.id || startStation.stop_id,
+          destinationStationId: ticket.endStationId?._id || ticket.endStationId?.id || ticket.endStationId
+        });
+        const journeyDoc = startRes.data || startRes;
+        const journeyData = {
+          _id: journeyDoc._id || journeyDoc.id,
+          ticketId: ticket.ticketId || ticket._id || ticket.id,
+          startStation: startStation.name,
+          startStationId: startStation._id || startStation.id,
+          startTime: new Date().toISOString(),
+          status: 'in_progress',
+          paymentMethod: 'ticket'
+        };
+        localStorage.setItem('currentJourney', JSON.stringify(journeyData));
+        setJourney(journeyData);
+      } catch (_) {
+        const journeyData = {
+          ticketId: ticket.ticketId || ticket._id || ticket.id,
+          startStation: startStation.name,
+          startStationId: startStation._id || startStation.id,
+          startTime: new Date().toISOString(),
+          status: 'in_progress',
+          paymentMethod: 'ticket'
+        };
+        localStorage.setItem('currentJourney', JSON.stringify(journeyData));
+        setJourney(journeyData);
+      }
 
       // Update ticket status
       setTicket(prev => ({
@@ -867,7 +882,14 @@ function TicketDetailPage() {
           confirmButtonText: 'OK'
         });
       } else {
-        // Complete journey tracking
+        // End backend journey if we have one
+        try {
+          const { userJourneyAPI } = await import('../api/api');
+          if (currentJourneyData?._id) {
+            await userJourneyAPI.endJourney(currentJourneyData._id, 'completed');
+          }
+        } catch (_) {}
+        // Maintain local history as well
         const completedJourney = {
           ...currentJourneyData,
           tapOutTime: new Date().toISOString(),
@@ -875,13 +897,9 @@ function TicketDetailPage() {
           status: 'completed',
           completedAt: new Date().toISOString()
         };
-        
-        // Add to journey history
         const existingJourneys = JSON.parse(localStorage.getItem('journeys') || '[]');
         existingJourneys.push(completedJourney);
         localStorage.setItem('journeys', JSON.stringify(existingJourneys));
-        
-        // Clear current journey
         localStorage.removeItem('currentJourney');
         setJourney(null);
         

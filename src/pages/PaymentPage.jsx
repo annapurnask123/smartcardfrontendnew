@@ -72,125 +72,182 @@ const PaymentPage = () => {
     }
   };
 
-  // Process wallet payment directly
-  const handleWalletPayment = async () => {
-    if (!paymentInfo) {
-      setError("No payment information available");
-      return;
+
+// Process wallet payment directly
+const handleWalletPayment = async () => {
+  if (!paymentInfo) {
+    setError("No payment information available");
+    return;
+  }
+
+  // Validate amount
+  if (!paymentInfo.amount || paymentInfo.amount <= 0) {
+    setError("Invalid payment amount. Please check the payment details.");
+    return;
+  }
+
+  // Check if user has sufficient balance
+  if (walletBalance < paymentInfo.amount) {
+    setError(`Insufficient wallet balance. Available: ₹${walletBalance.toFixed(2)}, Required: ₹${paymentInfo.amount.toFixed(2)}`);
+    return;
+  }
+
+  setWalletLoading(true);
+  setError(null);
+
+  try {
+    const userId = currentUser?.id || currentUser?._id;
+    if (!userId) {
+      throw new Error("User authentication required. Please login again.");
     }
 
-    // Validate amount
-    if (!paymentInfo.amount || paymentInfo.amount <= 0) {
-      setError("Invalid payment amount. Please check the payment details.");
-      return;
+    // Determine backend payment type
+    let backendType = paymentInfo.type;
+    if (paymentInfo.type === "card_recharge" || paymentInfo.type === "card_recharge_by_number") {
+      backendType = "recharge";
+    } else if (paymentInfo.type === "renewal") {
+      backendType = "subscription";
+    } else if (paymentInfo.type === "ticket_extend") {
+      backendType = "ticket";
     }
 
-    // Check if user has sufficient balance
-    if (walletBalance < paymentInfo.amount) {
-      setError(`Insufficient wallet balance. Available: ₹${walletBalance.toFixed(2)}, Required: ₹${paymentInfo.amount.toFixed(2)}`);
-      return;
+    // Extract correct ID
+    let paymentId;
+    if (paymentInfo.ticketId) {
+      paymentId = paymentInfo.ticketId;
+    } else if (paymentInfo.id && paymentInfo.id.startsWith("multi-ticket-")) {
+      paymentId = paymentInfo.id;
+    } else {
+      paymentId = paymentInfo.id || paymentInfo.subscriptionId;
+    }
+    let subscriptionId = paymentInfo.subscriptionId;
+
+    // If extending a ticket, persist extension first to compute additional fare
+    let amountToPay = paymentInfo.amount;
+    if (paymentInfo.type === "ticket_extend") {
+      try {
+        const extendRes = await (await import("../api/api")).ticketAPI.extendJourney({
+          ticketId: paymentInfo.ticketId,
+          userId,
+          newEndStationId: paymentInfo.newEndStationId,
+          additionalFare: paymentInfo.amount
+        });
+        amountToPay = extendRes.data?.amountToPay || paymentInfo.amount;
+      } catch (e) {
+        console.warn("Extension pre-processing failed, proceeding with provided amount", e);
+      }
     }
 
-    setWalletLoading(true);
-    setError(null);
+    // Create wallet payment - this should handle both payment processing AND status update
+    const walletResponse = await paymentAPI.createPaymentOrder({
+      type: backendType,
+      id: paymentId,
+      ticketId: paymentInfo.ticketId,
+      subscriptionId,
+      userId,
+      amount: amountToPay,
+      paymentMethod: "wallet"
+    });
 
-    try {
-      const userId = currentUser?.id || currentUser?._id;
-      if (!userId) {
-        throw new Error("User authentication required. Please login again.");
+    if (walletResponse.data.success) {
+      // Generate success message based on payment type
+      const successMessage = backendType === "subscription" 
+        ? "Subscription activated successfully!" 
+        : backendType === "ticket" 
+        ? paymentInfo.type === "ticket_extend" 
+          ? "Journey extended successfully!"
+          : "Ticket booked successfully!"
+        : backendType === "recharge" 
+        ? "Card recharged successfully!" 
+        : "Payment completed successfully!";
+      
+      setSuccessMessage(successMessage);
+      setShowSuccess(true);
+
+      // Immediately update local wallet balance by deducting the amount
+      const newBalance = walletBalance - paymentInfo.amount;
+      setWalletBalance(newBalance);
+      
+      // Also update wallet in localStorage for immediate consistency
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      if (userData.wallet) {
+        userData.wallet.balance = newBalance;
+        localStorage.setItem("user", JSON.stringify(userData));
       }
 
-      // Determine backend payment type
-      let backendType = paymentInfo.type;
-      if (paymentInfo.type === "card_recharge" || paymentInfo.type === "card_recharge_by_number") {
-        backendType = "recharge";
-      } else if (paymentInfo.type === "renewal") {
-        backendType = "subscription";
-      } else if (paymentInfo.type === "ticket_extend") {
-        backendType = "ticket";
+      // Refresh wallet balance from backend to ensure accuracy
+      if (userId) {
+        dispatch(fetchWallet(userId));
       }
 
-      // Extract correct ID
-      let paymentId;
-      if (paymentInfo.ticketId) {
-        paymentId = paymentInfo.ticketId;
-      } else if (paymentInfo.id && paymentInfo.id.startsWith("multi-ticket-")) {
-        paymentId = paymentInfo.id; // Only use multi-ticket ID for true multi-ticket payments
-      } else {
-        paymentId = paymentInfo.id || paymentInfo.subscriptionId;
+      // Refresh tickets list to get updated status
+      dispatch(fetchTickets());
+
+      // For subscriptions, refresh subscription data too
+      if (backendType === "subscription") {
+        // You might need to import and dispatch a fetchSubscriptions action here
       }
-      let subscriptionId = paymentInfo.subscriptionId;
 
-      // Create wallet payment
-      const walletResponse = await paymentAPI.createPaymentOrder({
-        type: backendType,
-        id: paymentId,
-        ticketId: paymentInfo.ticketId,
-        subscriptionId,
-        userId,
-        amount: paymentInfo.amount,
-        paymentMethod: "wallet",
-      });
-
-      if (walletResponse.data.success) {
-        // Generate success message based on payment type
-        const successMessage = backendType === "subscription" 
-          ? "Subscription renewed successfully!" 
-          : backendType === "ticket" 
-          ? paymentInfo.type === "ticket_extend" 
-            ? "Journey extended successfully!"
-            : "Ticket booked successfully!"
-          : backendType === "recharge" 
-          ? "Card recharged successfully!" 
-          : "Payment completed successfully!";
-        
-        setSuccessMessage(successMessage);
-        setShowSuccess(true);
-
-        // Refresh wallet balance from backend
-        const userId = currentUser?.id || currentUser?._id;
-        if (userId) {
-          dispatch(fetchWallet(userId));
-        }
-
-        // Refresh tickets list
-        dispatch(fetchTickets());
-
-        // Redirect after success
-        setTimeout(() => {
-          if (backendType === "subscription") {
-            navigate("/my-plans?activated=1", { state: { message: successMessage } });
-          } else if (backendType === "ticket") {
-            if (paymentInfo.type === "ticket_extend") {
-              navigate(`/ticket-details/${paymentInfo.ticketId}?extend_success=true&newEndStationId=${paymentInfo.newEndStationId}&newEndStationName=${paymentInfo.newEndStationName}`, 
-                { state: { message: successMessage } });
-            } else {
-              navigate("/tickets", { state: { message: successMessage } });
-            }
-          } else if (backendType === "recharge") {
-            navigate("/cards", { state: { message: successMessage } });
+      // Redirect after success
+      setTimeout(() => {
+        if (backendType === "subscription") {
+          navigate("/my-plans?activated=1", { 
+            state: { 
+              message: successMessage,
+              updatedSubscription: walletResponse.data.subscription 
+            } 
+          });
+        } else if (backendType === "ticket") {
+          if (paymentInfo.type === "ticket_extend") {
+            navigate(`/tickets/${paymentInfo.ticketId}?extend_success=true&newEndStationId=${paymentInfo.newEndStationId}&newEndStationName=${paymentInfo.newEndStationName}`, 
+              { 
+                state: { 
+                  message: successMessage,
+                  updatedTicket: walletResponse.data.ticket 
+                } 
+              });
           } else {
-            navigate("/dashboard", { state: { message: successMessage } });
+            navigate("/tickets", { 
+              state: { 
+                message: successMessage,
+                newTicket: walletResponse.data.ticket 
+              } 
+            });
           }
-        }, 2000);
-      } else {
-        throw new Error(walletResponse.data.error || "Wallet payment failed");
-      }
-    } catch (error) {
-      console.error("Wallet payment failed:", error);
-      let errorMessage = "Wallet payment failed";
-      
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setWalletLoading(false);
+        } else if (backendType === "recharge") {
+          navigate("/cards", { 
+            state: { 
+              message: successMessage,
+              updatedCard: walletResponse.data.card 
+            } 
+          });
+        } else {
+          navigate("/dashboard", { 
+            state: { 
+              message: successMessage,
+              transactionId: walletResponse.data.transactionId 
+            } 
+          });
+        }
+      }, 2000);
+    } else {
+      throw new Error(walletResponse.data.error || "Wallet payment failed");
     }
-  };
+  } catch (error) {
+    console.error("Wallet payment failed:", error);
+    let errorMessage = "Wallet payment failed";
+    
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    setError(errorMessage);
+  } finally {
+    setWalletLoading(false);
+  }
+};
 
   // Main payment function (for Razorpay)
   const handlePayment = async () => {

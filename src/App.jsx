@@ -58,6 +58,7 @@ function App() {
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/wallet" element={<RequireAuth><WalletPage /></RequireAuth>} />
         <Route path="/journey" element={<RequireAuth><JourneyTrackingPage /></RequireAuth>} />
+        
         <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
         <Route path="/schedules" element={<RequireAuth><SchedulesPage /></RequireAuth>} />

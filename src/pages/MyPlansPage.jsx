@@ -7,9 +7,9 @@ import {
   updateSubscriptionLocal,
   clearError
 } from '../slices/subscriptionSlice'
-import { cardAPI } from '../api/api'
+import { cardAPI, paymentAPI } from '../api/api'
 
-// ✅ helper function for badge styling
+// Helper function for badge styling
 function getStatusBadgeClass(status) {
   switch ((status || '').toLowerCase()) {
     case 'active':
@@ -30,7 +30,7 @@ function getStatusBadgeClass(status) {
   }
 }
 
-// ✅ fallback expiry date calculator
+// Fallback expiry date calculator
 function calculateExpiryDate(planType, startDate = new Date()) {
   const start = new Date(startDate)
   const planTypeLower = (planType || '').toLowerCase()
@@ -62,7 +62,7 @@ function calculateExpiryDate(planType, startDate = new Date()) {
   return start.toISOString()
 }
 
-// ✅ utility
+// Utility function to check if a plan is expired
 function isPlanExpired(plan) {
   if (!plan?.expiryDate) return false
   return new Date(plan.expiryDate) < new Date()
@@ -72,7 +72,7 @@ function MyPlansPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  // ✅ FIXED: match your slice name (subscription, not subscriptions)
+  // Get subscriptions from Redux store
   const { subscriptions = [], loading, error } = useSelector(
     state => state.subscription || {}
   )
@@ -85,6 +85,9 @@ function MyPlansPage() {
   const [selectedPlanForCard, setSelectedPlanForCard] = useState({})
   const [showCardPlanModal, setShowCardPlanModal] = useState(false)
   const [selectedCard, setSelectedCard] = useState(null)
+  const [renewingPlan, setRenewingPlan] = useState(null)
+  const [processingPayment, setProcessingPayment] = useState(null)
+  const [cancellingPlan, setCancellingPlan] = useState(null)
 
   useEffect(() => {
     dispatch(fetchSubscriptions())
@@ -142,23 +145,7 @@ function MyPlansPage() {
     dispatch(fetchSubscriptions())
   }, [dispatch])
 
-  // Debug logging for subscription data
-  useEffect(() => {
-    if (subscriptions.length > 0) {
-      console.log('Subscriptions loaded:', subscriptions)
-      console.log('Sample subscription structure:', subscriptions[0])
-    } else {
-      console.log('No subscriptions loaded')
-    }
-  }, [subscriptions])
-
-  // Debug logging for filtered plans
-  useEffect(() => {
-    console.log('Filtered plans:', filteredPlans)
-    console.log('Status filter:', statusFilter)
-  }, [filteredPlans, statusFilter])
-
-  // ✅ filtering logic
+  // Filtering logic
   useEffect(() => {
     let list = subscriptions.filter(p => {
       // Show all subscriptions, not just active ones
@@ -179,42 +166,79 @@ function MyPlansPage() {
     setFilteredPlans(list)
   }, [subscriptions, statusFilter])
 
-  // 🔄 Renew
+  // Pay Again for pending plans - redirect to PaymentPage using paymentAPI
+  const payAgain = async (sub) => {
+    setProcessingPayment(sub.id || sub._id)
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const planName = sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'
+      const planPrice = sub.planId?.price || sub.price || 0
+      if (!planPrice) {
+        setBanner('Unable to determine plan price. Please contact support.')
+        return
+      }
+
+      // Create payment order via backend
+      const { data: order } = await paymentAPI.createPaymentOrder({
+        type: 'subscription',
+        id: sub.id || sub._id,
+        userId: user.id || user._id,
+        amount: planPrice,
+        paymentMethod: 'razorpay'
+      })
+
+      // Navigate to PaymentPage to complete
+      navigate('/payment', {
+        state: {
+          paymentInfo: {
+            type: 'subscription',
+            subscriptionId: sub.id || sub._id,
+            userId: user.id || user._id,
+            amount: planPrice,
+            description: `Payment for ${planName}`,
+            order
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Pay again error:', error)
+      setBanner('Failed to create payment order. Please try again.')
+    } finally {
+      setProcessingPayment(null)
+    }
+  }
+
+  // Renew subscription
   function renew(sub) {
-    const startDate = new Date()
-    const planName = sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'
-    const expiryDate = calculateExpiryDate(planName, startDate)
+    setRenewingPlan(sub.id || sub._id);
+    const startDate = new Date();
+    const planName = sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan';
+    const expiryDate = calculateExpiryDate(planName, startDate);
 
     // Get the plan price from the populated planId data
-    const planPrice = sub.planId?.price || sub.price || 0
+    const planPrice = sub.planId?.price || sub.price || 0;
     
-    // Debug logging
-    console.log('Renewing subscription:', {
-      sub,
-      planId: sub.planId,
-      planPrice,
-      planName,
-      planType: sub.planType
-    })
-
     if (!planPrice || planPrice <= 0) {
-      alert('Unable to determine plan price. Please contact support.')
-      return
+      alert('Unable to determine plan price. Please contact support.');
+      setRenewingPlan(null);
+      return;
     }
 
     // Validate plan price format
     if (typeof planPrice !== 'number' || isNaN(planPrice)) {
-      alert('Invalid plan price format. Please contact support.')
-      return
+      alert('Invalid plan price format. Please contact support.');
+      setRenewingPlan(null);
+      return;
     }
 
     // Validate minimum price
     if (planPrice < 1) {
-      alert('Plan price must be at least ₹1. Please contact support.')
-      return
+      alert('Plan price must be at least ₹1. Please contact support.');
+      setRenewingPlan(null);
+      return;
     }
 
-    // update immediately for UX
+    // Update immediately for UX
     dispatch(updateSubscriptionLocal({
       id: sub.id || sub._id,
       updates: {
@@ -222,7 +246,7 @@ function MyPlansPage() {
         expiryDate,
         status: 'pending'
       }
-    }))
+    }));
 
     navigate('/payment', {
       state: {
@@ -231,103 +255,114 @@ function MyPlansPage() {
           subscriptionId: sub.id || sub._id,
           userId: sub.user?.id || sub.user?._id || sub.userId,
           description: `Renewal - ${planName}`,
-          amount: planPrice, // ✅ Use the actual plan price
+          amount: planPrice,
           planDetails: { ...sub, startDate, expiryDate, planName }
         }
       }
-    })
+    });
+    
+    setRenewingPlan(null);
   }
 
-  // ❌ Cancel – stays on page, updates redux
+  // Cancel subscription - FIXED VERSION
   async function cancel(sub) {
-    const status = sub.status?.toLowerCase()
-    
-    console.log('Cancel function called for subscription:', {
-      id: sub.id || sub._id,
-      status: status,
-      sub: sub,
-      currentUrl: window.location.href
-    })
+    setCancellingPlan(sub.id || sub._id);
+    const status = sub.status?.toLowerCase();
     
     if (status === 'cancelled' || status === 'canceled') {
-      setBanner('This subscription is already cancelled.')
-      setTimeout(() => setBanner(''), 3000)
-      return
+      setBanner('This subscription is already cancelled.');
+      setTimeout(() => setBanner(''), 3000);
+      setCancellingPlan(null);
+      return;
     }
     
     if (status === 'expired') {
-      setBanner('Expired subscriptions cannot be cancelled.')
-      setTimeout(() => setBanner(''), 3000)
-      return
+      setBanner('Expired subscriptions cannot be cancelled.');
+      setTimeout(() => setBanner(''), 3000);
+      setCancellingPlan(null);
+      return;
     }
 
     if (status === 'active') {
-      setBanner('Active subscriptions cannot be cancelled. Please wait until they expire.')
-      setTimeout(() => setBanner(''), 5000)
-      return
+      setBanner('Active subscriptions cannot be cancelled. Please wait until they expire.');
+      setTimeout(() => setBanner(''), 5000);
+      setCancellingPlan(null);
+      return;
     }
 
-    const confirmMessage = 'Are you sure you want to cancel this subscription?'
+    const confirmMessage = 'Are you sure you want to cancel this subscription?';
 
-    if (!window.confirm(confirmMessage)) return
+    if (!window.confirm(confirmMessage)) {
+      setCancellingPlan(null);
+      return;
+    }
 
     try {
-      console.log('Attempting to cancel subscription:', sub.id || sub._id)
-      console.log('Current URL before cancellation:', window.location.href)
-      
-      const result = await dispatch(cancelSubscription(sub.id || sub._id)).unwrap()
-      console.log('Cancel result:', result)
-      console.log('Current URL after cancellation:', window.location.href)
-      
-      // ✅ Update local state immediately for better UX
+      // First, update the UI optimistically
       dispatch(updateSubscriptionLocal({
         id: sub.id || sub._id,
         updates: { status: 'cancelled' }
-      }))
+      }));
 
-      setBanner('Subscription cancelled successfully.')
-      setTimeout(() => setBanner(''), 3000)
+      // Then try to call the API
+      const result = await dispatch(cancelSubscription(sub.id || sub._id)).unwrap();
       
-      // Don't refresh immediately, let the local update handle it
-      console.log('Subscription cancelled locally, not refreshing from backend')
-      
-      // Verify we're still on the same page
-      setTimeout(() => {
-        console.log('Final URL check:', window.location.href)
-        if (!window.location.href.includes('/my-plans')) {
-          console.error('Navigation detected! Current URL:', window.location.href)
-        }
-      }, 100)
+      setBanner('Subscription cancelled successfully.');
+      setTimeout(() => setBanner(''), 3000);
       
     } catch (err) {
-      console.error('Cancel failed:', err)
-      console.log('Current URL after error:', window.location.href)
-      // Handle specific backend errors
-      let errorMessage = 'Cancellation failed. Please try again.'
+      console.error('Cancel failed:', err);
+      
+      // Revert the UI change if the API call failed
+      dispatch(updateSubscriptionLocal({
+        id: sub.id || sub._id,
+        updates: { status: sub.status } // Revert to original status
+      }));
+      
+      let errorMessage = 'Cancellation failed. Please try again.';
+      
+      // Check for specific error types
       if (err?.error) {
         if (err.error.includes('Cannot cancel active subscription')) {
-          errorMessage = 'Active subscriptions cannot be cancelled. Please wait until they expire.'
-        } else if (err.error.includes('Access denied')) {
-          errorMessage = 'Access denied. Please login again.'
+          errorMessage = 'Active subscriptions cannot be cancelled. Please wait until they expire.';
+        } else if (err.error.includes('Access denied') || err.error.includes('Authentication') || err.error.includes('Unauthorized')) {
+          errorMessage = 'Authentication error. Please check if you are logged in.';
+          // Don't redirect to login, just show the error message
         } else if (err.error.includes('not found')) {
-          errorMessage = 'Subscription not found. Please refresh the page.'
+          errorMessage = 'Subscription not found. Please refresh the page.';
         } else {
-          errorMessage = err.error
+          errorMessage = err.error;
+        }
+      } else if (err?.message) {
+        if (err.message.includes('401') || err.message.includes('403')) {
+          errorMessage = 'Authentication error. Please check if you are logged in.';
         }
       }
-      setBanner(errorMessage)
-      setTimeout(() => setBanner(''), 5000)
+      
+      setBanner(errorMessage);
+      setTimeout(() => setBanner(''), 5000);
+    } finally {
+      setCancellingPlan(null);
     }
   }
 
-  // ✅ format date safely
+  // Format date safely
   function formatDate(date, fallback = 'N/A') {
-    if (!date) return fallback
+    if (!date) return fallback;
     try {
-      return new Date(date).toLocaleDateString()
+      return new Date(date).toLocaleDateString();
     } catch {
-      return fallback
+      return fallback;
     }
+  }
+
+  // Calculate days until expiration
+  function daysUntilExpiry(expiryDate) {
+    if (!expiryDate) return null;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
   return (
@@ -478,63 +513,117 @@ function MyPlansPage() {
             )}
           </div>
         )}
-        {filteredPlans.map((sub, i) => (
-          <div className="col-md-6 mb-4" key={sub.id || sub._id || i}>
-            <div className="card border-0 shadow-sm h-100">
-              <div className="card-body d-flex flex-column">
-                <h5 className="card-title">
-                  <i className="fas fa-crown text-warning me-2"></i>
-                  {sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'}
-                </h5>
-                <div className="flex-grow-1">
-                  <p className="card-text text-muted mb-1">
-                    <i className="fas fa-calendar-plus me-1"></i>
-                    Started: {formatDate(sub.startDate || sub.createdAt)}
-                  </p>
-                  <p className="card-text text-muted mb-1">
-                    <i className="fas fa-calendar-alt me-1"></i>
-                    Expires: {formatDate(sub.expiryDate || sub.endDate || calculateExpiryDate(sub.planId?.name || sub.planName || sub.name, sub.startDate))}
-                  </p>
-                  <p className="card-text text-muted">
-                    <i className="fas fa-users me-1"></i>
-                    Members: {sub.planId?.maxMembers || sub.members || 1}
-                  </p>
-                  <p className="card-text text-muted">
-                    <i className="fas fa-rupee-sign me-1"></i>
-                    Price: ₹{sub.planId?.price || sub.price ? Number(sub.planId?.price || sub.price).toFixed(2) : 'N/A'}
-                  </p>
-                </div>
-                <div className="mt-3">
-                  <span className={`badge ${getStatusBadgeClass(sub.status)} mb-3 d-block`}>
-                    {sub.status ? sub.status.charAt(0).toUpperCase() + sub.status.slice(1) : 'Unknown'}
-                  </span>
+        {filteredPlans.map((sub, i) => {
+          const daysLeft = daysUntilExpiry(sub.expiryDate);
+          const isExpiringSoon = daysLeft !== null && daysLeft <= 7 && daysLeft > 0;
+          const isPending = (sub.status || '').toLowerCase() === 'pending';
+          
+          return (
+            <div className="col-md-6 mb-4" key={sub.id || sub._id || i}>
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body d-flex flex-column">
+                  <h5 className="card-title">
+                    <i className="fas fa-crown text-warning me-2"></i>
+                    {sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan'}
+                  </h5>
+                  <div className="flex-grow-1">
+                    <p className="card-text text-muted mb-1">
+                      <i className="fas fa-calendar-plus me-1"></i>
+                      Started: {formatDate(sub.startDate || sub.createdAt)}
+                    </p>
+                    <p className="card-text text-muted mb-1">
+                      <i className="fas fa-calendar-alt me-1"></i>
+                      Expires: {formatDate(sub.expiryDate || sub.endDate || calculateExpiryDate(sub.planId?.name || sub.planName || sub.name, sub.startDate))}
+                      {isExpiringSoon && (
+                        <span className="badge bg-warning text-dark ms-2">
+                          {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        </span>
+                      )}
+                    </p>
+                    <p className="card-text text-muted">
+                      <i className="fas fa-users me-1"></i>
+                      Members: {sub.planId?.maxMembers || sub.members || 1}
+                    </p>
+                    <p className="card-text text-muted">
+                      <i className="fas fa-rupee-sign me-1"></i>
+                      Price: ₹{sub.planId?.price || sub.price ? Number(sub.planId?.price || sub.price).toFixed(2) : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="mt-3">
+                    <span className={`badge ${getStatusBadgeClass(sub.status)} mb-3 d-block`}>
+                      {sub.status ? sub.status.charAt(0).toUpperCase() + sub.status.slice(1) : 'Unknown'}
+                    </span>
 
-                  <div className="d-flex gap-2">
-                    <button
-                      className="btn btn-outline-primary btn-sm flex-fill"
-                      onClick={() => renew(sub)}
-                      disabled={sub.status === 'cancelled' || sub.status === 'active' || sub.status === 'pending'}
-                      title={sub.status === 'active' ? 'Active subscriptions cannot be renewed' : 
-                             sub.status === 'pending' ? 'Renewal already in progress' : 
-                             sub.status === 'cancelled' ? 'Cancelled subscriptions cannot be renewed' : ''}
-                    >
-                      <i className="fas fa-sync-alt me-1"></i>Renew
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm flex-fill"
-                      onClick={() => cancel(sub)}
-                      disabled={sub.status === 'cancelled' || sub.status === 'canceled' || sub.status === 'expired'}
-                      title={sub.status === 'cancelled' || sub.status === 'canceled' ? 'Already cancelled' : 
-                             sub.status === 'expired' ? 'Expired subscriptions cannot be cancelled' : ''}
-                    >
-                      <i className="fas fa-times me-1"></i>Cancel
-                    </button>
+                    <div className="d-flex gap-2 flex-wrap">
+                      {/* Pay Again button for pending plans */}
+                      {isPending && (
+                        <button
+                          className="btn btn-success btn-sm flex-fill"
+                          onClick={() => payAgain(sub)}
+                          disabled={processingPayment === (sub.id || sub._id)}
+                        >
+                          {processingPayment === (sub.id || sub._id) ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-1"></span>
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-credit-card me-1"></i>Pay Again
+                            </>
+                          )}
+                        </button>
+                      )}
+                      
+                      {/* Renew button for expired/cancelled plans */}
+                      {!isPending && (
+                        <button
+                          className="btn btn-outline-primary btn-sm flex-fill"
+                          onClick={() => renew(sub)}
+                          disabled={sub.status === 'cancelled' || sub.status === 'active' || sub.status === 'pending' || renewingPlan === (sub.id || sub._id)}
+                          title={sub.status === 'active' ? 'Active subscriptions cannot be renewed' : 
+                                 sub.status === 'pending' ? 'Renewal already in progress' : 
+                                 sub.status === 'cancelled' ? 'Cancelled subscriptions cannot be renewed' : ''}
+                        >
+                          {renewingPlan === (sub.id || sub._id) ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-1"></span>
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-sync-alt me-1"></i>Renew
+                            </>
+                          )}
+                        </button>
+                      )}
+                      
+                      {/* Cancel button for pending plans */}
+                      {isPending && (
+                        <button
+                          className="btn btn-outline-danger btn-sm flex-fill"
+                          onClick={() => cancel(sub)}
+                          disabled={cancellingPlan === (sub.id || sub._id)}
+                        >
+                          {cancellingPlan === (sub.id || sub._id) ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-1"></span>
+                              Cancelling...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-times me-1"></i>Cancel
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Card Plan Assignment Modal */}

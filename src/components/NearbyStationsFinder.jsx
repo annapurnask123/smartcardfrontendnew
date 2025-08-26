@@ -1,13 +1,16 @@
+// src/components/NearbyStationsFinder.jsx
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { setSourceStation } from '../slices/ticketSlice'; // Import from ticketSlice
 
-function NearbyStationsFinder({ show, onClose }) {
+function NearbyStationsFinder({ show, onClose, onStationSelect }) {
   const [location, setLocation] = useState(null);
   const [nearbyStations, setNearbyStations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [permissionDenied, setPermissionDenied] = useState(false);
 
+  const dispatch = useDispatch();
   const stationsState = useSelector(state => state.stations);
   const stations = stationsState?.allItems || stationsState?.items || [];
 
@@ -20,6 +23,11 @@ function NearbyStationsFinder({ show, onClose }) {
     if (show) {
       document.addEventListener('keydown', handleEscKey);
       document.body.style.overflow = 'hidden';
+      
+      // Automatically get location when component opens
+      if (!location && !loading && nearbyStations.length === 0) {
+        getCurrentLocation();
+      }
     }
     
     return () => {
@@ -144,6 +152,19 @@ function NearbyStationsFinder({ show, onClose }) {
     window.open(url, '_blank');
   };
 
+  const handleStationSelect = (station) => {
+    // Set the selected station as source in Redux store
+    dispatch(setSourceStation(station));
+    
+    // If a callback is provided, call it
+    if (onStationSelect) {
+      onStationSelect(station);
+    }
+    
+    // Close the modal
+    onClose();
+  };
+
   if (!show) return null;
 
   return (
@@ -180,23 +201,12 @@ function NearbyStationsFinder({ show, onClose }) {
                 <div className="mb-4">
                   <i className="fas fa-location-arrow fa-4x text-primary opacity-75"></i>
                 </div>
-                <h5 className="fw-bold mb-3">Find Stations Near You</h5>
+                <h5 className="fw-bold mb-3">Finding Stations Near You</h5>
                 <p className="text-muted mb-4">
-                  Allow location access to discover the nearest metro stations to your current position
+                  Getting your location to discover the nearest metro stations
                 </p>
-                <button 
-                  className="btn btn-primary btn-lg px-4 py-2 rounded-pill fw-semibold"
-                  onClick={getCurrentLocation}
-                >
-                  <i className="fas fa-crosshairs me-2"></i>
-                  Detect My Location
-                </button>
-                
-                <div className="mt-4">
-                  <small className="text-muted">
-                    <i className="fas fa-info-circle me-1"></i>
-                    Your location is only used to find nearby stations and is not stored
-                  </small>
+                <div className="spinner-border text-primary mb-3" role="status">
+                  <span className="visually-hidden">Loading...</span>
                 </div>
               </div>
             )}
@@ -249,7 +259,7 @@ function NearbyStationsFinder({ show, onClose }) {
                       Stations Near Your Location
                     </h6>
                     <small className="text-muted">
-                      Sorted by distance from your current position
+                      Select a station to set as your starting point
                     </small>
                   </div>
                   <button 
@@ -266,7 +276,9 @@ function NearbyStationsFinder({ show, onClose }) {
                   {nearbyStations.map((station, index) => (
                     <div 
                       key={station._id || station.id || index} 
-                      className="card border-0 shadow-sm mb-3 station-card"
+                      className="card border-0 shadow-sm mb-3 station-card hover-shadow"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleStationSelect(station)}
                     >
                       <div className="card-body p-3">
                         <div className="d-flex align-items-center">
@@ -299,12 +311,26 @@ function NearbyStationsFinder({ show, onClose }) {
                           
                           <div className="station-actions">
                             <button
-                              className="btn btn-primary btn-sm rounded-pill px-3"
-                              onClick={() => openInMaps(station)}
+                              className="btn btn-outline-primary btn-sm rounded-pill px-3 me-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openInMaps(station);
+                              }}
                               title="Get directions"
                             >
                               <i className="fas fa-directions me-1"></i>
                               Directions
+                            </button>
+                            <button
+                              className="btn btn-primary btn-sm rounded-pill px-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStationSelect(station);
+                              }}
+                              title="Select as starting point"
+                            >
+                              <i className="fas fa-check me-1"></i>
+                              Select
                             </button>
                           </div>
                         </div>
@@ -317,7 +343,7 @@ function NearbyStationsFinder({ show, onClose }) {
                   <div className="bg-light p-3 rounded-3">
                     <small className="text-muted">
                       <i className="fas fa-info-circle me-1 text-primary"></i>
-                      Distances are calculated as straight-line distance. Actual walking distance may vary.
+                      Click on a station to set it as your starting point for booking
                     </small>
                   </div>
                 </div>

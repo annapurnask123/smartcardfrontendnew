@@ -693,8 +693,10 @@ export const userJourneyAPI = {
     }
     return { data: [] };
   },
-  startJourney: (data) => api.post("/user-journeys/start", data),
-  endJourney: (data) => api.post("/user-journeys/end", data),
+  // Backend expects /journeys/start with either {from_stop_id,to_stop_id} OR {tripId,sourceStationId,destinationStationId}
+  startJourney: (data) => api.post("/journeys/start", data),
+  // Backend expects PATCH /journeys/:journeyId/end with { status }
+  endJourney: (journeyId, status = "completed") => api.patch(`/journeys/${journeyId}/end`, { status }),
   // Alternative endpoints for compatibility
   getJourneyHistory: (userId) => safeGet(`/journey-history/${userId}`, { defaultData: [] }),
   getAllJourneys: () => safeGet("/journeys", { defaultData: [] }),

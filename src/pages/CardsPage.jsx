@@ -112,24 +112,20 @@ function CardsPage() {
     try {
       setLoading(true);
       
-      // Create card via backend API
+      // Create card via backend API (backend requires Mongo ObjectId)
       const response = await cardAPI.createCard({
-        userId: user.id || user._id,
-        isPrimary: cards.length === 0, // First card is always primary
-        cardType: cards.length === 0 ? 'primary' : 'secondary'
+        userId: user._id || user.id
       });
 
-      if (response.data.success && response.data.card) {
-        // Add new card to state
-        const newCard = response.data.card;
-        dispatch(setCards([...cards, newCard]));
-        setMessage(`Card created successfully! Card Number: ${newCard.cardNumber}`);
+      const createdCard = response.data?.card || response.data?.virtualCard;
+      if (createdCard) {
+        dispatch(setCards([...(cards || []), createdCard]));
+        setMessage(`Card created successfully! Card Number: ${createdCard.cardNumber}`);
         setMessageType('success');
-        
         // Reload data to ensure everything is in sync
         loadData();
       } else {
-        throw new Error(response.data.error || 'Failed to create card');
+        throw new Error(response.data?.error || 'Failed to create card');
       }
     } catch (error) {
       console.error('Card creation failed:', error);
@@ -233,13 +229,9 @@ function CardsPage() {
         return;
       }
       
-      // Get station details
-      const station = stations.find(s => 
-        (s._id || s.id) === tapInStation || 
-        s.stop_id === tapInStation ||
-        String(s._id) === String(tapInStation) ||
-        String(s.id) === String(tapInStation)
-      );
+      // Get station details (prefer stop_id)
+      const station = stations.find(s => String(s.stop_id) === String(tapInStation))
+        || stations.find(s => (s._id || s.id) === tapInStation || String(s._id) === String(tapInStation) || String(s.id) === String(tapInStation));
       
       if (!station) {
         alert('Station not found. Please select a valid station.');
@@ -250,13 +242,15 @@ function CardsPage() {
       const cardPlanSelections = JSON.parse(localStorage.getItem('cardPlanSelections') || '{}');
       const assignedPlanId = cardPlanSelections[cardId];
       
-      // Prepare tap-in data according to API requirements
-      // Based on the error, the API expects different field names
+      // Prepare tap-in data as backend expects
       const tapInData = {
-        stationId: station._id || station.id, // Use _id instead of stationIdentifier
-        deviceId: 'web-portal', // Consistent device ID
-        cardNumber: card.cardNumber, // Include card number directly
-        userId: user.id || user._id, // Include user ID
+        stationIdentifier: String(tapInStation || station.stop_id || station.name || station._id || station.id),
+        deviceId: 'web-portal',
+        // Backend expects qrData JSON string with cardNumber and token
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: `web-token-${Date.now()}`
+        }),
       };
 
       // Add metadata if needed by API
@@ -267,10 +261,14 @@ function CardsPage() {
 
       // Determine payment method and add plan ID if available
       if (assignedPlanId) {
-        tapInData.planId = assignedPlanId;
+        tapInData.chosenPlanId = assignedPlanId;
         tapInData.paymentMethod = 'subscription';
       } else if (selectedSubscription) {
-        tapInData.planId = selectedSubscription;
+        tapInData.chosenPlanId = selectedSubscription;
+        tapInData.paymentMethod = 'subscription';
+      } else if (subscriptions && subscriptions.length > 0) {
+        // Default to first active subscription if available
+        tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
         tapInData.paymentMethod = 'subscription';
       } else {
         tapInData.paymentMethod = 'balance';
@@ -331,7 +329,22 @@ function CardsPage() {
       if (error.response?.status === 400) {
         // More specific error message for 400 errors
         errorMessage = error.response.data?.error || 'Invalid request. Please check your card and station selection.';
-        
+
+        // If journey already in progress, store state so user can tap out
+        const lower = String(error.response?.data?.error || '').toLowerCase();
+        if (lower.includes('journey already in progress')) {
+          localStorage.setItem('tapInStation', tapInStation);
+          localStorage.setItem('tappedInCardId', cardId);
+          localStorage.setItem('tapInTime', new Date().toISOString());
+          // Infer payment method from attempted request
+          const attemptedMethod = (typeof tapInData !== 'undefined' && tapInData.paymentMethod) ? tapInData.paymentMethod : 'balance';
+          localStorage.setItem('paymentMethod', attemptedMethod);
+          if (typeof tapInData !== 'undefined' && tapInData.chosenPlanId) {
+            localStorage.setItem('assignedPlanId', tapInData.chosenPlanId);
+          }
+          errorMessage = 'Journey already in progress on this card. Please tap out at your destination.';
+        }
+
         // Log the exact error details for debugging
         console.error('API Error Details:', error.response.data);
       } else if (error.response?.status === 403) {
@@ -374,8 +387,9 @@ function CardsPage() {
         return;
       }
       
-      // Get station details
-      const outStation = stations.find(s => (s._id || s.id) === tapOutStation);
+      // Get station details (prefer stop_id)
+      const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
+        || stations.find(s => (s._id || s.id) === tapOutStation || String(s._id) === String(tapOutStation) || String(s.id) === String(tapOutStation));
       if (!outStation) {
         alert('Station not found');
         return;
@@ -387,10 +401,12 @@ function CardsPage() {
       
       // Prepare tap-out data
       const tapOutData = {
-        stationId: outStation._id || outStation.id, // Use correct field name
+        endStation: String(tapOutStation || outStation.stop_id || outStation.name || outStation._id || outStation.id),
         deviceId: 'web-portal',
-        cardNumber: card.cardNumber,
-        userId: user.id || user._id,
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: `web-token-${Date.now()}`
+        })
       };
       
       // Add metadata if needed by API
@@ -401,7 +417,7 @@ function CardsPage() {
       
       // Add plan ID if it was a subscription journey
       if (paymentMethod === 'subscription' && assignedPlanId) {
-        tapOutData.planId = assignedPlanId;
+        tapOutData.chosenPlanId = assignedPlanId;
         tapOutData.paymentMethod = 'subscription';
       }
       
@@ -548,7 +564,7 @@ function CardsPage() {
                       >
                         <option value="">Select Tap-In Station</option>
                         {stations.map(st => (
-                          <option key={st.id || st._id} value={st.id || st._id}>
+                          <option key={st.stop_id || st.id || st._id} value={st.stop_id || st.id || st._id}>
                             {st.name}
                           </option>
                         ))}
@@ -579,7 +595,7 @@ function CardsPage() {
                       >
                         <option value="">Select Tap-Out Station</option>
                         {stations.map(st => (
-                          <option key={st.id || st._id} value={st.id || st._id}>
+                          <option key={st.stop_id || st.id || st._id} value={st.stop_id || st.id || st._id}>
                             {st.name}
                           </option>
                         ))}
@@ -707,6 +723,70 @@ function CardsPage() {
                     >
                       <i className="fas fa-wallet me-1"></i>Balance
                     </button>
+                    {/* Tap controls for secondary cards */}
+                    <div className="w-100"></div>
+                    <div className="row g-2 w-100 align-items-center">
+                      <div className="col-7">
+                        <select 
+                          className="form-select form-select-sm" 
+                          value={tapInStation} 
+                          onChange={e => setTapInStation(e.target.value)}
+                        >
+                          <option value="">Select Tap-In Station</option>
+                          {stations.map(st => (
+                            <option key={st.stop_id || st.id || st._id} value={st.stop_id || st.id || st._id}>
+                              {st.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-5 d-grid">
+                        <button 
+                          className="btn btn-light btn-sm" 
+                          onClick={() => handleTapIn(getCardId(card))}
+                          disabled={actionLoading === getCardId(card) || !tapInStation}
+                        >
+                          {actionLoading === getCardId(card) ? (
+                            <span className="spinner-border spinner-border-sm"></span>
+                          ) : (
+                            <>
+                              <i className="fas fa-sign-in-alt me-1"></i>Tap In
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="row g-2 w-100 align-items-center mt-1">
+                      <div className="col-7">
+                        <select 
+                          className="form-select form-select-sm" 
+                          value={tapOutStation} 
+                          onChange={e => setTapOutStation(e.target.value)}
+                        >
+                          <option value="">Select Tap-Out Station</option>
+                          {stations.map(st => (
+                            <option key={st.stop_id || st.id || st._id} value={st.stop_id || st.id || st._id}>
+                              {st.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-5 d-grid">
+                        <button 
+                          className="btn btn-light btn-sm" 
+                          onClick={() => handleTapOut(getCardId(card))}
+                          disabled={actionLoading === getCardId(card) || !tapOutStation}
+                        >
+                          {actionLoading === getCardId(card) ? (
+                            <span className="spinner-border spinner-border-sm"></span>
+                          ) : (
+                            <>
+                              <i className="fas fa-sign-out-alt me-1"></i>Tap Out
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

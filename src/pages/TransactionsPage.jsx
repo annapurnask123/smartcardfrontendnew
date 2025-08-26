@@ -150,8 +150,8 @@ function TransactionsPage() {
                               {formatDate(transaction.date || transaction.createdAt)}
                             </div>
                             <div className="col-6 text-end">
-                              <span className={`fw-bold ${transaction.type === 'credit' ? 'text-success' : 'text-danger'}`}>
-                                {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount || 0}
+                              <span className={`fw-bold ${isCredit(transaction) ? 'text-success' : isDebit(transaction) ? 'text-danger' : 'text-secondary'}`}>
+                                {isCredit(transaction) ? '+' : isDebit(transaction) ? '-' : ''}₹{transaction.amount || 0}
                               </span>
                             </div>
                           </div>
@@ -216,8 +216,8 @@ function TransactionsPage() {
                                 </span>
                               </td>
                               <td>
-                                <span className={`fw-bold ${transaction.type === 'credit' ? 'text-success' : 'text-danger'}`}>
-                                  {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount || 0}
+                                <span className={`fw-bold ${isCredit(transaction) ? 'text-success' : isDebit(transaction) ? 'text-danger' : 'text-secondary'}`}>
+                                  {isCredit(transaction) ? '+' : isDebit(transaction) ? '-' : ''}₹{transaction.amount || 0}
                                 </span>
                               </td>
                               <td>
@@ -415,3 +415,13 @@ function formatTransactionType(type, transactionType) {
 
 export default TransactionsPage
 
+
+function isCredit(tx) {
+  const type = (tx.transactionType || tx.type || '').toLowerCase()
+  return ['credit', 'refund', 'wallet_credit', 'wallet_recharge', 'recharge'].includes(type)
+}
+
+function isDebit(tx) {
+  const type = (tx.transactionType || tx.type || '').toLowerCase()
+  return ['debit', 'payment', 'ticket', 'ticket_payment', 'subscription', 'subscription_payment', 'wallet_payment'].includes(type)
+}

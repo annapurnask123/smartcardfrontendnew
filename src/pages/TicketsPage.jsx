@@ -9,6 +9,7 @@ function TicketsPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { tickets = [] } = useSelector(state => state.tickets)
+  console.log("The tickets from state are ",tickets)
   const user = useSelector(state => state.auth.user)
   const q = useSelector(state => state.ui.query)
   const [statusFilter, setStatusFilter] = useState('')
@@ -80,6 +81,7 @@ function TicketsPage() {
     })
     return map
   }, [tickets])
+  console.log("The grouped tickets are ",grouped)
 
   if (loading) {
     return (
