@@ -52,7 +52,7 @@ function WelcomePage() {
             style={{ fontSize: "6rem", color: "#fff" }}
           ></i>
         </div>
-        <h1 className="display-4 fw-bold mb-4">
+        <h1 className="display-4 fw-bold mb-4 text-primary">
           Welcome to <span className="text-primary">Tapido</span>
         </h1>
         <p className="lead text-white mb-5">

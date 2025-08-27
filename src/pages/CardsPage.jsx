@@ -24,6 +24,10 @@ function CardsPage() {
   const [messageType, setMessageType] = useState(location.state?.type || '');
   const [actionLoading, setActionLoading] = useState(null);
   const [isLoading, setLoading] = useState(false);
+  const [requiresPaymentSelection, setRequiresPaymentSelection] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [showPreTapInModal, setShowPreTapInModal] = useState(false);
+  const [pendingTapInData, setPendingTapInData] = useState(null);
 
   // Helper function to get consistent card ID
   const getCardId = (card) => card.id || card._id;
@@ -240,168 +244,101 @@ function CardsPage() {
       return;
     }
     
-    try {
-      setActionLoading(cardId);
-      
-      // Get card details
-      const card = cards.find(c => getCardId(c) === cardId);
-      if (!card) {
-        alert('Card not found');
-        return;
-      }
-      
-      // Get station details (prefer stop_id)
-      const station = stations.find(s => String(s.stop_id) === String(tapInStation))
-        || stations.find(s => (s._id || s.id) === tapInStation || String(s._id) === String(tapInStation) || String(s.id) === String(tapInStation));
-      
-      if (!station) {
-        alert('Station not found. Please select a valid station.');
-        return;
-      }
+    // Get card details
+    const card = cards.find(c => getCardId(c) === cardId);
+    if (!card) {
+      alert('Card not found');
+      return;
+    }
+    
+    // Get station details (prefer stop_id)
+    const station = stations.find(s => String(s.stop_id) === String(tapInStation))
+      || stations.find(s => (s._id || s.id) === tapInStation || String(s._id) === String(tapInStation) || String(s.id) === String(tapInStation));
+    
+    if (!station) {
+      alert('Station not found. Please select a valid station.');
+      return;
+    }
 
-      // Enhanced subscription detection
-      const cardPlanSelections = JSON.parse(localStorage.getItem('cardPlanSelections') || '{}');
-      const assignedPlanId = cardPlanSelections[cardId];
-      
-      // Determine if user has active subscriptions
-      const hasActiveSubscriptions = subscriptions && subscriptions.length > 0;
-      const isSecondaryCard = !card.isPrimary && card.type !== 'primary';
-      
-      console.log('Tap-in details:', {
-        cardId,
-        cardType: card.isPrimary ? 'primary' : 'secondary',
-        hasActiveSubscriptions,
-        assignedPlanId,
-        selectedSubscription,
-        subscriptionsCount: subscriptions.length
-      });
-      
-      // Prepare tap-in data as backend expects
+    // Show payment method selection modal first
+    setPendingTapInData({
+      cardId,
+      card,
+      station
+    });
+    setShowPreTapInModal(true);
+  }
+
+  const executeTapIn = async (paymentMethod, chosenPlanId = null) => {
+    if (!pendingTapInData) return;
+
+    const { cardId, card, station } = pendingTapInData;
+    
+    setActionLoading(cardId);
+    setMessage('');
+    setMessageType('');
+
+    try {
+      // Prepare tap-in data
       const tapInData = {
         stationIdentifier: String(tapInStation || station.stop_id || station.name || station._id || station.id),
         deviceId: 'web-portal',
-        // Backend expects qrData JSON string with cardNumber and token
         qrData: JSON.stringify({
           cardNumber: card.cardNumber,
           token: `web-token-${Date.now()}`
         }),
+        paymentMethod: paymentMethod,
+        chosenPlanId: chosenPlanId
       };
 
-      // Add metadata if needed by API
-      tapInData.metadata = {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
-      };
-
-      // Enhanced payment method determination
-      if (hasActiveSubscriptions) {
-        // User has active subscriptions - prioritize subscription usage
-        if (assignedPlanId) {
-          // Card has assigned plan from MyPlans page
-          tapInData.chosenPlanId = assignedPlanId;
-          tapInData.paymentMethod = 'subscription';
-          console.log('Using assigned plan:', assignedPlanId);
-        } else if (selectedSubscription) {
-          // User selected subscription from dropdown
-          tapInData.chosenPlanId = selectedSubscription;
-          tapInData.paymentMethod = 'subscription';
-          console.log('Using selected subscription:', selectedSubscription);
-        } else if (subscriptions.length === 1) {
-          // Only one subscription available - use it automatically
-          tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
-          tapInData.paymentMethod = 'subscription';
-          console.log('Using single available subscription:', tapInData.chosenPlanId);
-        } else if (isSecondaryCard) {
-          // Secondary cards must use subscription - use first available
-          tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
-          tapInData.paymentMethod = 'subscription';
-          console.log('Secondary card using first subscription:', tapInData.chosenPlanId);
-        } else {
-          // Primary card with multiple subscriptions - let backend handle selection
-          tapInData.paymentMethod = 'subscription';
-          console.log('Multiple subscriptions - letting backend handle selection');
-        }
-      } else {
-        // No active subscriptions - use balance for primary cards only
-        if (isSecondaryCard) {
-          alert('Secondary cards require an active subscription for journeys. Please purchase a subscription plan first.');
-          return;
-        }
-        
-        tapInData.paymentMethod = 'balance';
-        
-        // Check if card has sufficient balance
-        if (card.balance < 20) {
-          alert('Insufficient balance. Minimum ₹20 required for journey. Please recharge your card.');
-          return;
-        }
-        console.log('Using card balance for primary card');
-      }
-      
-      console.log('Sending tap-in request:', tapInData);
-      
-      // Call backend API with proper error handling
-      const response = await cardAPI.tapIn(cardId, tapInData);
-      
-      // Handle different response scenarios
-      if (response.data.requiresPaymentSelection || response.data.requiresSubscriptionSelection) {
-        const message = response.data.requiresSubscriptionSelection 
-          ? 'Multiple subscriptions found. Please select one from the dropdown above.'
-          : 'Please select your payment method for this journey.';
-        alert(message);
+      // Validate payment method selection
+      if (paymentMethod === 'subscription' && !chosenPlanId) {
+        setMessage('Please select a subscription plan.');
+        setMessageType('error');
+        setActionLoading(null);
         return;
       }
 
-      // Success handling - Enhanced for subscription detection
-      const usedSubscription = tapInData.paymentMethod === 'subscription' || response.data.usedSubscription;
-      const successMessage = usedSubscription
+      if (paymentMethod === 'balance') {
+        // Check if card has sufficient balance
+        if (card.balance < 20) {
+          setMessage('Insufficient balance. Minimum ₹20 required for journey. Please recharge your card.');
+          setMessageType('error');
+          setActionLoading(null);
+          return;
+        }
+      }
+      
+      console.log('Executing tap-in with payment method:', paymentMethod, tapInData);
+      
+      // Call backend API
+      const response = await cardAPI.tapIn(cardId, tapInData);
+      
+      // Success handling
+      const successMessage = paymentMethod === 'subscription'
         ? `Tap-in successful at ${station.name} using your subscription! No amount deducted.`
-        : `Tap-in successful at ${station.name}! ₹${response.data.fare || response.data.amount || 0} deducted from balance.`;
+        : `Tap-in successful at ${station.name}! Journey will be charged from your card balance.`;
       
       setMessage(successMessage);
       setMessageType('success');
-      
-      // Update card balance in Redux only if balance was deducted
-      if (!usedSubscription && response.data.newBalance !== undefined) {
-        const updatedCards = cards.map(c => 
-          getCardId(c) === cardId ? { ...c, balance: response.data.newBalance } : c
-        );
-        dispatch(setCards(updatedCards));
-      }
       
       // Store tap in info
       localStorage.setItem('tapInStation', tapInStation);
       localStorage.setItem('tappedInCardId', cardId);
       localStorage.setItem('tapInTime', new Date().toISOString());
-      localStorage.setItem('selectedSubscription', selectedSubscription || '');
-      localStorage.setItem('assignedPlanId', assignedPlanId || '');
-      localStorage.setItem('paymentMethod', usedSubscription ? 'subscription' : 'balance');
+      localStorage.setItem('selectedSubscription', chosenPlanId || '');
+      localStorage.setItem('paymentMethod', paymentMethod);
+      
+      // Close modal and reset
+      setShowPreTapInModal(false);
+      setPendingTapInData(null);
       
     } catch (error) {
       console.error('Tap In error:', error);
       let errorMessage = 'Failed to tap in. Please try again.';
       
       if (error.response?.status === 400) {
-        // More specific error message for 400 errors
         errorMessage = error.response.data?.error || 'Invalid request. Please check your card and station selection.';
-
-        // If journey already in progress, store state so user can tap out
-        const lower = String(error.response?.data?.error || '').toLowerCase();
-        if (lower.includes('journey already in progress')) {
-          localStorage.setItem('tapInStation', tapInStation);
-          localStorage.setItem('tappedInCardId', cardId);
-          localStorage.setItem('tapInTime', new Date().toISOString());
-          // Infer payment method from attempted request
-          const attemptedMethod = (typeof tapInData !== 'undefined' && tapInData.paymentMethod) ? tapInData.paymentMethod : 'balance';
-          localStorage.setItem('paymentMethod', attemptedMethod);
-          if (typeof tapInData !== 'undefined' && tapInData.chosenPlanId) {
-            localStorage.setItem('assignedPlanId', tapInData.chosenPlanId);
-          }
-          errorMessage = 'Journey already in progress on this card. Please tap out at your destination.';
-        }
-
-        // Log the exact error details for debugging
-        console.error('API Error Details:', error.response.data);
       } else if (error.response?.status === 403) {
         errorMessage = 'Access denied. Please check your subscription status or card balance.';
       } else if (error.response?.status === 404) {
@@ -413,125 +350,135 @@ function CardsPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+async function handleTapOut(cardId) {
+  if (!tapOutStation) {
+    alert('Please select a tap-out station first');
+    return;
+  }
+  
+  if (!cardId) {
+    alert('No card found. Please create a card first.');
+    return;
   }
 
-  async function handleTapOut(cardId) {
-    if (!tapOutStation) {
-      alert('Please select a tap-out station first');
+  const tappedInCardId = localStorage.getItem('tappedInCardId');
+  if (tappedInCardId !== cardId) {
+    alert('This card was not used for tap-in. Please use the same card.');
+    return;
+  }
+
+  try {
+    setActionLoading(cardId);
+    
+    // Get card details
+    const card = cards.find(c => getCardId(c) === cardId);
+    if (!card) {
+      alert('Card not found');
       return;
     }
     
-    if (!cardId) {
-      alert('No card found. Please create a card first.');
+    // Get station details (prefer stop_id)
+    const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
+      || stations.find(s => (s._id || s.id) === tapOutStation || String(s._id) === String(tapOutStation) || String(s.id) === String(tapOutStation));
+    if (!outStation) {
+      alert('Station not found');
       return;
     }
-
-    const tappedInCardId = localStorage.getItem('tappedInCardId');
-    if (tappedInCardId !== cardId) {
-      alert('This card was not used for tap-in. Please use the same card.');
-      return;
+    
+    // Get payment method from localStorage
+    const paymentMethod = localStorage.getItem('paymentMethod');
+    const assignedPlanId = localStorage.getItem('assignedPlanId');
+    
+    console.log('Tap-out details:', {
+      cardId,
+      paymentMethod,
+      assignedPlanId,
+      outStation: outStation.name
+    });
+    
+    // Prepare tap-out data
+    const tapOutData = {
+      endStation: String(tapOutStation || outStation.stop_id || outStation.name || outStation._id || outStation.id),
+      deviceId: 'web-portal',
+      qrData: JSON.stringify({
+        cardNumber: card.cardNumber,
+        token: `web-token-${Date.now()}`
+      })
+    };
+    
+    // Add metadata if needed by API
+    tapOutData.metadata = {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    };
+    
+    // Add plan ID if it was a subscription journey
+    if (paymentMethod === 'subscription' && assignedPlanId) {
+      tapOutData.chosenPlanId = assignedPlanId;
+      tapOutData.paymentMethod = 'subscription';
     }
-
-    try {
-      setActionLoading(cardId);
-      
-      // Get card details
-      const card = cards.find(c => getCardId(c) === cardId);
-      if (!card) {
-        alert('Card not found');
-        return;
-      }
-      
-      // Get station details (prefer stop_id)
-      const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
-        || stations.find(s => (s._id || s.id) === tapOutStation || String(s._id) === String(tapOutStation) || String(s.id) === String(tapOutStation));
-      if (!outStation) {
-        alert('Station not found');
-        return;
-      }
-      
-      // Get payment method from localStorage
-      const paymentMethod = localStorage.getItem('paymentMethod');
-      const assignedPlanId = localStorage.getItem('assignedPlanId');
-      
-      console.log('Tap-out details:', {
-        cardId,
-        paymentMethod,
-        assignedPlanId,
-        outStation: outStation.name
+    
+    console.log('Sending tap-out request:', tapOutData);
+    
+    // Call backend API
+    const response = await cardAPI.tapOut(cardId, tapOutData);
+    
+    // Update card balance from backend response only if balance was deducted
+    const usedSubscription = paymentMethod === 'subscription';
+    if (!usedSubscription && response.data.newBalance !== undefined) {
+      const updatedCards = cards.map(c => {
+        if (getCardId(c) === cardId) {
+          return { ...c, balance: response.data.newBalance };
+        }
+        return c;
       });
-      
-      // Prepare tap-out data
-      const tapOutData = {
-        endStation: String(tapOutStation || outStation.stop_id || outStation.name || outStation._id || outStation.id),
-        deviceId: 'web-portal',
-        qrData: JSON.stringify({
-          cardNumber: card.cardNumber,
-          token: `web-token-${Date.now()}`
-        })
-      };
-      
-      // Add metadata if needed by API
-      tapOutData.metadata = {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
-      };
-      
-      // Add plan ID if it was a subscription journey
-      if (paymentMethod === 'subscription' && assignedPlanId) {
-        tapOutData.chosenPlanId = assignedPlanId;
-        tapOutData.paymentMethod = 'subscription';
-      }
-      
-      console.log('Sending tap-out request:', tapOutData);
-      
-      // Call backend API
-      const response = await cardAPI.tapOut(cardId, tapOutData);
-      
-      // Update card balance from backend response only if balance was deducted
-      const usedSubscription = paymentMethod === 'subscription';
-      if (!usedSubscription && response.data.newBalance !== undefined) {
-        const updatedCards = cards.map(c => {
-          if (getCardId(c) === cardId) {
-            return { ...c, balance: response.data.newBalance };
-          }
-          return c;
-        });
-        dispatch(setCards(updatedCards));
-      }
-      
-      // Show success message
-      const successMessage = usedSubscription 
-        ? 'Tap Out successful! Journey completed using your subscription - no amount deducted.'
-        : `Tap Out successful! ₹${response.data.fare || response.data.amount || 0} deducted from your balance.`;
-      
-      setMessage(successMessage);
-      setMessageType('success');
-      
-      // Clear tap in info
-      localStorage.removeItem('tapInStation');
-      localStorage.removeItem('tappedInCardId');
-      localStorage.removeItem('tapInTime');
-      localStorage.removeItem('selectedSubscription');
-      localStorage.removeItem('paymentMethod');
-      localStorage.removeItem('assignedPlanId');
-      
-    } catch (error) {
-      console.error('Tap Out error:', error);
-      let errorMessage = 'Tap Out failed. Please try again.';
-      
-      if (error.response?.status === 400) {
-        errorMessage = error.response.data?.error || 'Invalid tap-out request.';
-      } else if (error.response?.status === 404) {
-        errorMessage = 'No active journey found for this card.';
-      }
-      
-      setMessage(errorMessage);
-      setMessageType('error');
-    } finally {
-      setActionLoading(null);
+      dispatch(setCards(updatedCards));
     }
+    
+    // Show success message
+    const successMessage = usedSubscription 
+      ? 'Tap Out successful! Journey completed using your subscription - no amount deducted.'
+      : `Tap Out successful! ₹${response.data.fare || response.data.amount || 0} deducted from your balance.`;
+    
+    setMessage(successMessage);
+    setMessageType('success');
+    
+    // Clear tap in info
+    localStorage.removeItem('tapInStation');
+    localStorage.removeItem('tappedInCardId');
+    localStorage.removeItem('tapInTime');
+    localStorage.removeItem('selectedSubscription');
+    localStorage.removeItem('paymentMethod');
+    localStorage.removeItem('assignedPlanId');
+    
+  } catch (error) {
+    console.error('Tap Out error:', error);
+    let errorMessage = 'Tap Out failed. Please try again.';
+    
+    if (error.response?.status === 400) {
+      errorMessage = error.response.data?.error || 'Invalid tap-out request.';
+      // Log detailed error information for debugging
+      console.error('Validation error details:', error.response.data);
+    } else if (error.response?.status === 404) {
+      errorMessage = 'No active journey found for this card.';
+    } else if (error.response?.status === 500) {
+      errorMessage = 'Server error during tap-out. Please try again later.';
+      // Log server error details
+      console.error('Server error details:', error.response.data);
+    }
+    
+    // Check if there's additional error information in the response
+    if (error.response?.data) {
+      console.error('Full error response:', error.response.data);
+    }
+    
+    setMessage(errorMessage);
+    setMessageType('error');
+  } finally {
+    setActionLoading(null);
   }
+}
 
   const primaryCard = cards?.find(c => c.isPrimary || c.type === 'primary') || cards?.[0];
   const secondaryCards = cards?.filter(c => !c.isPrimary && c.type !== 'primary') || [];
@@ -544,6 +491,76 @@ function CardsPage() {
           type={messageType}
           onClose={() => setMessage('')}
         />
+      )}
+      
+      {/* Payment Method Selection UI */}
+      {requiresPaymentSelection && messageType === 'info' && message.includes('payment method') && (
+        <div className="alert alert-warning mt-3">
+          <i className="fas fa-exclamation-triangle me-2"></i>
+          {message}
+          <div className="mt-2">
+            <strong>Please select your preferred payment method:</strong>
+            <div className="form-check mt-2">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="paymentMethod"
+                id="paymentBalance"
+                value="balance"
+                checked={selectedPaymentMethod === 'balance'}
+                onChange={() => setSelectedPaymentMethod('balance')}
+              />
+              <label className="form-check-label" htmlFor="paymentBalance">
+                Use Card Balance (Pay per journey)
+              </label>
+            </div>
+            {subscriptions.map(sub => (
+              <div key={sub._id || sub.id} className="form-check">
+                <input
+                  className="form-check-input"
+                  type="radio"
+                  name="paymentMethod"
+                  id={`payment-${sub._id || sub.id}`}
+                  value={sub._id || sub.id}
+                  checked={selectedPaymentMethod === (sub._id || sub.id)}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                />
+                <label className="form-check-label" htmlFor={`payment-${sub._id || sub.id}`}>
+                  Use {sub.planName || sub.name} Subscription
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <button 
+              className="btn btn-primary me-2"
+              onClick={() => {
+                if (selectedPaymentMethod === 'balance') {
+                  setSelectedSubscription('');
+                } else {
+                  setSelectedSubscription(selectedPaymentMethod);
+                }
+                setRequiresPaymentSelection(false);
+                // Retry the tap-in with the selected payment method
+                const tappedInCardId = localStorage.getItem('tappedInCardId');
+                if (tappedInCardId) {
+                  handleTapIn(tappedInCardId);
+                }
+              }}
+            >
+              Confirm Payment Method
+            </button>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => {
+                setRequiresPaymentSelection(false);
+                setMessage('');
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
       
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -963,6 +980,128 @@ function CardsPage() {
         show={showRechargeByNumberModal}
         onClose={() => setShowRechargeByNumberModal(false)}
       />
+
+      {/* Pre-Tap-In Payment Method Selection Modal */}
+      {showPreTapInModal && pendingTapInData && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="fas fa-credit-card text-primary me-2"></i>
+                  Choose Payment Method for Journey
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => {
+                    setShowPreTapInModal(false);
+                    setPendingTapInData(null);
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-info">
+                  <i className="fas fa-info-circle me-2"></i>
+                  <strong>Journey Details:</strong><br/>
+                  Card: {pendingTapInData.card.cardNumber}<br/>
+                  From: {pendingTapInData.station.name}<br/>
+                  Please select how you want to pay for this journey:
+                </div>
+                
+                <div className="mb-3">
+                  <strong>Payment Options:</strong>
+                  
+                  {/* Card Balance Option */}
+                  <div className="form-check mt-2">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="preTapInPaymentMethod"
+                      id="preTapInBalance"
+                      value="balance"
+                      checked={selectedPaymentMethod === 'balance'}
+                      onChange={() => setSelectedPaymentMethod('balance')}
+                    />
+                    <label className="form-check-label" htmlFor="preTapInBalance">
+                      <strong>Use Card Balance</strong> - Pay per journey (₹20-50 based on distance)
+                    </label>
+                    {selectedPaymentMethod === 'balance' && (
+                      <div className="ms-4 mt-1 text-muted small">
+                        Current balance: ₹{pendingTapInData.card.balance || 0}<br/>
+                        Minimum required: ₹20
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subscription Options */}
+                  {subscriptions.map(sub => (
+                    <div key={sub._id || sub.id} className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="preTapInPaymentMethod"
+                        id={`preTapIn-${sub._id || sub.id}`}
+                        value={sub._id || sub.id}
+                        checked={selectedPaymentMethod === (sub._id || sub.id)}
+                        onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                      />
+                      <label className="form-check-label" htmlFor={`preTapIn-${sub._id || sub.id}`}>
+                        <strong>Use {sub.planName || sub.name} Subscription</strong> - No additional charges
+                      </label>
+                      {selectedPaymentMethod === (sub._id || sub.id) && (
+                        <div className="ms-4 mt-1 text-muted small">
+                          Valid until: {new Date(sub.endDate || sub.expiryDate).toLocaleDateString()}<br/>
+                          Plan type: {sub.planType || 'Standard'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {subscriptions.length === 0 && (
+                    <div className="alert alert-warning mt-2">
+                      <i className="fas fa-exclamation-triangle me-2"></i>
+                      No active subscriptions found. You can only use card balance for journeys.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setShowPreTapInModal(false);
+                    setPendingTapInData(null);
+                    setSelectedPaymentMethod('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    if (!selectedPaymentMethod) {
+                      alert('Please select a payment method first.');
+                      return;
+                    }
+                    
+                    const paymentMethod = selectedPaymentMethod === 'balance' ? 'balance' : 'subscription';
+                    const chosenPlanId = selectedPaymentMethod === 'balance' ? null : selectedPaymentMethod;
+                    
+                    executeTapIn(paymentMethod, chosenPlanId);
+                  }}
+                  disabled={!selectedPaymentMethod}
+                >
+                  <i className="fas fa-sign-in-alt me-2"></i>
+                  Confirm & Tap In
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .credit-card {

@@ -11,8 +11,10 @@ const AdminStationManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    coordinates: { lat: '', lng: '' },
+    latitude: '',
+    longitude: '',
     address: '',
+    zone: '',
     isActive: true
   });
 
@@ -36,18 +38,10 @@ const AdminStationManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const stationData = {
-        ...formData,
-        coordinates: {
-          lat: parseFloat(formData.coordinates.lat),
-          lng: parseFloat(formData.coordinates.lng)
-        }
-      };
-
       if (editingStation) {
-        await stationAPI.updateStation(editingStation._id, stationData);
+        await stationAPI.updateStation(editingStation._id, formData);
       } else {
-        await stationAPI.createStation(stationData);
+        await stationAPI.createStation(formData);
       }
       setShowModal(false);
       setEditingStation(null);
@@ -63,11 +57,10 @@ const AdminStationManagement = () => {
     setFormData({
       name: station.name || '',
       code: station.code || '',
-      coordinates: {
-        lat: station.coordinates?.lat || '',
-        lng: station.coordinates?.lng || ''
-      },
+      latitude: station.latitude || '',
+      longitude: station.longitude || '',
       address: station.address || '',
+      zone: station.zone || '',
       isActive: station.isActive !== false
     });
     setShowModal(true);
@@ -84,21 +77,14 @@ const AdminStationManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (stationId, currentStatus) => {
-    try {
-      await stationAPI.updateStation(stationId, { isActive: !currentStatus });
-      fetchStations();
-    } catch (error) {
-      setError('Failed to update station status');
-    }
-  };
-
   const resetForm = () => {
     setFormData({
       name: '',
       code: '',
-      coordinates: { lat: '', lng: '' },
+      latitude: '',
+      longitude: '',
       address: '',
+      zone: '',
       isActive: true
     });
   };
@@ -114,7 +100,7 @@ const AdminStationManagement = () => {
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
-            <h2><i className="fas fa-map-marker-alt me-2"></i>Station Management</h2>
+            <h2><i className="fas fa-subway me-2"></i>Station Management</h2>
             <Button 
               variant="primary" 
               onClick={() => setShowModal(true)}
@@ -153,8 +139,8 @@ const AdminStationManagement = () => {
                     <tr>
                       <th>Name</th>
                       <th>Code</th>
+                      <th>Zone</th>
                       <th>Coordinates</th>
-                      <th>Address</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -162,18 +148,24 @@ const AdminStationManagement = () => {
                   <tbody>
                     {stations.map((station) => (
                       <tr key={station._id}>
-                        <td><strong>{station.name}</strong></td>
-                        <td><code>{station.code}</code></td>
                         <td>
-                          {station.coordinates ? 
-                            `${station.coordinates.lat}, ${station.coordinates.lng}` : 
-                            'N/A'
-                          }
+                          <strong>{station.name}</strong>
+                          {station.address && (
+                            <div className="text-muted small">{station.address}</div>
+                          )}
                         </td>
-                        <td>{station.address || 'N/A'}</td>
+                        <td><code>{station.code}</code></td>
+                        <td>{station.zone || 'N/A'}</td>
                         <td>
-                          <Badge bg={station.isActive ? 'success' : 'danger'}>
-                            {station.isActive ? 'Active' : 'Inactive'}
+                          {station.latitude && station.longitude ? (
+                            <small>
+                              {parseFloat(station.latitude).toFixed(4)}, {parseFloat(station.longitude).toFixed(4)}
+                            </small>
+                          ) : 'N/A'}
+                        </td>
+                        <td>
+                          <Badge bg={station.isActive !== false ? 'success' : 'danger'}>
+                            {station.isActive !== false ? 'Active' : 'Inactive'}
                           </Badge>
                         </td>
                         <td>
@@ -184,14 +176,6 @@ const AdminStationManagement = () => {
                             onClick={() => handleEdit(station)}
                           >
                             <i className="fas fa-edit"></i>
-                          </Button>
-                          <Button
-                            variant={station.isActive ? "outline-warning" : "outline-success"}
-                            size="sm"
-                            className="me-2"
-                            onClick={() => handleToggleStatus(station._id, station.isActive)}
-                          >
-                            <i className={`fas fa-${station.isActive ? 'ban' : 'check'}`}></i>
                           </Button>
                           <Button
                             variant="outline-danger"
@@ -229,7 +213,6 @@ const AdminStationManagement = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
-                    placeholder="Enter station name"
                   />
                 </Form.Group>
               </Col>
@@ -241,7 +224,6 @@ const AdminStationManagement = () => {
                     value={formData.code}
                     onChange={(e) => setFormData({...formData, code: e.target.value})}
                     required
-                    placeholder="Enter station code"
                   />
                 </Form.Group>
               </Col>
@@ -253,12 +235,8 @@ const AdminStationManagement = () => {
                   <Form.Control
                     type="number"
                     step="any"
-                    value={formData.coordinates.lat}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      coordinates: {...formData.coordinates, lat: e.target.value}
-                    })}
-                    placeholder="Enter latitude"
+                    value={formData.latitude}
+                    onChange={(e) => setFormData({...formData, latitude: e.target.value})}
                   />
                 </Form.Group>
               </Col>
@@ -268,29 +246,33 @@ const AdminStationManagement = () => {
                   <Form.Control
                     type="number"
                     step="any"
-                    value={formData.coordinates.lng}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      coordinates: {...formData.coordinates, lng: e.target.value}
-                    })}
-                    placeholder="Enter longitude"
+                    value={formData.longitude}
+                    onChange={(e) => setFormData({...formData, longitude: e.target.value})}
                   />
                 </Form.Group>
               </Col>
             </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Address</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+              />
+            </Form.Group>
             <Row>
-              <Col md={8}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Address</Form.Label>
+                  <Form.Label>Zone</Form.Label>
                   <Form.Control
                     type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    placeholder="Enter station address"
+                    value={formData.zone}
+                    onChange={(e) => setFormData({...formData, zone: e.target.value})}
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Check
                     type="checkbox"

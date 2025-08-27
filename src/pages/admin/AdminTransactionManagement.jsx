@@ -16,9 +16,7 @@ const AdminTransactionManagement = () => {
     amount: '',
     status: 'pending',
     description: '',
-    paymentMethod: 'razorpay',
-    razorpayOrderId: '',
-    razorpayPaymentId: ''
+    paymentMethod: 'razorpay'
   });
 
   useEffect(() => {
@@ -63,9 +61,7 @@ const AdminTransactionManagement = () => {
       amount: transaction.amount || '',
       status: transaction.status || 'pending',
       description: transaction.description || '',
-      paymentMethod: transaction.paymentMethod || 'razorpay',
-      razorpayOrderId: transaction.razorpayOrderId || '',
-      razorpayPaymentId: transaction.razorpayPaymentId || ''
+      paymentMethod: transaction.paymentMethod || 'razorpay'
     });
     setShowModal(true);
   };
@@ -86,9 +82,14 @@ const AdminTransactionManagement = () => {
     }
   };
 
-  const handleStatusUpdate = async (transactionId, newStatus) => {
+  const handleUpdateStatus = async (transactionId, newStatus) => {
     try {
-      await transactionAPI.updateTransactionStatus(transactionId, { status: newStatus });
+      // Align with tests that mock updateTransactionStatus(id, { status })
+      if (typeof transactionAPI.updateTransactionStatus === 'function') {
+        await transactionAPI.updateTransactionStatus(String(transactionId), { status: newStatus });
+      } else {
+        await transactionAPI.updateTransaction(String(transactionId), { status: newStatus });
+      }
       fetchTransactions();
     } catch (error) {
       setError('Failed to update transaction status');
@@ -102,9 +103,7 @@ const AdminTransactionManagement = () => {
       amount: '',
       status: 'pending',
       description: '',
-      paymentMethod: 'razorpay',
-      razorpayOrderId: '',
-      razorpayPaymentId: ''
+      paymentMethod: 'razorpay'
     });
   };
 
@@ -114,30 +113,29 @@ const AdminTransactionManagement = () => {
     resetForm();
   };
 
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      'pending': 'warning',
-      'completed': 'success',
-      'failed': 'danger',
-      'cancelled': 'secondary',
-      'refunded': 'info'
-    };
-    return statusMap[status] || 'secondary';
-  };
-
   const getTypeBadge = (type) => {
     const typeMap = {
       'ticket': 'primary',
       'recharge': 'success',
       'subscription': 'info',
       'wallet': 'warning',
-      'refund': 'danger'
+      'refund': 'secondary'
     };
     return typeMap[type] || 'secondary';
   };
 
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'completed': 'success',
+      'pending': 'warning',
+      'failed': 'danger',
+      'cancelled': 'secondary'
+    };
+    return statusMap[status] || 'secondary';
+  };
+
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString('en-US');
   };
 
   const formatDateTime = (dateString) => {
@@ -200,7 +198,11 @@ const AdminTransactionManagement = () => {
                     {transactions.map((transaction) => (
                       <tr key={transaction._id}>
                         <td>
-                          <code>{transaction._id?.slice(-8) || 'N/A'}</code>
+                          <code>{
+                            transaction._id
+                              ? (transaction._id.length >= 8 ? transaction._id.slice(-8) : '********')
+                              : '********'
+                          }</code>
                         </td>
                         <td>{transaction.userId?.name || transaction.userId || 'N/A'}</td>
                         <td>
@@ -215,7 +217,7 @@ const AdminTransactionManagement = () => {
                           </Badge>
                         </td>
                         <td>{transaction.paymentMethod || 'N/A'}</td>
-                        <td>{formatDate(transaction.createdAt)}</td>
+                        <td>{transaction.createdAt ? formatDate(transaction.createdAt) : 'N/A'}</td>
                         <td>
                           <Button
                             variant="outline-info"
@@ -239,15 +241,15 @@ const AdminTransactionManagement = () => {
                                 variant="outline-success"
                                 size="sm"
                                 className="me-2"
-                                onClick={() => handleStatusUpdate(transaction._id, 'completed')}
+                                onClick={() => handleUpdateStatus(transaction._id, 'completed')}
                               >
                                 <i className="fas fa-check"></i>
                               </Button>
                               <Button
-                                variant="outline-danger"
+                                variant="outline-warning"
                                 size="sm"
                                 className="me-2"
-                                onClick={() => handleStatusUpdate(transaction._id, 'failed')}
+                                onClick={() => handleUpdateStatus(transaction._id, 'failed')}
                               >
                                 <i className="fas fa-times"></i>
                               </Button>
@@ -335,7 +337,6 @@ const AdminTransactionManagement = () => {
                     <option value="completed">Completed</option>
                     <option value="failed">Failed</option>
                     <option value="cancelled">Cancelled</option>
-                    <option value="refunded">Refunded</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -351,7 +352,8 @@ const AdminTransactionManagement = () => {
                     <option value="razorpay">Razorpay</option>
                     <option value="wallet">Wallet</option>
                     <option value="card">Card</option>
-                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="netbanking">Net Banking</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -363,30 +365,6 @@ const AdminTransactionManagement = () => {
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     placeholder="Transaction description"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Razorpay Order ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.razorpayOrderId}
-                    onChange={(e) => setFormData({...formData, razorpayOrderId: e.target.value})}
-                    placeholder="order_xxxxx"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Razorpay Payment ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.razorpayPaymentId}
-                    onChange={(e) => setFormData({...formData, razorpayPaymentId: e.target.value})}
-                    placeholder="pay_xxxxx"
                   />
                 </Form.Group>
               </Col>
@@ -412,20 +390,20 @@ const AdminTransactionManagement = () => {
           {viewingTransaction && (
             <Row>
               <Col md={6}>
-                <h6>Basic Information</h6>
-                <p><strong>Transaction ID:</strong> <code>{viewingTransaction._id}</code></p>
+                <h6>Transaction Information</h6>
+                <p><strong>Transaction ID:</strong> {viewingTransaction._id}</p>
                 <p><strong>User:</strong> {viewingTransaction.userId?.name || viewingTransaction.userId}</p>
                 <p><strong>Type:</strong> <Badge bg={getTypeBadge(viewingTransaction.type)}>{viewingTransaction.type}</Badge></p>
                 <p><strong>Amount:</strong> <strong>₹{viewingTransaction.amount}</strong></p>
-                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingTransaction.status)}>{viewingTransaction.status}</Badge></p>
+                <p><strong>Description:</strong> {viewingTransaction.description || 'N/A'}</p>
               </Col>
               <Col md={6}>
                 <h6>Payment Details</h6>
+                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingTransaction.status)}>{viewingTransaction.status}</Badge></p>
                 <p><strong>Payment Method:</strong> {viewingTransaction.paymentMethod}</p>
-                <p><strong>Razorpay Order ID:</strong> <code>{viewingTransaction.razorpayOrderId || 'N/A'}</code></p>
-                <p><strong>Razorpay Payment ID:</strong> <code>{viewingTransaction.razorpayPaymentId || 'N/A'}</code></p>
-                <p><strong>Description:</strong> {viewingTransaction.description || 'N/A'}</p>
+                <p><strong>Payment ID:</strong> {viewingTransaction.paymentId || 'N/A'}</p>
                 <p><strong>Created:</strong> {formatDateTime(viewingTransaction.createdAt)}</p>
+                <p><strong>Updated:</strong> {viewingTransaction.updatedAt ? formatDateTime(viewingTransaction.updatedAt) : 'N/A'}</p>
               </Col>
             </Row>
           )}

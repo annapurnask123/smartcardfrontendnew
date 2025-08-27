@@ -11,11 +11,14 @@ const AdminRouteManagement = () => {
   const [editingRoute, setEditingRoute] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    startStationId: '',
-    endStationId: '',
+    code: '',
+    startStation: '',
+    endStation: '',
     distance: '',
     estimatedTime: '',
-    isActive: true
+    fare: '',
+    isActive: true,
+    stations: []
   });
 
   useEffect(() => {
@@ -48,16 +51,10 @@ const AdminRouteManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const routeData = {
-        ...formData,
-        distance: parseFloat(formData.distance),
-        estimatedTime: parseInt(formData.estimatedTime)
-      };
-
       if (editingRoute) {
-        await routeAPI.updateRoute(editingRoute._id, routeData);
+        await routeAPI.updateRoute(editingRoute._id, formData);
       } else {
-        await routeAPI.createRoute(routeData);
+        await routeAPI.createRoute(formData);
       }
       setShowModal(false);
       setEditingRoute(null);
@@ -72,11 +69,14 @@ const AdminRouteManagement = () => {
     setEditingRoute(route);
     setFormData({
       name: route.name || '',
-      startStationId: route.startStationId?._id || route.startStationId || '',
-      endStationId: route.endStationId?._id || route.endStationId || '',
+      code: route.code || '',
+      startStation: route.startStation?._id || route.startStation || '',
+      endStation: route.endStation?._id || route.endStation || '',
       distance: route.distance || '',
       estimatedTime: route.estimatedTime || '',
-      isActive: route.isActive !== false
+      fare: route.fare || '',
+      isActive: route.isActive !== false,
+      stations: route.stations || []
     });
     setShowModal(true);
   };
@@ -92,23 +92,17 @@ const AdminRouteManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (routeId, currentStatus) => {
-    try {
-      await routeAPI.updateRoute(routeId, { isActive: !currentStatus });
-      fetchRoutes();
-    } catch (error) {
-      setError('Failed to update route status');
-    }
-  };
-
   const resetForm = () => {
     setFormData({
       name: '',
-      startStationId: '',
-      endStationId: '',
+      code: '',
+      startStation: '',
+      endStation: '',
       distance: '',
       estimatedTime: '',
-      isActive: true
+      fare: '',
+      isActive: true,
+      stations: []
     });
   };
 
@@ -119,11 +113,8 @@ const AdminRouteManagement = () => {
   };
 
   const getStationName = (stationId) => {
-    if (typeof stationId === 'object' && stationId?.name) {
-      return stationId.name;
-    }
     const station = stations.find(s => s._id === stationId);
-    return station?.name || 'Unknown Station';
+    return station ? station.name : 'Unknown Station';
   };
 
   return (
@@ -169,10 +160,11 @@ const AdminRouteManagement = () => {
                   <thead>
                     <tr>
                       <th>Route Name</th>
-                      <th>Start Station</th>
-                      <th>End Station</th>
+                      <th>Code</th>
+                      <th>Start - End</th>
                       <th>Distance</th>
-                      <th>Est. Time</th>
+                      <th>Time</th>
+                      <th>Fare</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -181,13 +173,23 @@ const AdminRouteManagement = () => {
                     {routes.map((route) => (
                       <tr key={route._id}>
                         <td><strong>{route.name}</strong></td>
-                        <td>{getStationName(route.startStationId)}</td>
-                        <td>{getStationName(route.endStationId)}</td>
-                        <td>{route.distance} km</td>
-                        <td>{route.estimatedTime} min</td>
+                        <td><code>{route.code}</code></td>
                         <td>
-                          <Badge bg={route.isActive ? 'success' : 'danger'}>
-                            {route.isActive ? 'Active' : 'Inactive'}
+                          <div>
+                            <i className="fas fa-circle text-success me-1"></i>
+                            {getStationName(route.startStation)}
+                          </div>
+                          <div>
+                            <i className="fas fa-circle text-danger me-1"></i>
+                            {getStationName(route.endStation)}
+                          </div>
+                        </td>
+                        <td>{route.distance ? `${route.distance} km` : 'N/A'}</td>
+                        <td>{route.estimatedTime ? `${route.estimatedTime} min` : 'N/A'}</td>
+                        <td>{route.fare ? `₹${route.fare}` : 'N/A'}</td>
+                        <td>
+                          <Badge bg={route.isActive !== false ? 'success' : 'danger'}>
+                            {route.isActive !== false ? 'Active' : 'Inactive'}
                           </Badge>
                         </td>
                         <td>
@@ -198,14 +200,6 @@ const AdminRouteManagement = () => {
                             onClick={() => handleEdit(route)}
                           >
                             <i className="fas fa-edit"></i>
-                          </Button>
-                          <Button
-                            variant={route.isActive ? "outline-warning" : "outline-success"}
-                            size="sm"
-                            className="me-2"
-                            onClick={() => handleToggleStatus(route._id, route.isActive)}
-                          >
-                            <i className={`fas fa-${route.isActive ? 'ban' : 'check'}`}></i>
                           </Button>
                           <Button
                             variant="outline-danger"
@@ -235,7 +229,7 @@ const AdminRouteManagement = () => {
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
             <Row>
-              <Col md={12}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Route Name *</Form.Label>
                   <Form.Control
@@ -243,7 +237,17 @@ const AdminRouteManagement = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
-                    placeholder="Enter route name"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Route Code *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) => setFormData({...formData, code: e.target.value})}
+                    required
                   />
                 </Form.Group>
               </Col>
@@ -253,8 +257,8 @@ const AdminRouteManagement = () => {
                 <Form.Group className="mb-3">
                   <Form.Label>Start Station *</Form.Label>
                   <Form.Select
-                    value={formData.startStationId}
-                    onChange={(e) => setFormData({...formData, startStationId: e.target.value})}
+                    value={formData.startStation}
+                    onChange={(e) => setFormData({...formData, startStation: e.target.value})}
                     required
                   >
                     <option value="">Select Start Station</option>
@@ -270,8 +274,8 @@ const AdminRouteManagement = () => {
                 <Form.Group className="mb-3">
                   <Form.Label>End Station *</Form.Label>
                   <Form.Select
-                    value={formData.endStationId}
-                    onChange={(e) => setFormData({...formData, endStationId: e.target.value})}
+                    value={formData.endStation}
+                    onChange={(e) => setFormData({...formData, endStation: e.target.value})}
                     required
                   >
                     <option value="">Select End Station</option>
@@ -285,7 +289,7 @@ const AdminRouteManagement = () => {
               </Col>
             </Row>
             <Row>
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Distance (km)</Form.Label>
                   <Form.Control
@@ -293,24 +297,33 @@ const AdminRouteManagement = () => {
                     step="0.1"
                     value={formData.distance}
                     onChange={(e) => setFormData({...formData, distance: e.target.value})}
-                    placeholder="Enter distance in km"
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Estimated Time (minutes)</Form.Label>
+                  <Form.Label>Estimated Time (min)</Form.Label>
                   <Form.Control
                     type="number"
                     value={formData.estimatedTime}
                     onChange={(e) => setFormData({...formData, estimatedTime: e.target.value})}
-                    placeholder="Enter estimated time"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Base Fare (₹)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    value={formData.fare}
+                    onChange={(e) => setFormData({...formData, fare: e.target.value})}
                   />
                 </Form.Group>
               </Col>
             </Row>
             <Row>
-              <Col md={12}>
+              <Col>
                 <Form.Group className="mb-3">
                   <Form.Check
                     type="checkbox"

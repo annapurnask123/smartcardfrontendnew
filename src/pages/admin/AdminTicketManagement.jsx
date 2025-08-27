@@ -5,7 +5,6 @@ import { ticketAPI, stationAPI, userAPI } from '../../api/api';
 const AdminTicketManagement = () => {
   const [tickets, setTickets] = useState([]);
   const [stations, setStations] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -13,18 +12,17 @@ const AdminTicketManagement = () => {
   const [viewingTicket, setViewingTicket] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [formData, setFormData] = useState({
-    userId: '',
     startStationId: '',
     endStationId: '',
-    totalFare: '',
-    status: 'pending',
-    validUntil: ''
+    price: '',
+    status: 'active',
+    paymentMethod: 'razorpay',
+    userId: ''
   });
 
   useEffect(() => {
     fetchTickets();
     fetchStations();
-    fetchUsers();
   }, []);
 
   const fetchTickets = async () => {
@@ -49,28 +47,13 @@ const AdminTicketManagement = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const response = await userAPI.getAllUsers();
-      setUsers(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const ticketData = {
-        ...formData,
-        totalFare: parseFloat(formData.totalFare),
-        validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null
-      };
-
       if (editingTicket) {
-        await ticketAPI.updateTicket(editingTicket._id, ticketData);
+        await ticketAPI.updateTicket(editingTicket._id, formData);
       } else {
-        await ticketAPI.createTicket(ticketData);
+        await ticketAPI.bookTicket(formData);
       }
       setShowModal(false);
       setEditingTicket(null);
@@ -84,12 +67,12 @@ const AdminTicketManagement = () => {
   const handleEdit = (ticket) => {
     setEditingTicket(ticket);
     setFormData({
-      userId: ticket.userId?._id || ticket.userId || '',
       startStationId: ticket.startStationId?._id || ticket.startStationId || '',
       endStationId: ticket.endStationId?._id || ticket.endStationId || '',
-      totalFare: ticket.totalFare || '',
-      status: ticket.status || 'pending',
-      validUntil: ticket.validUntil ? new Date(ticket.validUntil).toISOString().split('T')[0] : ''
+      price: ticket.price || '',
+      status: ticket.status || 'active',
+      paymentMethod: ticket.paymentMethod || 'razorpay',
+      userId: ticket.userId?._id || ticket.userId || ''
     });
     setShowModal(true);
   };
@@ -102,7 +85,7 @@ const AdminTicketManagement = () => {
   const handleDelete = async (ticketId) => {
     if (window.confirm('Are you sure you want to delete this ticket?')) {
       try {
-        await ticketAPI.deleteTicket(ticketId);
+        await ticketAPI.cancelTicket(ticketId);
         fetchTickets();
       } catch (error) {
         setError('Failed to delete ticket');
@@ -110,23 +93,14 @@ const AdminTicketManagement = () => {
     }
   };
 
-  const handleUpdateStatus = async (ticketId, newStatus) => {
-    try {
-      await ticketAPI.updateTicket(ticketId, { status: newStatus });
-      fetchTickets();
-    } catch (error) {
-      setError('Failed to update ticket status');
-    }
-  };
-
   const resetForm = () => {
     setFormData({
-      userId: '',
       startStationId: '',
       endStationId: '',
-      totalFare: '',
-      status: 'pending',
-      validUntil: ''
+      price: '',
+      status: 'active',
+      paymentMethod: 'razorpay',
+      userId: ''
     });
   };
 
@@ -136,37 +110,23 @@ const AdminTicketManagement = () => {
     resetForm();
   };
 
+  const getStationName = (stationId) => {
+    const station = stations.find(s => s._id === stationId);
+    return station ? station.name : 'Unknown Station';
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
-      'pending': 'warning',
-      'in_progress': 'primary',
+      'active': 'primary',
+      'in_progress': 'warning',
       'completed': 'success',
-      'cancelled': 'danger'
+      'cancelled': 'danger',
+      'expired': 'secondary'
     };
     return statusMap[status] || 'secondary';
   };
 
-  const getStationName = (stationId) => {
-    if (typeof stationId === 'object' && stationId?.name) {
-      return stationId.name;
-    }
-    const station = stations.find(s => s._id === stationId);
-    return station?.name || 'Unknown Station';
-  };
-
-  const getUserName = (userId) => {
-    if (typeof userId === 'object' && userId?.name) {
-      return userId.name;
-    }
-    const user = users.find(u => u._id === userId);
-    return user?.name || 'Unknown User';
-  };
-
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatDateTime = (dateString) => {
     return new Date(dateString).toLocaleString();
   };
 
@@ -212,32 +172,37 @@ const AdminTicketManagement = () => {
                 <Table responsive striped hover>
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>User</th>
+                      <th>Ticket ID</th>
                       <th>Route</th>
-                      <th>Fare</th>
+                      <th>User</th>
+                      <th>Price</th>
                       <th>Status</th>
-                      <th>Valid Until</th>
+                      <th>Created</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tickets.map((ticket) => (
                       <tr key={ticket._id}>
+                        <td><code>{ticket.ticketId || ticket._id}</code></td>
                         <td>
-                          <code>{ticket._id?.slice(-8) || 'N/A'}</code>
+                          <div>
+                            <i className="fas fa-circle text-success me-1"></i>
+                            {getStationName(ticket.startStationId)}
+                          </div>
+                          <div>
+                            <i className="fas fa-circle text-danger me-1"></i>
+                            {getStationName(ticket.endStationId)}
+                          </div>
                         </td>
-                        <td>{getUserName(ticket.userId)}</td>
-                        <td>
-                          {getStationName(ticket.startStationId)} → {getStationName(ticket.endStationId)}
-                        </td>
-                        <td><strong>₹{ticket.totalFare || 0}</strong></td>
+                        <td>{ticket.userId?.name || ticket.userId || 'N/A'}</td>
+                        <td><strong>₹{ticket.price}</strong></td>
                         <td>
                           <Badge bg={getStatusBadge(ticket.status)}>
                             {ticket.status}
                           </Badge>
                         </td>
-                        <td>{ticket.validUntil ? formatDate(ticket.validUntil) : 'N/A'}</td>
+                        <td>{formatDate(ticket.createdAt)}</td>
                         <td>
                           <Button
                             variant="outline-info"
@@ -255,36 +220,6 @@ const AdminTicketManagement = () => {
                           >
                             <i className="fas fa-edit"></i>
                           </Button>
-                          {ticket.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="outline-success"
-                                size="sm"
-                                className="me-2"
-                                onClick={() => handleUpdateStatus(ticket._id, 'in_progress')}
-                              >
-                                <i className="fas fa-play"></i>
-                              </Button>
-                              <Button
-                                variant="outline-warning"
-                                size="sm"
-                                className="me-2"
-                                onClick={() => handleUpdateStatus(ticket._id, 'cancelled')}
-                              >
-                                <i className="fas fa-ban"></i>
-                              </Button>
-                            </>
-                          )}
-                          {ticket.status === 'in_progress' && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="me-2"
-                              onClick={() => handleUpdateStatus(ticket._id, 'completed')}
-                            >
-                              <i className="fas fa-check"></i>
-                            </Button>
-                          )}
                           <Button
                             variant="outline-danger"
                             size="sm"
@@ -312,39 +247,6 @@ const AdminTicketManagement = () => {
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>User *</Form.Label>
-                  <Form.Select
-                    value={formData.userId}
-                    onChange={(e) => setFormData({...formData, userId: e.target.value})}
-                    required
-                  >
-                    <option value="">Select User</option>
-                    {users.map(user => (
-                      <option key={user._id} value={user._id}>
-                        {user.name} ({user.email})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -384,24 +286,54 @@ const AdminTicketManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Total Fare (₹) *</Form.Label>
+                  <Form.Label>Price (₹) *</Form.Label>
                   <Form.Control
                     type="number"
                     step="0.01"
-                    value={formData.totalFare}
-                    onChange={(e) => setFormData({...formData, totalFare: e.target.value})}
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: e.target.value})}
                     required
-                    placeholder="0.00"
                   />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Valid Until</Form.Label>
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  >
+                    <option value="active">Active</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="expired">Expired</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Payment Method</Form.Label>
+                  <Form.Select
+                    value={formData.paymentMethod}
+                    onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                  >
+                    <option value="razorpay">Razorpay</option>
+                    <option value="wallet">Wallet</option>
+                    <option value="subscription">Subscription</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>User ID</Form.Label>
                   <Form.Control
-                    type="date"
-                    value={formData.validUntil}
-                    onChange={(e) => setFormData({...formData, validUntil: e.target.value})}
+                    type="text"
+                    value={formData.userId}
+                    onChange={(e) => setFormData({...formData, userId: e.target.value})}
+                    placeholder="Enter User ID"
                   />
                 </Form.Group>
               </Col>
@@ -427,18 +359,19 @@ const AdminTicketManagement = () => {
           {viewingTicket && (
             <Row>
               <Col md={6}>
-                <h6>Ticket Information</h6>
-                <p><strong>Ticket ID:</strong> {viewingTicket._id}</p>
-                <p><strong>User:</strong> {getUserName(viewingTicket.userId)}</p>
-                <p><strong>Route:</strong> {getStationName(viewingTicket.startStationId)} → {getStationName(viewingTicket.endStationId)}</p>
-                <p><strong>Total Fare:</strong> ₹{viewingTicket.totalFare}</p>
+                <h6>Basic Information</h6>
+                <p><strong>Ticket ID:</strong> {viewingTicket.ticketId || viewingTicket._id}</p>
+                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingTicket.status)}>{viewingTicket.status}</Badge></p>
+                <p><strong>Price:</strong> ₹{viewingTicket.price}</p>
+                <p><strong>Payment Method:</strong> {viewingTicket.paymentMethod}</p>
               </Col>
               <Col md={6}>
-                <h6>Status & Dates</h6>
-                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingTicket.status)}>{viewingTicket.status}</Badge></p>
-                <p><strong>Created:</strong> {formatDateTime(viewingTicket.createdAt)}</p>
-                <p><strong>Valid Until:</strong> {viewingTicket.validUntil ? formatDateTime(viewingTicket.validUntil) : 'N/A'}</p>
-                <p><strong>QR Code:</strong> {viewingTicket.qrCode ? 'Generated' : 'Not Available'}</p>
+                <h6>Journey Details</h6>
+                <p><strong>From:</strong> {getStationName(viewingTicket.startStationId)}</p>
+                <p><strong>To:</strong> {getStationName(viewingTicket.endStationId)}</p>
+                <p><strong>Created:</strong> {formatDate(viewingTicket.createdAt)}</p>
+                {viewingTicket.tapInTime && <p><strong>Tap In:</strong> {formatDate(viewingTicket.tapInTime)}</p>}
+                {viewingTicket.tapOutTime && <p><strong>Tap Out:</strong> {formatDate(viewingTicket.tapOutTime)}</p>}
               </Col>
             </Row>
           )}

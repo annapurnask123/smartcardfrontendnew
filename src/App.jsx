@@ -46,7 +46,7 @@ import AdminSubscriptionManagement from './pages/admin/AdminSubscriptionManageme
 import AdminCardManagement from './pages/admin/AdminCardManagement';
 import AdminTransactionManagement from './pages/admin/AdminTransactionManagement';
 // import AdminAnalytics from './pages/AdminAnalytics';
-import AdminModelManagement from './pages/AdminModelManagement';
+// import AdminModelManagement from './pages/AdminModelManagement';
 
 function App() {
   
@@ -102,7 +102,7 @@ function App() {
         <Route path="cards" element={<AdminCardManagement />} />
         <Route path="transactions" element={<AdminTransactionManagement />} />
         {/* <Route path="analytics" element={<AdminAnalytics />} /> */}
-        <Route path="models" element={<AdminModelManagement />} />
+        {/* <Route path="models" element={<AdminModelManagement />} /> */}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

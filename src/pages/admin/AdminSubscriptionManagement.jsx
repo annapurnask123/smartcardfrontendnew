@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Badge, Spinner } from 'react-bootstrap';
-import { subscriptionAPI, userAPI } from '../../api/api';
+import { subscriptionAPI, subscriptionPlanAPI, userAPI } from '../../api/api';
 
 const AdminSubscriptionManagement = () => {
   const [subscriptions, setSubscriptions] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -13,8 +13,7 @@ const AdminSubscriptionManagement = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [formData, setFormData] = useState({
     userId: '',
-    planName: 'Family Card',
-    amount: '',
+    planId: '',
     status: 'active',
     startDate: '',
     endDate: '',
@@ -23,7 +22,7 @@ const AdminSubscriptionManagement = () => {
 
   useEffect(() => {
     fetchSubscriptions();
-    fetchUsers();
+    fetchPlans();
   }, []);
 
   const fetchSubscriptions = async () => {
@@ -39,29 +38,22 @@ const AdminSubscriptionManagement = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchPlans = async () => {
     try {
-      const response = await userAPI.getAllUsers();
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      const response = await subscriptionPlanAPI.getAll();
+      setPlans(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching plans:', error);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const subscriptionData = {
-        ...formData,
-        amount: parseFloat(formData.amount),
-        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
-        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
-      };
-
       if (editingSubscription) {
-        await subscriptionAPI.updateSubscription(editingSubscription._id, subscriptionData);
+        await subscriptionAPI.updateSubscription(editingSubscription._id, formData);
       } else {
-        await subscriptionAPI.createSubscription(subscriptionData);
+        await subscriptionAPI.createSubscription(formData);
       }
       setShowModal(false);
       setEditingSubscription(null);
@@ -76,8 +68,7 @@ const AdminSubscriptionManagement = () => {
     setEditingSubscription(subscription);
     setFormData({
       userId: subscription.userId?._id || subscription.userId || '',
-      planName: subscription.planName || 'Family Card',
-      amount: subscription.amount || '',
+      planId: subscription.planId?._id || subscription.planId || '',
       status: subscription.status || 'active',
       startDate: subscription.startDate ? new Date(subscription.startDate).toISOString().split('T')[0] : '',
       endDate: subscription.endDate ? new Date(subscription.endDate).toISOString().split('T')[0] : '',
@@ -89,17 +80,6 @@ const AdminSubscriptionManagement = () => {
   const handleView = (subscription) => {
     setViewingSubscription(subscription);
     setShowViewModal(true);
-  };
-
-  const handleDelete = async (subscriptionId) => {
-    if (window.confirm('Are you sure you want to delete this subscription?')) {
-      try {
-        await subscriptionAPI.deleteSubscription(subscriptionId);
-        fetchSubscriptions();
-      } catch (error) {
-        setError('Failed to delete subscription');
-      }
-    }
   };
 
   const handleCancel = async (subscriptionId) => {
@@ -127,8 +107,7 @@ const AdminSubscriptionManagement = () => {
   const resetForm = () => {
     setFormData({
       userId: '',
-      planName: 'Family Card',
-      amount: '',
+      planId: '',
       status: 'active',
       startDate: '',
       endDate: '',
@@ -142,30 +121,23 @@ const AdminSubscriptionManagement = () => {
     resetForm();
   };
 
+  const getPlanName = (planId) => {
+    const plan = plans.find(p => p._id === planId);
+    return plan ? plan.name : 'Unknown Plan';
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
       'active': 'success',
-      'expired': 'danger',
-      'cancelled': 'secondary',
-      'pending': 'warning'
+      'expired': 'warning',
+      'cancelled': 'danger',
+      'pending': 'info'
     };
     return statusMap[status] || 'secondary';
   };
 
-  const getUserName = (userId) => {
-    if (typeof userId === 'object' && userId?.name) {
-      return userId.name;
-    }
-    const user = users.find(u => u._id === userId);
-    return user?.name || 'Unknown User';
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString();
   };
 
   return (
@@ -210,10 +182,8 @@ const AdminSubscriptionManagement = () => {
                 <Table responsive striped hover>
                   <thead>
                     <tr>
-                      <th>ID</th>
                       <th>User</th>
                       <th>Plan</th>
-                      <th>Amount</th>
                       <th>Status</th>
                       <th>Start Date</th>
                       <th>End Date</th>
@@ -224,19 +194,15 @@ const AdminSubscriptionManagement = () => {
                   <tbody>
                     {subscriptions.map((subscription) => (
                       <tr key={subscription._id}>
-                        <td>
-                          <code>{subscription._id?.slice(-8) || 'N/A'}</code>
-                        </td>
-                        <td>{getUserName(subscription.userId)}</td>
-                        <td><strong>{subscription.planName}</strong></td>
-                        <td><strong>₹{subscription.amount || 0}</strong></td>
+                        <td>{subscription.userId?.name || subscription.userId || 'N/A'}</td>
+                        <td><strong>{getPlanName(subscription.planId)}</strong></td>
                         <td>
                           <Badge bg={getStatusBadge(subscription.status)}>
                             {subscription.status}
                           </Badge>
                         </td>
-                        <td>{subscription.startDate ? formatDate(subscription.startDate) : 'N/A'}</td>
-                        <td>{subscription.endDate ? formatDate(subscription.endDate) : 'N/A'}</td>
+                        <td>{formatDate(subscription.startDate)}</td>
+                        <td>{formatDate(subscription.endDate)}</td>
                         <td>
                           <Badge bg={subscription.autoRenew ? 'success' : 'secondary'}>
                             {subscription.autoRenew ? 'Yes' : 'No'}
@@ -269,7 +235,7 @@ const AdminSubscriptionManagement = () => {
                               <i className="fas fa-ban"></i>
                             </Button>
                           )}
-                          {(subscription.status === 'expired' || subscription.status === 'cancelled') && (
+                          {subscription.status === 'expired' && (
                             <Button
                               variant="outline-success"
                               size="sm"
@@ -279,13 +245,6 @@ const AdminSubscriptionManagement = () => {
                               <i className="fas fa-redo"></i>
                             </Button>
                           )}
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => handleDelete(subscription._id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -309,50 +268,35 @@ const AdminSubscriptionManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>User *</Form.Label>
-                  <Form.Select
+                  <Form.Label>User ID *</Form.Label>
+                  <Form.Control
+                    type="text"
                     value={formData.userId}
                     onChange={(e) => setFormData({...formData, userId: e.target.value})}
                     required
+                    placeholder="Enter User ID"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Plan *</Form.Label>
+                  <Form.Select
+                    value={formData.planId}
+                    onChange={(e) => setFormData({...formData, planId: e.target.value})}
+                    required
                   >
-                    <option value="">Select User</option>
-                    {users.map(user => (
-                      <option key={user._id} value={user._id}>
-                        {user.name} ({user.email})
+                    <option value="">Select Plan</option>
+                    {plans.map(plan => (
+                      <option key={plan._id} value={plan._id}>
+                        {plan.name} - ₹{plan.price}
                       </option>
                     ))}
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Plan Name</Form.Label>
-                  <Form.Select
-                    value={formData.planName}
-                    onChange={(e) => setFormData({...formData, planName: e.target.value})}
-                  >
-                    <option value="Family Card">Family Card</option>
-                    <option value="Individual Card">Individual Card</option>
-                    <option value="Student Card">Student Card</option>
-                    <option value="Senior Card">Senior Card</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
             </Row>
             <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Amount (₹) *</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    required
-                    placeholder="0.00"
-                  />
-                </Form.Group>
-              </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Status</Form.Label>
@@ -365,6 +309,16 @@ const AdminSubscriptionManagement = () => {
                     <option value="cancelled">Cancelled</option>
                     <option value="pending">Pending</option>
                   </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="checkbox"
+                    label="Auto Renew"
+                    checked={formData.autoRenew}
+                    onChange={(e) => setFormData({...formData, autoRenew: e.target.checked})}
+                  />
                 </Form.Group>
               </Col>
             </Row>
@@ -390,18 +344,6 @@ const AdminSubscriptionManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
-            <Row>
-              <Col md={12}>
-                <Form.Group className="mb-3">
-                  <Form.Check
-                    type="checkbox"
-                    label="Auto Renew"
-                    checked={formData.autoRenew}
-                    onChange={(e) => setFormData({...formData, autoRenew: e.target.checked})}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleCloseModal}>
@@ -423,19 +365,18 @@ const AdminSubscriptionManagement = () => {
           {viewingSubscription && (
             <Row>
               <Col md={6}>
-                <h6>Subscription Information</h6>
-                <p><strong>Subscription ID:</strong> {viewingSubscription._id}</p>
-                <p><strong>User:</strong> {getUserName(viewingSubscription.userId)}</p>
-                <p><strong>Plan Name:</strong> {viewingSubscription.planName}</p>
-                <p><strong>Amount:</strong> ₹{viewingSubscription.amount}</p>
+                <h6>Basic Information</h6>
+                <p><strong>ID:</strong> {viewingSubscription._id}</p>
+                <p><strong>User:</strong> {viewingSubscription.userId?.name || viewingSubscription.userId}</p>
+                <p><strong>Plan:</strong> {getPlanName(viewingSubscription.planId)}</p>
+                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingSubscription.status)}>{viewingSubscription.status}</Badge></p>
               </Col>
               <Col md={6}>
-                <h6>Status & Dates</h6>
-                <p><strong>Status:</strong> <Badge bg={getStatusBadge(viewingSubscription.status)}>{viewingSubscription.status}</Badge></p>
-                <p><strong>Start Date:</strong> {viewingSubscription.startDate ? formatDateTime(viewingSubscription.startDate) : 'N/A'}</p>
-                <p><strong>End Date:</strong> {viewingSubscription.endDate ? formatDateTime(viewingSubscription.endDate) : 'N/A'}</p>
+                <h6>Subscription Details</h6>
+                <p><strong>Start Date:</strong> {formatDate(viewingSubscription.startDate)}</p>
+                <p><strong>End Date:</strong> {formatDate(viewingSubscription.endDate)}</p>
                 <p><strong>Auto Renew:</strong> <Badge bg={viewingSubscription.autoRenew ? 'success' : 'secondary'}>{viewingSubscription.autoRenew ? 'Yes' : 'No'}</Badge></p>
-                <p><strong>Created:</strong> {formatDateTime(viewingSubscription.createdAt)}</p>
+                <p><strong>Created:</strong> {formatDate(viewingSubscription.createdAt)}</p>
               </Col>
             </Row>
           )}

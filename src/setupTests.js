@@ -60,3 +60,11 @@ global.ResizeObserver = class ResizeObserver {
     return null;
   }
 };
+
+// Mock SweetAlert2 to auto-confirm in tests
+jest.mock('sweetalert2', () => ({
+  __esModule: true,
+  default: {
+    fire: jest.fn().mockResolvedValue({ isConfirmed: true, isDenied: false, isDismissed: false })
+  }
+}));
