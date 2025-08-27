@@ -67,7 +67,7 @@ function AppLayout({ children }) {
       <div className={`offcanvas offcanvas-start d-lg-none ${sidebarOpen ? 'show' : ''}`} id="sidebar">
         <div className="offcanvas-header">
           <h5 className="offcanvas-title">
-            <i className="fas fa-train text-primary me-2"></i>SmartMetroCard
+            <i className="fas fa-train text-primary me-2"></i>Tapido
           </h5>
           <button 
             type="button" 
@@ -147,8 +147,9 @@ function AppLayout({ children }) {
             <span className="navbar-toggler-icon"></span>
           </button>
           
-          <Link className="navbar-brand" to="/home">
-            <i className="fas fa-train me-2"></i>SmartMetroCard
+          <Link className="navbar-brand fw-bold text-white" to="/home">
+            <i className="fas fa-subway me-2"></i>
+            Tapido
           </Link>
           
           <div className="collapse navbar-collapse">

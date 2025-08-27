@@ -34,10 +34,18 @@ import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
 // import PaymentTestPage from "./pages/PaymentTestPage";
 import MultiTicketPage from './pages/MultiTicketPage.jsx'
-import AdminLogin from './pages/AdminLogin.jsx'
-import AdminRegister from './pages/AdminRegister.jsx'
-import AdminDashboard from './pages/AdminDashboard.jsx'
-import AdminUserManagement from './pages/AdminUserManagement.jsx'
+// Admin Pages
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminRegister from './pages/admin/AdminRegister';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUserManagement from './pages/admin/AdminUserManagement';
+import AdminStationManagement from './pages/admin/AdminStationManagement';
+import AdminRouteManagement from './pages/admin/AdminRouteManagement';
+import AdminTicketManagement from './pages/admin/AdminTicketManagement';
+import AdminSubscriptionManagement from './pages/admin/AdminSubscriptionManagement';
+import AdminCardManagement from './pages/admin/AdminCardManagement';
+import AdminTransactionManagement from './pages/admin/AdminTransactionManagement';
+// import AdminAnalytics from './pages/AdminAnalytics';
 import AdminModelManagement from './pages/AdminModelManagement';
 
 function App() {
@@ -65,7 +73,7 @@ function App() {
         <Route path="/multi-route" element={<RequireAuth><MultiRouteBookingPage /></RequireAuth>} />
         <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
         <Route path="/search" element={<RequireAuth><SearchPage /></RequireAuth>} />
-        <Route path="/notification" element={<RequireAuth><NotificationPage /></RequireAuth>} />
+        <Route path="/notifications" element={<NotificationPage />} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
@@ -86,21 +94,15 @@ function App() {
       }>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="users" element={
-          <AdminProtectedRoute>
-            <AdminLayout>
-              <AdminUserManagement />
-            </AdminLayout>
-          </AdminProtectedRoute>
-        } />
-        <Route path="models" element={
-          <AdminProtectedRoute>
-            <AdminLayout>
-              <AdminModelManagement />
-            </AdminLayout>
-          </AdminProtectedRoute>
-        } />
-        <Route path="analytics" element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUserManagement />} />
+        <Route path="stations" element={<AdminStationManagement />} />
+        <Route path="routes" element={<AdminRouteManagement />} />
+        <Route path="tickets" element={<AdminTicketManagement />} />
+        <Route path="subscriptions" element={<AdminSubscriptionManagement />} />
+        <Route path="cards" element={<AdminCardManagement />} />
+        <Route path="transactions" element={<AdminTransactionManagement />} />
+        {/* <Route path="analytics" element={<AdminAnalytics />} /> */}
+        <Route path="models" element={<AdminModelManagement />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -129,7 +129,7 @@ function TransactionsPage() {
                 <div className="row">
                   {recentTransactions.map((transaction, index) => (
                     <div key={transaction.id || `recent-${index}`} className="col-lg-4 col-md-6 mb-3">
-                      <div className="card border-0 shadow-sm hover-lift">
+                      <div className={`card border-0 shadow-sm ticket-card ${getTransactionCardClass(transaction.type)}`}>
                         <div className="card-body">
                           <div className="d-flex align-items-center mb-3">
                             <div className="transaction-icon me-3">
@@ -140,7 +140,7 @@ function TransactionsPage() {
                                 {transaction.description || 'Transaction'}
                               </h6>
                               <span className={`badge ${getTypeBadgeClass(transaction.type)}`}>
-                                {transaction.type || 'Unknown'}
+                                {formatTransactionType(transaction.type)}
                               </span>
                             </div>
                           </div>
@@ -181,7 +181,7 @@ function TransactionsPage() {
                 <div className="card border-0 shadow">
                   <div className="card-body p-0">
                     <div className="table-responsive">
-                      <table className="table table-hover mb-0">
+                      <table className="table mb-0">
                         <thead className="table-light">
                           <tr>
                             <th>Description</th>
@@ -193,7 +193,7 @@ function TransactionsPage() {
                         </thead>
                         <tbody>
                           {allTransactions.map((transaction, index) => (
-                            <tr key={transaction.id || `transaction-${index}`}>
+                            <tr key={transaction.id || `transaction-${index}`} className={getTransactionRowClass(transaction.type)}>
                               <td>
                                 <div className="d-flex align-items-center">
                                   <div className="transaction-icon-small me-2">
@@ -211,8 +211,8 @@ function TransactionsPage() {
                               </td>
                               <td>{formatDate(transaction.date || transaction.createdAt)}</td>
                               <td>
-                                <span className={`badge ${getTypeBadgeClass(transaction.type, transaction.transactionType)}`}>
-                                  {formatTransactionType(transaction.type, transaction.transactionType)}
+                                <span className={`badge ${getTypeBadgeClass(transaction.type)}`}>
+                                  {formatTransactionType(transaction.type)}
                                 </span>
                               </td>
                               <td>
@@ -265,11 +265,43 @@ function TransactionsPage() {
           border-radius: 50%;
           background: rgba(0,0,0,0.05);
         }
-        .hover-lift {
-          transition: transform 0.2s ease-in-out;
+        .ticket-card {
+          border-left: 4px solid !important;
         }
-        .hover-lift:hover {
-          transform: translateY(-2px);
+        .ticket-card-ticket {
+          border-left-color: #fd7e14 !important;
+          background: linear-gradient(to right, rgba(253, 126, 20, 0.1), transparent);
+        }
+        .ticket-card-subscription {
+          border-left-color: #6f42c1 !important;
+          background: linear-gradient(to right, rgba(111, 66, 193, 0.1), transparent);
+        }
+        .ticket-card-recharge {
+          border-left-color: #20c997 !important;
+          background: linear-gradient(to right, rgba(32, 201, 151, 0.1), transparent);
+        }
+        .ticket-card-wallet {
+          border-left-color: #495057 !important;
+          background: linear-gradient(to right, rgba(73, 80, 87, 0.1), transparent);
+        }
+        .ticket-card-default {
+          border-left-color: #6c757d !important;
+          background: linear-gradient(to right, rgba(108, 117, 125, 0.1), transparent);
+        }
+        .table-row-ticket {
+          background-color: rgba(253, 126, 20, 0.08) !important;
+        }
+        .table-row-subscription {
+          background-color: rgba(111, 66, 193, 0.08) !important;
+        }
+        .table-row-recharge {
+          background-color: rgba(32, 201, 151, 0.08) !important;
+        }
+        .table-row-wallet {
+          background-color: rgba(73, 80, 87, 0.08) !important;
+        }
+        .table-row-default {
+          background-color: rgba(108, 117, 125, 0.05) !important;
         }
         @media (max-width: 768px) {
           .table-responsive {
@@ -295,9 +327,34 @@ function TransactionsPage() {
   )
 }
 
-function getTransactionIcon(type, transactionType) {
-  // Use transactionType if available, fallback to type
-  const txType = (transactionType || type || 'unknown').toLowerCase();
+function getTransactionCardClass(type) {
+  if (!type) return 'ticket-card-default';
+  
+  const txType = type.toLowerCase();
+  
+  if (txType.includes('ticket')) return 'ticket-card-ticket';
+  if (txType.includes('subscription')) return 'ticket-card-subscription';
+  if (txType.includes('recharge')) return 'ticket-card-recharge';
+  if (txType.includes('wallet')) return 'ticket-card-wallet';
+  return 'ticket-card-default';
+}
+
+function getTransactionRowClass(type) {
+  if (!type) return 'table-row-default';
+  
+  const txType = type.toLowerCase();
+  
+  if (txType.includes('ticket')) return 'table-row-ticket';
+  if (txType.includes('subscription')) return 'table-row-subscription';
+  if (txType.includes('recharge')) return 'table-row-recharge';
+  if (txType.includes('wallet')) return 'table-row-wallet';
+  return 'table-row-default';
+}
+
+function getTransactionIcon(type) {
+  if (!type) return 'exchange-alt';
+  
+  const txType = type.toLowerCase();
   
   switch (txType) {
     case 'credit': return 'arrow-down'
@@ -319,8 +376,10 @@ function getTransactionIcon(type, transactionType) {
   }
 }
 
-function getTransactionColor(type, transactionType) {
-  const txType = (transactionType || type || 'unknown').toLowerCase();
+function getTransactionColor(type) {
+  if (!type) return 'text-secondary';
+  
+  const txType = type.toLowerCase();
   
   switch (txType) {
     case 'credit': return 'text-success'
@@ -342,8 +401,10 @@ function getTransactionColor(type, transactionType) {
   }
 }
 
-function getTypeBadgeClass(type, transactionType) {
-  const txType = (transactionType || type || 'unknown').toLowerCase();
+function getTypeBadgeClass(type) {
+  if (!type) return 'bg-secondary';
+  
+  const txType = type.toLowerCase();
   
   switch (txType) {
     case 'credit': return 'bg-success'
@@ -366,7 +427,9 @@ function getTypeBadgeClass(type, transactionType) {
 }
 
 function getStatusBadgeClass(status) {
-  switch (status?.toLowerCase()) {
+  if (!status) return 'bg-success';
+  
+  switch (status.toLowerCase()) {
     case 'completed': return 'bg-success'
     case 'pending': return 'bg-warning'
     case 'failed': return 'bg-danger'
@@ -390,8 +453,10 @@ function formatDate(dateString) {
   }
 }
 
-function formatTransactionType(type, transactionType) {
-  const txType = (transactionType || type || 'unknown').toLowerCase();
+function formatTransactionType(type) {
+  if (!type) return 'Transaction';
+  
+  const txType = type.toLowerCase();
   
   switch (txType) {
     case 'credit': return 'Credit'
@@ -409,19 +474,24 @@ function formatTransactionType(type, transactionType) {
     case 'ticket_booking_payment': return 'Ticket Booking'
     case 'wallet_payment': return 'Wallet Payment'
     case 'wallet_recharge': return 'Wallet Recharge'
-    default: return txType.charAt(0).toUpperCase() + txType.slice(1)
+    default: return txType.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ')
   }
 }
 
 export default TransactionsPage
 
-
 function isCredit(tx) {
+  if (!tx) return false;
+  
   const type = (tx.transactionType || tx.type || '').toLowerCase()
   return ['credit', 'refund', 'wallet_credit', 'wallet_recharge', 'recharge'].includes(type)
 }
 
 function isDebit(tx) {
+  if (!tx) return false;
+  
   const type = (tx.transactionType || tx.type || '').toLowerCase()
   return ['debit', 'payment', 'ticket', 'ticket_payment', 'subscription', 'subscription_payment', 'wallet_payment'].includes(type)
 }

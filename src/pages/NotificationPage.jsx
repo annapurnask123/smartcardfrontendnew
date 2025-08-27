@@ -10,14 +10,25 @@ function NotificationPage() {
   const loading = useSelector(s => s.notifications?.loading || false)
   const error = useSelector(s => s.notifications?.error || '')
   const [localNotifications, setLocalNotifications] = useState([])
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
-    if (user.id || user._id) {
-      dispatch(fetchNotifications(user.id || user._id))
-    } else {
-      dispatch(fetchNotifications())
-    }
-  }, [dispatch])
+    const loadNotifications = async () => {
+      try {
+        if (user.id || user._id) {
+          await dispatch(fetchNotifications(user.id || user._id));
+        } else {
+          // Try to fetch without user ID for public notifications
+          await dispatch(fetchNotifications());
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+        setLoadError('Failed to load notifications. Please try again.');
+      }
+    };
+    
+    loadNotifications();
+  }, [dispatch, user.id, user._id])
 
   useEffect(() => {
     setLocalNotifications(notifications)
@@ -104,9 +115,9 @@ function NotificationPage() {
         </div>
       </div>
 
-      {error && (
+      {(error || loadError) && (
         <div className="alert alert-danger">
-          {error || 'Failed to load notifications. Please try again.'}
+          {error || loadError || 'Failed to load notifications. Please try again.'}
         </div>
       )}
 

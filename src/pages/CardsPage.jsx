@@ -48,17 +48,38 @@ function CardsPage() {
       if (!user?.id && !user?._id) return;
       dispatch(fetchUserCard(user.id || user._id));
       
-      // Fetch user subscriptions - handle different API method names
+      // Enhanced subscription fetching with multiple API attempts
       let activeSubscriptions = [];
       try {
-        // Try different possible method names for subscription API
-        const subResponse = subscriptionAPI.getUserSubscriptions 
-          ? await subscriptionAPI.getUserSubscriptions(user.id || user._id)
-          : subscriptionAPI.getSubscriptions 
-          ? await subscriptionAPI.getSubscriptions(user.id || user._id)
-          : { data: [] };
+        // Try different possible API endpoints and methods
+        let subResponse;
         
-        activeSubscriptions = (subResponse.data || []).filter(sub => sub.status === 'active');
+        if (subscriptionAPI.getUserSubscriptions) {
+          subResponse = await subscriptionAPI.getUserSubscriptions(user.id || user._id);
+        } else if (subscriptionAPI.getSubscriptions) {
+          subResponse = await subscriptionAPI.getSubscriptions(user.id || user._id);
+        } else if (subscriptionAPI.getMySubscriptions) {
+          subResponse = await subscriptionAPI.getMySubscriptions();
+        } else {
+          // Fallback to generic API call
+          subResponse = { data: [] };
+        }
+        
+        const subscriptionData = subResponse.data || subResponse || [];
+        console.log('Raw subscription data:', subscriptionData);
+        
+        // Filter for active subscriptions with better status checking
+        activeSubscriptions = (Array.isArray(subscriptionData) ? subscriptionData : []).filter(sub => {
+          const status = (sub.status || '').toLowerCase();
+          const isActive = status === 'active' || status === 'success';
+          const notExpired = !sub.endDate || !sub.expiryDate || 
+            new Date(sub.endDate || sub.expiryDate) > new Date();
+          
+          console.log(`Subscription ${sub._id || sub.id}: status=${status}, isActive=${isActive}, notExpired=${notExpired}`);
+          return isActive && notExpired;
+        });
+        
+        console.log('Active subscriptions found:', activeSubscriptions.length);
       } catch (subError) {
         console.warn('Failed to fetch subscriptions:', subError);
         // Continue without subscriptions - not a critical error
@@ -238,9 +259,22 @@ function CardsPage() {
         return;
       }
 
-      // Check for assigned plan from localStorage
+      // Enhanced subscription detection
       const cardPlanSelections = JSON.parse(localStorage.getItem('cardPlanSelections') || '{}');
       const assignedPlanId = cardPlanSelections[cardId];
+      
+      // Determine if user has active subscriptions
+      const hasActiveSubscriptions = subscriptions && subscriptions.length > 0;
+      const isSecondaryCard = !card.isPrimary && card.type !== 'primary';
+      
+      console.log('Tap-in details:', {
+        cardId,
+        cardType: card.isPrimary ? 'primary' : 'secondary',
+        hasActiveSubscriptions,
+        assignedPlanId,
+        selectedSubscription,
+        subscriptionsCount: subscriptions.length
+      });
       
       // Prepare tap-in data as backend expects
       const tapInData = {
@@ -259,18 +293,41 @@ function CardsPage() {
         userAgent: navigator.userAgent
       };
 
-      // Determine payment method and add plan ID if available
-      if (assignedPlanId) {
-        tapInData.chosenPlanId = assignedPlanId;
-        tapInData.paymentMethod = 'subscription';
-      } else if (selectedSubscription) {
-        tapInData.chosenPlanId = selectedSubscription;
-        tapInData.paymentMethod = 'subscription';
-      } else if (subscriptions && subscriptions.length > 0) {
-        // Default to first active subscription if available
-        tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
-        tapInData.paymentMethod = 'subscription';
+      // Enhanced payment method determination
+      if (hasActiveSubscriptions) {
+        // User has active subscriptions - prioritize subscription usage
+        if (assignedPlanId) {
+          // Card has assigned plan from MyPlans page
+          tapInData.chosenPlanId = assignedPlanId;
+          tapInData.paymentMethod = 'subscription';
+          console.log('Using assigned plan:', assignedPlanId);
+        } else if (selectedSubscription) {
+          // User selected subscription from dropdown
+          tapInData.chosenPlanId = selectedSubscription;
+          tapInData.paymentMethod = 'subscription';
+          console.log('Using selected subscription:', selectedSubscription);
+        } else if (subscriptions.length === 1) {
+          // Only one subscription available - use it automatically
+          tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
+          tapInData.paymentMethod = 'subscription';
+          console.log('Using single available subscription:', tapInData.chosenPlanId);
+        } else if (isSecondaryCard) {
+          // Secondary cards must use subscription - use first available
+          tapInData.chosenPlanId = subscriptions[0]._id || subscriptions[0].id;
+          tapInData.paymentMethod = 'subscription';
+          console.log('Secondary card using first subscription:', tapInData.chosenPlanId);
+        } else {
+          // Primary card with multiple subscriptions - let backend handle selection
+          tapInData.paymentMethod = 'subscription';
+          console.log('Multiple subscriptions - letting backend handle selection');
+        }
       } else {
+        // No active subscriptions - use balance for primary cards only
+        if (isSecondaryCard) {
+          alert('Secondary cards require an active subscription for journeys. Please purchase a subscription plan first.');
+          return;
+        }
+        
         tapInData.paymentMethod = 'balance';
         
         // Check if card has sufficient balance
@@ -278,6 +335,7 @@ function CardsPage() {
           alert('Insufficient balance. Minimum ₹20 required for journey. Please recharge your card.');
           return;
         }
+        console.log('Using card balance for primary card');
       }
       
       console.log('Sending tap-in request:', tapInData);
@@ -286,28 +344,25 @@ function CardsPage() {
       const response = await cardAPI.tapIn(cardId, tapInData);
       
       // Handle different response scenarios
-      if (response.data.requiresPaymentSelection) {
-        alert('Please select your payment method for this journey.');
-        navigate('/payment-method', { 
-          state: { 
-            cardId, 
-            stationId: station._id || station.id,
-            estimatedFare: response.data.estimatedFare 
-          } 
-        });
+      if (response.data.requiresPaymentSelection || response.data.requiresSubscriptionSelection) {
+        const message = response.data.requiresSubscriptionSelection 
+          ? 'Multiple subscriptions found. Please select one from the dropdown above.'
+          : 'Please select your payment method for this journey.';
+        alert(message);
         return;
       }
 
-      // Success handling
-      const successMessage = response.data.usedSubscription 
-        ? `Tap-in successful at ${station.name} using your subscription!`
-        : `Tap-in successful at ${station.name}! ₹${response.data.fare || response.data.amount} deducted.`;
+      // Success handling - Enhanced for subscription detection
+      const usedSubscription = tapInData.paymentMethod === 'subscription' || response.data.usedSubscription;
+      const successMessage = usedSubscription
+        ? `Tap-in successful at ${station.name} using your subscription! No amount deducted.`
+        : `Tap-in successful at ${station.name}! ₹${response.data.fare || response.data.amount || 0} deducted from balance.`;
       
       setMessage(successMessage);
       setMessageType('success');
       
-      // Update card balance in Redux if balance was deducted
-      if (response.data.newBalance !== undefined) {
+      // Update card balance in Redux only if balance was deducted
+      if (!usedSubscription && response.data.newBalance !== undefined) {
         const updatedCards = cards.map(c => 
           getCardId(c) === cardId ? { ...c, balance: response.data.newBalance } : c
         );
@@ -320,7 +375,7 @@ function CardsPage() {
       localStorage.setItem('tapInTime', new Date().toISOString());
       localStorage.setItem('selectedSubscription', selectedSubscription || '');
       localStorage.setItem('assignedPlanId', assignedPlanId || '');
-      localStorage.setItem('paymentMethod', response.data.usedSubscription ? 'subscription' : 'balance');
+      localStorage.setItem('paymentMethod', usedSubscription ? 'subscription' : 'balance');
       
     } catch (error) {
       console.error('Tap In error:', error);
@@ -348,7 +403,7 @@ function CardsPage() {
         // Log the exact error details for debugging
         console.error('API Error Details:', error.response.data);
       } else if (error.response?.status === 403) {
-        errorMessage = 'Insufficient balance. Please recharge your card.';
+        errorMessage = 'Access denied. Please check your subscription status or card balance.';
       } else if (error.response?.status === 404) {
         errorMessage = 'Card or station not found.';
       }
@@ -399,6 +454,13 @@ function CardsPage() {
       const paymentMethod = localStorage.getItem('paymentMethod');
       const assignedPlanId = localStorage.getItem('assignedPlanId');
       
+      console.log('Tap-out details:', {
+        cardId,
+        paymentMethod,
+        assignedPlanId,
+        outStation: outStation.name
+      });
+      
       // Prepare tap-out data
       const tapOutData = {
         endStation: String(tapOutStation || outStation.stop_id || outStation.name || outStation._id || outStation.id),
@@ -426,8 +488,9 @@ function CardsPage() {
       // Call backend API
       const response = await cardAPI.tapOut(cardId, tapOutData);
       
-      // Update card balance from backend response
-      if (response.data.newBalance !== undefined) {
+      // Update card balance from backend response only if balance was deducted
+      const usedSubscription = paymentMethod === 'subscription';
+      if (!usedSubscription && response.data.newBalance !== undefined) {
         const updatedCards = cards.map(c => {
           if (getCardId(c) === cardId) {
             return { ...c, balance: response.data.newBalance };
@@ -438,9 +501,9 @@ function CardsPage() {
       }
       
       // Show success message
-      const successMessage = paymentMethod === 'subscription' 
-        ? 'Tap Out successful! Journey completed using your subscription.'
-        : `Tap Out successful! ₹${response.data.fare || response.data.amount} deducted from your balance.`;
+      const successMessage = usedSubscription 
+        ? 'Tap Out successful! Journey completed using your subscription - no amount deducted.'
+        : `Tap Out successful! ₹${response.data.fare || response.data.amount || 0} deducted from your balance.`;
       
       setMessage(successMessage);
       setMessageType('success');

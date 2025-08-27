@@ -133,8 +133,14 @@ function TicketDetailPage() {
           text: 'Your journey has been extended successfully.',
           confirmButtonText: 'OK'
         }).then(() => {
-          // Refresh ticket data
-          fetchTicketData();
+          // Refresh ticket data and maintain in_progress status
+          fetchTicketData().then(() => {
+            // Ensure ticket remains in_progress after extension
+            setTicket(prev => ({
+              ...prev,
+              status: 'in_progress' // Keep journey active after extension
+            }));
+          });
         });
       }
     };
@@ -600,6 +606,8 @@ function TicketDetailPage() {
 
     try {
       setActionLoading('earlyDrop');
+      
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
       
       // Call backend API to process early drop
       const response = await ticketAPI.dropEarly({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Badge, Spinner } from 'react-bootstrap';
-import { userAPI } from '../api/api';
+import { userAPI } from '../../api/api';
 
 const AdminUserManagement = () => {
   const [users, setUsers] = useState([]);

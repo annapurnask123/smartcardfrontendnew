@@ -7,7 +7,7 @@ import {
   updateSubscriptionLocal,
   clearError
 } from '../slices/subscriptionSlice'
-import { cardAPI, paymentAPI } from '../api/api'
+import { cardAPI, paymentAPI, subscriptionAPI } from '../api/api'
 
 // Helper function for badge styling
 function getStatusBadgeClass(status) {
@@ -264,7 +264,7 @@ function MyPlansPage() {
     setRenewingPlan(null);
   }
 
-  // Cancel subscription - FIXED VERSION
+  // Cancel subscription - FIXED VERSION to actually delete from DB
   async function cancel(sub) {
     setCancellingPlan(sub.id || sub._id);
     const status = sub.status?.toLowerCase();
@@ -276,21 +276,12 @@ function MyPlansPage() {
       return;
     }
     
-    if (status === 'expired') {
-      setBanner('Expired subscriptions cannot be cancelled.');
-      setTimeout(() => setBanner(''), 3000);
-      setCancellingPlan(null);
-      return;
-    }
-
-    if (status === 'active') {
-      setBanner('Active subscriptions cannot be cancelled. Please wait until they expire.');
-      setTimeout(() => setBanner(''), 5000);
-      setCancellingPlan(null);
-      return;
-    }
-
-    const confirmMessage = 'Are you sure you want to cancel this subscription?';
+    // Allow cancellation of pending plans (removed restriction)
+    const confirmMessage = status === 'pending' 
+      ? 'Are you sure you want to cancel this pending subscription? This will permanently delete the subscription.'
+      : status === 'active'
+      ? 'Are you sure you want to cancel this active subscription? It will remain active until expiry.'
+      : 'Are you sure you want to cancel this subscription?';
 
     if (!window.confirm(confirmMessage)) {
       setCancellingPlan(null);
@@ -298,36 +289,79 @@ function MyPlansPage() {
     }
 
     try {
-      // First, update the UI optimistically
-      dispatch(updateSubscriptionLocal({
-        id: sub.id || sub._id,
-        updates: { status: 'cancelled' }
-      }));
+      if (status === 'pending') {
+        // For pending plans, delete them completely from database
+        console.log('Deleting pending subscription:', sub.id || sub._id);
+        
+        try {
+          // Call the delete API endpoint
+          await subscriptionAPI.deleteSubscription(sub.id || sub._id);
+          
+          // Remove from Redux state after successful deletion
+          const updatedSubscriptions = subscriptions.filter(s => (s.id || s._id) !== (sub.id || sub._id));
+          dispatch({ type: 'subscription/setSubscriptions', payload: updatedSubscriptions });
+          
+          setBanner('Pending subscription deleted successfully from database.');
+          setTimeout(() => setBanner(''), 3000);
+          
+        } catch (deleteError) {
+          console.error('Delete API failed:', deleteError);
+          
+          // If delete API fails, try cancel API as fallback
+          try {
+            await dispatch(cancelSubscription(sub.id || sub._id)).unwrap();
+            dispatch(updateSubscriptionLocal({
+              id: sub.id || sub._id,
+              updates: { status: 'cancelled' }
+            }));
+            setBanner('Subscription cancelled (delete failed, marked as cancelled instead).');
+          } catch (cancelError) {
+            throw deleteError; // Throw original delete error
+          }
+        }
+        
+      } else {
+        // For active/expired plans, mark as cancelled
+        dispatch(updateSubscriptionLocal({
+          id: sub.id || sub._id,
+          updates: { status: 'cancelled' }
+        }));
 
-      // Then try to call the API
-      const result = await dispatch(cancelSubscription(sub.id || sub._id)).unwrap();
-      
-      setBanner('Subscription cancelled successfully.');
-      setTimeout(() => setBanner(''), 3000);
+        // Try to call the cancel API
+        try {
+          await dispatch(cancelSubscription(sub.id || sub._id)).unwrap();
+          setBanner('Subscription cancelled successfully.');
+        } catch (apiError) {
+          console.warn('API cancel failed, but UI updated:', apiError);
+          setBanner('Subscription marked as cancelled (API unavailable).');
+        }
+        setTimeout(() => setBanner(''), 3000);
+      }
       
     } catch (err) {
-      console.error('Cancel failed:', err);
+      console.error('Cancel/Delete failed:', err);
       
-      // Revert the UI change if the API call failed
-      dispatch(updateSubscriptionLocal({
-        id: sub.id || sub._id,
-        updates: { status: sub.status } // Revert to original status
-      }));
+      // For pending plans that failed to delete, reload from server
+      if (status === 'pending') {
+        dispatch(fetchSubscriptions()); // Reload to get current state
+      } else {
+        // Revert the UI change if the API call failed
+        dispatch(updateSubscriptionLocal({
+          id: sub.id || sub._id,
+          updates: { status: sub.status } // Revert to original status
+        }));
+      }
       
-      let errorMessage = 'Cancellation failed. Please try again.';
+      let errorMessage = 'Operation failed. Please try again.';
       
       // Check for specific error types
-      if (err?.error) {
-        if (err.error.includes('Cannot cancel active subscription')) {
-          errorMessage = 'Active subscriptions cannot be cancelled. Please wait until they expire.';
+      if (err?.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err?.error) {
+        if (err.error.includes('payment verification') || err.error.includes('verification failed')) {
+          errorMessage = 'Payment verification failed. The subscription has been marked for cancellation.';
         } else if (err.error.includes('Access denied') || err.error.includes('Authentication') || err.error.includes('Unauthorized')) {
-          errorMessage = 'Authentication error. Please check if you are logged in.';
-          // Don't redirect to login, just show the error message
+          errorMessage = 'Authentication error. Please refresh and try again.';
         } else if (err.error.includes('not found')) {
           errorMessage = 'Subscription not found. Please refresh the page.';
         } else {
@@ -335,7 +369,9 @@ function MyPlansPage() {
         }
       } else if (err?.message) {
         if (err.message.includes('401') || err.message.includes('403')) {
-          errorMessage = 'Authentication error. Please check if you are logged in.';
+          errorMessage = 'Authentication error. Please refresh and try again.';
+        } else {
+          errorMessage = err.message;
         }
       }
       

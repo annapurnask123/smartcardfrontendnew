@@ -24,12 +24,37 @@ const AdminLayout = () => {
     {
       path: '/admin/users',
       icon: 'fas fa-users',
-      label: 'User Management'
+      label: 'Users'
     },
     {
-      path: '/admin/models',
-      icon: 'fas fa-database',
-      label: 'Model Management'
+      path: '/admin/stations',
+      icon: 'fas fa-subway',
+      label: 'Stations'
+    },
+    {
+      path: '/admin/routes',
+      icon: 'fas fa-route',
+      label: 'Routes'
+    },
+    {
+      path: '/admin/tickets',
+      icon: 'fas fa-ticket-alt',
+      label: 'Tickets'
+    },
+    {
+      path: '/admin/subscriptions',
+      icon: 'fas fa-credit-card',
+      label: 'Subscriptions'
+    },
+    {
+      path: '/admin/cards',
+      icon: 'fas fa-id-card',
+      label: 'Virtual Cards'
+    },
+    {
+      path: '/admin/transactions',
+      icon: 'fas fa-exchange-alt',
+      label: 'Transactions'
     },
     {
       path: '/admin/analytics',
@@ -89,8 +114,13 @@ const AdminLayout = () => {
           <Navbar.Brand className="mb-0">
             {/* Dynamic page title based on current route */}
             {location.pathname === '/admin/dashboard' && 'Dashboard'}
-            {location.pathname === '/admin/users' && 'User Management'}
-            {location.pathname === '/admin/models' && 'Model Management'}
+            {location.pathname === '/admin/users' && 'Users'}
+            {location.pathname === '/admin/stations' && 'Stations'}
+            {location.pathname === '/admin/routes' && 'Routes'}
+            {location.pathname === '/admin/tickets' && 'Tickets'}
+            {location.pathname === '/admin/subscriptions' && 'Subscriptions'}
+            {location.pathname === '/admin/cards' && 'Virtual Cards'}
+            {location.pathname === '/admin/transactions' && 'Transactions'}
             {location.pathname === '/admin/analytics' && 'Analytics'}
           </Navbar.Brand>
 

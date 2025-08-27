@@ -5,9 +5,18 @@ import { notificationAPI } from "../api/api";
 // Async thunk to fetch notifications
 export const fetchNotifications = createAsyncThunk(
   "notifications/fetchNotifications",
-  async () => {
-    const response = await notificationAPI.getNotifications();
-    return Array.isArray(response.data) ? response.data : response.data?.items || [];
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await notificationAPI.getNotifications();
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    } catch (error) {
+      // Handle authentication errors gracefully
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn('Authentication failed for notifications, returning empty array');
+        return [];
+      }
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch notifications');
+    }
   }
 );
 
@@ -54,7 +63,6 @@ const notificationSlice = createSlice({
     markAllNotificationsRead: (state) => {
       state.messages = state.messages.map((n) => ({ ...n, read: true }));
     },
-    // Add this new action
     markNotificationRead: (state, action) => {
       const notificationId = action.payload;
       state.messages = state.messages.map((notification) =>
@@ -99,6 +107,6 @@ export const {
   clearNotifications,
   setNotifications,
   markAllNotificationsRead,
-  markNotificationRead, // Export the new action
+  markNotificationRead,
 } = notificationSlice.actions;
 export default notificationSlice.reducer;

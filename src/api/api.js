@@ -24,6 +24,7 @@ api.interceptors.request.use(
       "/users/verify-login-otp",
       "/stations",
       "/subscription-plans",
+      "/notifications",
     ];
     const isPublic = publicPaths.some((p) => (config.url || "").startsWith(p));
     // Log minimal request for debugging 500s (non-sensitive)

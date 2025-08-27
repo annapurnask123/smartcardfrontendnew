@@ -1,41 +1,117 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { userJourneyAPI } from '../api/api'
+import { userJourneyAPI, ticketAPI } from '../api/api'
 
 function HistoryPage() {
   const [journeys, setJourneys] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const user = useSelector(s => s.auth.user)
+  const user = useSelector(s => s.auth.user) || JSON.parse(localStorage.getItem('user') || '{}')
 
   useEffect(() => {
     async function fetchJourneys() {
       try {
         setLoading(true)
         const userId = user?.id || user?._id
-        if (!userId) {
-          setError('User not authenticated')
-          return
+        
+        let allJourneys = []
+        
+        // 1. Get journeys from localStorage
+        try {
+          const localJourneys = JSON.parse(localStorage.getItem('journeys') || '[]')
+          const currentJourney = JSON.parse(localStorage.getItem('currentJourney') || 'null')
+          
+          if (Array.isArray(localJourneys)) {
+            allJourneys = [...localJourneys]
+          }
+          
+          if (currentJourney) {
+            allJourneys.push({
+              ...currentJourney,
+              status: 'in_progress',
+              source: 'localStorage'
+            })
+          }
+        } catch (e) {
+          console.log('No local journeys found')
         }
         
-        const { data } = await userJourneyAPI.getUserJourneys(userId)
-        setJourneys(Array.isArray(data) ? data : data?.items || [])
-      } catch (error) {
-        console.error('Failed to fetch journeys:', error)
-        // Try alternative endpoints if the first one fails
-        try {
-          const userId = user?.id || user?._id
-          const { data } = await userJourneyAPI.getJourneyHistory(userId)
-          setJourneys(Array.isArray(data) ? data : data?.items || [])
-        } catch (secondError) {
+        // 2. Get journeys from backend user-journeys API
+        if (userId) {
           try {
-            const { data } = await userJourneyAPI.getAllJourneys()
-            setJourneys(Array.isArray(data) ? data : data?.items || [])
-          } catch (thirdError) {
-            console.error('All attempts failed:', { error, secondError, thirdError })
-            setError('Failed to load journey history')
+            const { data } = await userJourneyAPI.getUserJourneys(userId)
+            const backendJourneys = Array.isArray(data) ? data : data?.items || []
+            allJourneys = [...allJourneys, ...backendJourneys.map(j => ({ ...j, source: 'backend' }))]
+          } catch (error) {
+            console.log('Backend user journeys failed:', error)
           }
         }
+        
+        // 3. Get journeys from tickets (completed tickets have journey data)
+        if (userId) {
+          try {
+            const { data } = await ticketAPI.getUserTickets(userId)
+            const tickets = Array.isArray(data) ? data : data?.items || []
+            
+            const ticketJourneys = tickets
+              .filter(ticket => ticket.status === 'completed' || ticket.status === 'in_progress')
+              .map(ticket => ({
+                id: `ticket-${ticket.ticketId || ticket._id}`,
+                startStation: ticket.startStationName || ticket.startStation || 'Unknown',
+                endStation: ticket.endStationName || ticket.endStation || 'Unknown',
+                status: ticket.status,
+                fare: ticket.price || ticket.fare || 0,
+                date: ticket.createdAt || ticket.bookingDate,
+                startTime: ticket.tapInTime || ticket.createdAt,
+                endTime: ticket.tapOutTime || ticket.completedAt,
+                source: 'tickets'
+              }))
+            
+            allJourneys = [...allJourneys, ...ticketJourneys]
+          } catch (error) {
+            console.log('Ticket journeys failed:', error)
+          }
+        }
+        
+        // 4. Fallback: try to get all journeys from backend
+        try {
+          const { data } = await userJourneyAPI.getAllJourneys()
+          const fallbackJourneys = Array.isArray(data) ? data : data?.items || []
+          if (fallbackJourneys.length > 0) {
+            allJourneys = [...allJourneys, ...fallbackJourneys.map(j => ({ ...j, source: 'fallback' }))]
+          }
+        } catch (error) {
+          console.log('Fallback journeys failed:', error)
+        }
+        
+        // Remove duplicates and sort by date
+        const uniqueJourneys = []
+        const seen = new Set()
+        
+        allJourneys.forEach(journey => {
+          const key = `${journey.startStation}-${journey.endStation}-${journey.date || journey.createdAt}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            uniqueJourneys.push(journey)
+          }
+        })
+        
+        // Sort by date (newest first)
+        uniqueJourneys.sort((a, b) => {
+          const dateA = new Date(a.date || a.createdAt || 0)
+          const dateB = new Date(b.date || b.createdAt || 0)
+          return dateB - dateA
+        })
+        
+        setJourneys(uniqueJourneys)
+        
+        if (uniqueJourneys.length === 0) {
+          setError('')
+        }
+        
+      } catch (error) {
+        console.error('Failed to fetch journeys:', error)
+        setError('Failed to load journey history')
       } finally {
         setLoading(false)
       }
@@ -323,4 +399,3 @@ function calculateDuration(startTime, endTime) {
 }
 
 export default HistoryPage
-

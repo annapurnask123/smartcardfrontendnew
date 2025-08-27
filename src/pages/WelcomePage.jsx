@@ -52,7 +52,9 @@ function WelcomePage() {
             style={{ fontSize: "6rem", color: "#fff" }}
           ></i>
         </div>
-        <h1 className="display-4 text-white mb-3">SmartMetroCard</h1>
+        <h1 className="display-4 fw-bold mb-4">
+          Welcome to <span className="text-primary">Tapido</span>
+        </h1>
         <p className="lead text-white mb-5">
           "Ride the metro, skip the chaos — fast, simple, and seamless."
         </p>
@@ -80,4 +82,3 @@ function WelcomePage() {
 }
 
 export default WelcomePage;
-

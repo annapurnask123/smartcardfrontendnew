@@ -10,10 +10,10 @@ function Footer() {
             <div className="footer-brand mb-4">
               <div className="d-flex align-items-center mb-3">
                 <i className="fas fa-train fa-2x text-primary me-3"></i>
-                <h5 className="mb-0 fw-bold">SmartMetroCard</h5>
+                <h5 className="mb-0 fw-bold">Tapido</h5>
               </div>
               <p className="text-muted mb-3">
-                Revolutionizing urban transportation with smart ticketing, virtual cards, and seamless metro travel experiences.
+                Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
               </p>
               <div className="social-links">
                 <a href="#" className="btn btn-outline-light btn-sm me-2" title="Facebook">
@@ -67,7 +67,7 @@ function Footer() {
             <h6 className="text-uppercase mb-3 fw-bold">Support</h6>
             <ul className="list-unstyled">
               <li className="mb-2">
-                <a href="mailto:support@smartmetro.com" className="text-muted text-decoration-none footer-link">
+                <a href="mailto:support@tapido.com" className="text-muted text-decoration-none footer-link">
                   <i className="fas fa-envelope me-2"></i>Email Support
                 </a>
               </li>
@@ -162,7 +162,7 @@ function Footer() {
         <div className="row align-items-center">
           <div className="col-md-6">
             <div className="d-flex align-items-center">
-              <span className="text-muted me-3">© {year} SmartMetroCard. All rights reserved.</span>
+              <span className="text-muted me-3"> {year} Tapido. All rights reserved.</span>
               <div className="d-flex gap-2">
                 <img src="https://img.shields.io/badge/SSL-Secure-brightgreen" alt="SSL Secure" />
                 <img src="https://img.shields.io/badge/Payment-PCI%20Compliant-blue" alt="PCI Compliant" />
@@ -233,4 +233,3 @@ function Footer() {
 }
 
 export default Footer
-
