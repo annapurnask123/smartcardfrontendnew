@@ -7,7 +7,7 @@ export const fetchNotifications = createAsyncThunk(
   "notifications/fetchNotifications",
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await notificationAPI.getNotifications();
+      const response = await notificationAPI.getNotifications(userId);
       return Array.isArray(response.data) ? response.data : response.data?.items || [];
     } catch (error) {
       // Handle authentication errors gracefully

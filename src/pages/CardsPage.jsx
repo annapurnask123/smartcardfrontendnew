@@ -219,7 +219,7 @@ function CardsPage() {
     }
 
     const paymentInfo = {
-      type: 'card_recharge',
+      type: 'recharge',
       cardId: cardId,
       id: cardId,
       amount: rechargeAmount,
@@ -746,13 +746,6 @@ async function handleTapOut(cardId) {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Secondary Cards</h5>
-            <button 
-              className="btn btn-outline-success btn-sm" 
-              onClick={() => setShowRechargeModal(true)}
-              disabled={secondaryCards.length === 0}
-            >
-              <i className="fas fa-plus me-1"></i>Recharge Any Card
-            </button>
           </div>
           <div className="row">
             {secondaryCards.map((card, index) => (

@@ -632,13 +632,17 @@ export const legacyScheduleAPI = {
 
 // Notification API
 export const notificationAPI = {
-  getNotifications: () => api.get("/notifications"),
+  // When userId is provided, use user-scoped endpoints
+  getNotifications: (userId) => userId
+    ? api.get(`/notifications/user/${userId}`)
+    : api.get("/notifications"),
   markAsRead: (notificationId) =>
-    api.put(`/notifications/${notificationId}/read`),
-  markAllAsRead: () => api.put("/notifications/read-all"),
+    api.patch(`/notifications/read/${notificationId}`),
+  markAllAsRead: (userId) =>
+    api.patch(`/notifications/user/${userId}/read-all`),
   deleteNotification: (notificationId) =>
     api.delete(`/notifications/${notificationId}`),
-  getUnreadCount: () => api.get("/notifications/unread-count"),
+  getUnreadCount: (userId) => api.get(`/notifications/user/${userId}/unread-count`),
 };
 
 // Transaction API - New backend feature
