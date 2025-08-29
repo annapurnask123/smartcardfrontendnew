@@ -121,7 +121,7 @@ const AdminCardManagement = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString('en-US');
   };
 
   const generateCardNumber = () => {
@@ -253,7 +253,7 @@ const AdminCardManagement = () => {
           <Modal.Body>
             <Row>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3" controlId="userId">
                   <Form.Label>User ID *</Form.Label>
                   <Form.Control
                     type="text"
@@ -265,7 +265,7 @@ const AdminCardManagement = () => {
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3" controlId="cardNumber">
                   <Form.Label>Card Number *</Form.Label>
                   <div className="d-flex">
                     <Form.Control
@@ -289,7 +289,7 @@ const AdminCardManagement = () => {
             </Row>
             <Row>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3" controlId="cardType">
                   <Form.Label>Card Type</Form.Label>
                   <Form.Select
                     value={formData.cardType}
@@ -302,7 +302,7 @@ const AdminCardManagement = () => {
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
+                <Form.Group className="mb-3" controlId="initialBalance">
                   <Form.Label>Initial Balance (₹)</Form.Label>
                   <Form.Control
                     type="number"
@@ -364,7 +364,7 @@ const AdminCardManagement = () => {
                 <p><strong>Type:</strong> <Badge bg={getCardTypeBadge(viewingCard.cardType)}>{viewingCard.cardType}</Badge></p>
               </Col>
               <Col md={6}>
-                <h6>Card Details</h6>
+                <h6>Card Summary</h6>
                 <p><strong>Balance:</strong> ₹{viewingCard.balance || 0}</p>
                 <p><strong>Status:</strong> <Badge bg={viewingCard.isActive ? 'success' : 'danger'}>{viewingCard.isActive ? 'Active' : 'Inactive'}</Badge></p>
                 <p><strong>Expiry Date:</strong> {viewingCard.expiryDate ? formatDate(viewingCard.expiryDate) : 'N/A'}</p>
