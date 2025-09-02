@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useState, useEffect } from "react";
-import { paymentAPI, walletAPI } from "../api/api";
+import { paymentAPI, walletAPI, cardAPI } from "../api/api";
 import PaymentSuccessNotification from "../components/PaymentSuccessNotification";
 import { updateTicket, fetchTickets } from "../slices/ticketSlice";
 import { fetchWallet } from "../slices/walletSlice";
@@ -121,6 +121,21 @@ const handleWalletPayment = async () => {
       paymentId = paymentInfo.id || paymentInfo.subscriptionId;
     }
     let subscriptionId = paymentInfo.subscriptionId;
+
+    // Resolve card number to ObjectId for recharge
+    if (backendType === "recharge" && paymentId && typeof paymentId === "string" && paymentId.startsWith("VM-")) {
+      try {
+        const res = await cardAPI.getCardByNumber(paymentId);
+        const resolvedId = res.data?._id || res.data?.id || res.data?.card?._id || res.data?.card?.id;
+        if (!resolvedId) throw new Error("Card not found for recharge");
+        paymentId = String(resolvedId);
+      } catch (e) {
+        console.error("Failed to resolve card number to ID:", e);
+        setError("Card not found. Please check the card number.");
+        setWalletLoading(false);
+        return;
+      }
+    }
 
     // If extending a ticket, persist extension first to compute additional fare
     let amountToPay = paymentInfo.amount;
@@ -286,6 +301,21 @@ const handleWalletPayment = async () => {
       let paymentId = paymentInfo.id || paymentInfo.subscriptionId;
       let subscriptionId = paymentInfo.subscriptionId;
 
+      // Resolve card number to ObjectId for recharge
+      if (backendType === "recharge" && paymentId && typeof paymentId === "string" && paymentId.startsWith("VM-")) {
+        try {
+          const res = await cardAPI.getCardByNumber(paymentId);
+          const resolvedId = res.data?._id || res.data?.id || res.data?.card?._id || res.data?.card?.id;
+          if (!resolvedId) throw new Error("Card not found for recharge");
+          paymentId = String(resolvedId);
+        } catch (e) {
+          console.error("Failed to resolve card number to ID:", e);
+          setError("Card not found. Please check the card number.");
+          setLoading(false);
+          return;
+        }
+      }
+
       // Build payment payload
       let paymentPayload;
       if (backendType === "subscription") {
@@ -302,7 +332,7 @@ const handleWalletPayment = async () => {
           id: paymentId,
           userId,
           amount: paymentInfo.amount,
-          paymentMethod: "upi",
+          paymentMethod: "razorpay",
         };
       }
 

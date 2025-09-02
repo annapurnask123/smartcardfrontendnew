@@ -86,7 +86,8 @@ function JourneyTrackingPage() {
               endTime: journey.endTime,
               startStation: startStation,
               endStation: endStation,
-              fare: journey.fare || 0,
+              fare: journey.fare || journey.amount || 0,
+              paymentMethod: journey.paymentMethod || journey.method || ((journey.fare || journey.amount || 0) === 0 ? 'subscription' : 'balance'),
               duration: duration,
               date: new Date(journey.startTime || journey.startedAt).toLocaleDateString()
             }
@@ -109,6 +110,7 @@ function JourneyTrackingPage() {
             startStation: startStation,
             endStation: null,
             fare: 0,
+            paymentMethod: card.currentJourney.paymentMethod || localStorage.getItem('journeyPaymentMethod') || 'balance',
             duration: null,
             date: new Date(card.currentJourney.startedAt || card.currentJourney.startTime).toLocaleDateString()
           })
@@ -212,8 +214,8 @@ function JourneyTrackingPage() {
   const fetchAllStations = async () => {
     try {
       console.log('Fetching all stations from API...')
-      const response = await stationAPI.getAllStations()
-      const data = response.data || []
+      const res = await stationAPI.getAllStations()
+      const data = Array.isArray(res.data) ? res.data : (res.data?.items || [])
       console.log('Fetched stations:', data.length, 'stations')
       if (data.length > 0) {
         console.log('Sample stations:', data.slice(0, 3).map(s => ({ stop_id: s.stop_id, name: s.name })))
@@ -277,7 +279,25 @@ function JourneyTrackingPage() {
         dispatch(updateJourneyProgress(updatedJourney))
         localStorage.setItem('currentJourney', JSON.stringify(updatedJourney))
         
-        setJourneyStations(stationSequence)
+        const sequenceIds = stationSequence || []
+        const sequenceStations = sequenceIds.map((sid) => {
+          const idStr = String(sid)
+          const found = allStationsData.find(s =>
+            String(s._id) === idStr ||
+            String(s.stop_id) === idStr ||
+            String(s.stationId) === idStr ||
+            String(s.id) === idStr ||
+            s.name === idStr
+          ) || stations.find(s =>
+            String(s._id) === idStr ||
+            String(s.stop_id) === idStr ||
+            String(s.stationId) === idStr ||
+            String(s.id) === idStr ||
+            s.name === idStr
+          )
+          return found || { id: sid, name: resolveStationName(sid) }
+        })
+        setJourneyStations(sequenceStations)
         setTrainPosition(currentIndex)
         setCurrentStationIndex(currentIndex)
         setAnimationActive(true)
@@ -654,7 +674,12 @@ function JourneyTrackingPage() {
                     </small>
                   </div>
                   <div className="text-end">
-                    <span className="badge bg-primary">In Progress</span>
+                    <span className="badge bg-primary me-2">In Progress</span>
+                    {journey.paymentMethod === 'subscription' ? (
+                      <span className="badge bg-info">Subscription</span>
+                    ) : (
+                      <span className="badge bg-secondary">Balance</span>
+                    )}
                   </div>
                 </div>
               </div>

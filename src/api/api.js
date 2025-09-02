@@ -246,7 +246,9 @@ export const cardAPI = {
       qrData: data.qrData || JSON.stringify({
         cardNumber: data.cardNumber || 'VM-DEFAULT',
         token: data.token || `web-token-${Date.now()}`
-      })
+      }),
+      paymentMethod: data.paymentMethod || data.method,
+      chosenPlanId: data.chosenPlanId || data.subscriptionId || null
     };
     return api.post(`/virtualcards/${cardId}/tap-out`, payload);
   },
