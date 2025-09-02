@@ -2,16 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AdminUserManagement from '../../pages/admin/AdminUserManagement';
-import { userAPI } from '../../api/api';
+import { adminAPI } from '../../api/api';
 
 // Mock the API
 jest.mock('../../api/api', () => ({
-  userAPI: {
-    getAllUsers: jest.fn(),
+  adminAPI: {
+    getUsers: jest.fn(),
     createUser: jest.fn(),
     updateUser: jest.fn(),
     deleteUser: jest.fn(),
-    getUserById: jest.fn()
+    getUserDetails: jest.fn()
   }
 }));
 
@@ -49,7 +49,7 @@ describe('AdminUserManagement Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    userAPI.getAllUsers.mockResolvedValue(mockUsers);
+    adminAPI.getUsers.mockResolvedValue(mockUsers);
   });
 
   test('renders user management page correctly', async () => {
@@ -118,8 +118,8 @@ describe('AdminUserManagement Component', () => {
       role: 'user'
     };
 
-    userAPI.createUser.mockResolvedValueOnce({ data: newUser });
-    userAPI.getAllUsers.mockResolvedValueOnce({
+    adminAPI.createUser.mockResolvedValueOnce({ data: newUser });
+    adminAPI.getUsers.mockResolvedValueOnce({
       data: [...mockUsers.data, newUser]
     });
 
@@ -141,7 +141,7 @@ describe('AdminUserManagement Component', () => {
     });
 
     await waitFor(() => {
-      expect(userAPI.createUser).toHaveBeenCalledWith({
+      expect(adminAPI.createUser).toHaveBeenCalledWith({
         name: 'New User',
         email: 'new@example.com',
         phone: '1111111111',
@@ -168,7 +168,7 @@ describe('AdminUserManagement Component', () => {
   });
 
   test('updates user successfully', async () => {
-    userAPI.updateUser.mockResolvedValueOnce({ data: { success: true } });
+    adminAPI.updateUser.mockResolvedValueOnce({ data: { success: true } });
 
     renderWithRouter(<AdminUserManagement />);
 
@@ -187,7 +187,7 @@ describe('AdminUserManagement Component', () => {
     });
 
     await waitFor(() => {
-      expect(userAPI.updateUser).toHaveBeenCalledWith('1', expect.objectContaining({
+      expect(adminAPI.updateUser).toHaveBeenCalledWith('1', expect.objectContaining({
         name: 'John Updated'
       }));
     });
@@ -203,7 +203,7 @@ describe('AdminUserManagement Component', () => {
       }
     };
 
-    userAPI.getUserById.mockResolvedValueOnce(userDetails);
+    adminAPI.getUserDetails.mockResolvedValueOnce(userDetails);
 
     renderWithRouter(<AdminUserManagement />);
 
@@ -222,7 +222,7 @@ describe('AdminUserManagement Component', () => {
 
   test('deletes user after confirmation', async () => {
     window.confirm = jest.fn(() => true);
-    userAPI.deleteUser.mockResolvedValueOnce({ data: { success: true } });
+    adminAPI.deleteUser.mockResolvedValueOnce({ data: { success: true } });
 
     renderWithRouter(<AdminUserManagement />);
 
@@ -234,12 +234,12 @@ describe('AdminUserManagement Component', () => {
 
     await waitFor(() => {
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this user?');
-      expect(userAPI.deleteUser).toHaveBeenCalledWith('1');
+      expect(adminAPI.deleteUser).toHaveBeenCalledWith('1');
     });
   });
 
   test('handles API errors gracefully', async () => {
-    userAPI.getAllUsers.mockRejectedValueOnce(new Error('API Error'));
+    adminAPI.getUsers.mockRejectedValueOnce(new Error('API Error'));
 
     renderWithRouter(<AdminUserManagement />);
 
@@ -260,7 +260,7 @@ describe('AdminUserManagement Component', () => {
     });
 
     // Form should not submit without required fields
-    expect(userAPI.createUser).not.toHaveBeenCalled();
+    expect(adminAPI.createUser).not.toHaveBeenCalled();
   });
 
   test('closes modal when clicking cancel', async () => {

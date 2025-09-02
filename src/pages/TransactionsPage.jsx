@@ -10,6 +10,14 @@ function TransactionsPage() {
   const [localTransactions, setLocalTransactions] = useState([])
   const [localLoading, setLocalLoading] = useState(false)
   const [localError, setLocalError] = useState('')
+  
+  // Pagination and filtering states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [sortBy, setSortBy] = useState('date')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [filterType, setFilterType] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
 
   useEffect(() => {
     async function fetchUserTransactions() {
@@ -62,6 +70,38 @@ function TransactionsPage() {
             description: 'Wallet Payment - Journey Fare',
             date: new Date(Date.now() - 345600000).toISOString(),
             status: 'completed'
+          },
+          {
+            id: 'tx-5',
+            type: 'ticket_payment',
+            amount: 35,
+            description: 'Metro Ticket - Airport to Downtown',
+            date: new Date(Date.now() - 432000000).toISOString(),
+            status: 'pending'
+          },
+          {
+            id: 'tx-6',
+            type: 'card_recharge',
+            amount: 200,
+            description: 'Card Recharge - VM-XYZ789ABC',
+            date: new Date(Date.now() - 518400000).toISOString(),
+            status: 'failed'
+          },
+          {
+            id: 'tx-7',
+            type: 'subscription_payment',
+            amount: 599,
+            description: 'Family Plan Subscription',
+            date: new Date(Date.now() - 604800000).toISOString(),
+            status: 'completed'
+          },
+          {
+            id: 'tx-8',
+            type: 'wallet_payment',
+            amount: 40,
+            description: 'Wallet Payment - Express Journey',
+            date: new Date(Date.now() - 691200000).toISOString(),
+            status: 'completed'
           }
         ];
         
@@ -76,8 +116,79 @@ function TransactionsPage() {
 
   // Use local transactions if available, fallback to Redux state
   const displayTransactions = localTransactions.length > 0 ? localTransactions : (transactions || [])
+  
+  // Filter transactions
+  const filteredTransactions = displayTransactions.filter(transaction => {
+    const typeMatch = filterType === 'all' || transaction.type === filterType
+    const statusMatch = filterStatus === 'all' || transaction.status === filterStatus
+    return typeMatch && statusMatch
+  })
+  
+  // Sort transactions
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    let aValue, bValue
+    
+    switch (sortBy) {
+      case 'date':
+        aValue = new Date(a.date || a.createdAt)
+        bValue = new Date(b.date || b.createdAt)
+        break
+      case 'amount':
+        aValue = a.amount || 0
+        bValue = b.amount || 0
+        break
+      case 'type':
+        aValue = a.type || ''
+        bValue = b.type || ''
+        break
+      case 'status':
+        aValue = a.status || ''
+        bValue = b.status || ''
+        break
+      default:
+        aValue = a.date || a.createdAt
+        bValue = b.date || b.createdAt
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1
+    } else {
+      return aValue < bValue ? 1 : -1
+    }
+  })
+  
+  // Paginate transactions
+  const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex)
+  
   const recentTransactions = displayTransactions.slice(0, 5)
-  const allTransactions = displayTransactions
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterType, filterStatus, sortBy, sortOrder, itemsPerPage])
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
+  const getPageNumbers = () => {
+    const pages = []
+    const maxVisiblePages = 5
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i)
+    }
+    return pages
+  }
 
   if (loading || localLoading) {
     return (
@@ -167,82 +278,197 @@ function TransactionsPage() {
           {/* All Transactions Section */}
           <div className="row">
             <div className="col-12">
-              <h4 className="mb-4">
-                <i className="fas fa-list text-info me-2"></i>
-                All Transactions
-              </h4>
-              {allTransactions.length === 0 ? (
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="mb-0">
+                  <i className="fas fa-list text-info me-2"></i>
+                  All Transactions
+                </h4>
+                <div className="d-flex gap-2 flex-wrap">
+                  {/* Items per page */}
+                  <select 
+                    className="form-select form-select-sm" 
+                    style={{width: 'auto'}}
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  >
+                    <option value={5}>5 per page</option>
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                  
+                  {/* Sort by */}
+                  <select 
+                    className="form-select form-select-sm" 
+                    style={{width: 'auto'}}
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="date">Sort by Date</option>
+                    <option value="amount">Sort by Amount</option>
+                    <option value="type">Sort by Type</option>
+                    <option value="status">Sort by Status</option>
+                  </select>
+                  
+                  {/* Sort order */}
+                  <select 
+                    className="form-select form-select-sm" 
+                    style={{width: 'auto'}}
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                  >
+                    <option value="desc">Newest First</option>
+                    <option value="asc">Oldest First</option>
+                  </select>
+                  
+                  {/* Filter by type */}
+                  <select 
+                    className="form-select form-select-sm" 
+                    style={{width: 'auto'}}
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                  >
+                    <option value="all">All Types</option>
+                    <option value="ticket">Ticket</option>
+                    <option value="ticket_payment">Ticket Payment</option>
+                    <option value="subscription">Subscription</option>
+                    <option value="subscription_payment">Subscription Payment</option>
+                    <option value="recharge">Card Recharge</option>
+                    <option value="card_recharge">Card Recharge</option>
+                    <option value="payment">Payment</option>
+                    <option value="refund">Refund</option>
+                    <option value="wallet_topup">Wallet Top-up</option>
+                    <option value="wallet_credit">Wallet Credit</option>
+                    <option value="wallet_debit">Wallet Debit</option>
+                    <option value="wallet_recharge">Wallet Recharge</option>
+                    <option value="wallet_payment">Wallet Payment</option>
+                    <option value="cancellation">Cancellation</option>
+                  </select>
+                  
+                  {/* Filter by status */}
+                  <select 
+                    className="form-select form-select-sm" 
+                    style={{width: 'auto'}}
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+              </div>
+              
+              {sortedTransactions.length === 0 ? (
                 <div className="text-center py-5">
                   <i className="fas fa-receipt fa-3x text-muted mb-3"></i>
                   <h5 className="text-muted">No transactions found</h5>
-                  <p className="text-muted">Your transaction history will appear here</p>
+                  <p className="text-muted">Try adjusting your filters or check back later</p>
                 </div>
               ) : (
-                <div className="card border-0 shadow">
-                  <div className="card-body p-0">
-                    <div className="table-responsive">
-                      <table className="table mb-0">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Description</th>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {allTransactions.map((transaction, index) => (
-                            <tr key={transaction.id || `transaction-${index}`} className={getTransactionRowClass(transaction.type)}>
-                              <td>
-                                <div className="d-flex align-items-center">
-                                  <div className="transaction-icon-small me-2">
-                                    <i className={`fas fa-${getTransactionIcon(transaction.type)} ${getTransactionColor(transaction.type)}`}></i>
-                                  </div>
-                                  <div>
-                                    <div className="fw-bold">
-                                      {transaction.description || 'Transaction'}
-                                    </div>
-                                    <small className="text-muted">
-                                      {transaction.reference || 'No reference'}
-                                    </small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>{formatDate(transaction.date || transaction.createdAt)}</td>
-                              <td>
-                                <span className={`badge ${getTypeBadgeClass(transaction.type)}`}>
-                                  {formatTransactionType(transaction.type)}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={`fw-bold ${isCredit(transaction) ? 'text-success' : isDebit(transaction) ? 'text-danger' : 'text-secondary'}`}>
-                                  {isCredit(transaction) ? '+' : isDebit(transaction) ? '-' : ''}₹{transaction.amount || 0}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={`badge ${getStatusBadgeClass(transaction.status)}`}>
-                                  {transaction.status || 'Completed'}
-                                </span>
-                              </td>
+                <>
+                  <div className="card border-0 shadow">
+                    <div className="card-body p-0">
+                      <div className="table-responsive">
+                        <table className="table mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Description</th>
+                              <th>Date</th>
+                              <th>Type</th>
+                              <th>Amount</th>
+                              <th>Status</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {paginatedTransactions.map((transaction, index) => (
+                              <tr key={transaction.id || `transaction-${index}`} className={getTransactionRowClass(transaction.type)}>
+                                <td>
+                                  <div className="d-flex align-items-center">
+                                    <div className="transaction-icon-small me-2">
+                                      <i className={`fas fa-${getTransactionIcon(transaction.type)} ${getTransactionColor(transaction.type)}`}></i>
+                                    </div>
+                                    <div>
+                                      <div className="fw-bold">
+                                        {transaction.description || 'Transaction'}
+                                      </div>
+                                      <small className="text-muted">
+                                        {transaction.reference || transaction.id || 'No reference'}
+                                      </small>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>{formatDate(transaction.date || transaction.createdAt)}</td>
+                                <td>
+                                  <span className={`badge ${getTypeBadgeClass(transaction.type)}`}>
+                                    {formatTransactionType(transaction.type)}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className={`fw-bold ${isCredit(transaction) ? 'text-success' : isDebit(transaction) ? 'text-danger' : 'text-secondary'}`}>
+                                    {isCredit(transaction) ? '+' : isDebit(transaction) ? '-' : ''}₹{transaction.amount || 0}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className={`badge ${getStatusBadgeClass(transaction.status)}`}>
+                                    {transaction.status || 'Completed'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
-                </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="d-flex justify-content-between align-items-center mt-4">
+                      <div className="text-muted">
+                        Showing {startIndex + 1} to {Math.min(endIndex, sortedTransactions.length)} of {sortedTransactions.length} transactions
+                      </div>
+                      <nav>
+                        <ul className="pagination pagination-sm mb-0">
+                          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button 
+                              className="page-link" 
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                            >
+                              <i className="fas fa-chevron-left"></i>
+                            </button>
+                          </li>
+                          
+                          {getPageNumbers().map(page => (
+                            <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                              <button 
+                                className="page-link" 
+                                onClick={() => handlePageChange(page)}
+                              >
+                                {page}
+                              </button>
+                            </li>
+                          ))}
+                          
+                          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                            <button 
+                              className="page-link" 
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                            >
+                              <i className="fas fa-chevron-right"></i>
+                            </button>
+                          </li>
+                        </ul>
+                      </nav>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
-
-          {allTransactions.length > 0 && (
-            <div className="text-center mt-4">
-              <small className="text-muted">
-                Showing {allTransactions.length} transactions
-              </small>
-            </div>
-          )}
         </div>
       </div>
 
@@ -372,6 +598,10 @@ function getTransactionIcon(type) {
     case 'ticket_booking_payment': return 'ticket-alt'
     case 'wallet_payment': return 'wallet'
     case 'wallet_recharge': return 'wallet'
+    case 'wallet_topup': return 'wallet'
+    case 'wallet_credit': return 'plus-circle'
+    case 'wallet_debit': return 'minus-circle'
+    case 'cancellation': return 'times-circle'
     default: return 'exchange-alt'
   }
 }
@@ -388,15 +618,19 @@ function getTransactionColor(type) {
     case 'refund': return 'text-warning'
     case 'recharge': return 'text-info'
     case 'subscription': return 'text-purple'
-    case 'ticket': return 'text-orange'
-    case 'ticket_payment': return 'text-orange'
+    case 'ticket': return 'text-warning'
+    case 'ticket_payment': return 'text-warning'
     case 'subscription_payment': return 'text-purple'
     case 'card_recharge': return 'text-info'
     case 'card_recharge_payment': return 'text-info'
     case 'subscription_plan_payment': return 'text-purple'
-    case 'ticket_booking_payment': return 'text-orange'
+    case 'ticket_booking_payment': return 'text-warning'
     case 'wallet_payment': return 'text-dark'
-    case 'wallet_recharge': return 'text-dark'
+    case 'wallet_recharge': return 'text-success'
+    case 'wallet_topup': return 'text-success'
+    case 'wallet_credit': return 'text-success'
+    case 'wallet_debit': return 'text-danger'
+    case 'cancellation': return 'text-danger'
     default: return 'text-secondary'
   }
 }
@@ -413,15 +647,19 @@ function getTypeBadgeClass(type) {
     case 'refund': return 'bg-warning'
     case 'recharge': return 'bg-info'
     case 'subscription': return 'bg-purple'
-    case 'ticket': return 'bg-orange'
-    case 'ticket_payment': return 'bg-orange'
+    case 'ticket': return 'bg-warning'
+    case 'ticket_payment': return 'bg-warning'
     case 'subscription_payment': return 'bg-purple'
     case 'card_recharge': return 'bg-info'
     case 'card_recharge_payment': return 'bg-info'
     case 'subscription_plan_payment': return 'bg-purple'
-    case 'ticket_booking_payment': return 'bg-orange'
+    case 'ticket_booking_payment': return 'bg-warning'
     case 'wallet_payment': return 'bg-dark'
-    case 'wallet_recharge': return 'bg-dark'
+    case 'wallet_recharge': return 'bg-success'
+    case 'wallet_topup': return 'bg-success'
+    case 'wallet_credit': return 'bg-success'
+    case 'wallet_debit': return 'bg-danger'
+    case 'cancellation': return 'bg-danger'
     default: return 'bg-secondary'
   }
 }
@@ -463,35 +701,39 @@ function formatTransactionType(type) {
     case 'debit': return 'Debit'
     case 'payment': return 'Payment'
     case 'refund': return 'Refund'
-    case 'recharge': return 'Recharge'
+    case 'recharge': return 'Card Recharge'
     case 'subscription': return 'Subscription'
     case 'ticket': return 'Ticket'
     case 'ticket_payment': return 'Ticket Payment'
     case 'subscription_payment': return 'Subscription Payment'
     case 'card_recharge': return 'Card Recharge'
     case 'card_recharge_payment': return 'Card Recharge'
-    case 'subscription_plan_payment': return 'Subscription'
+    case 'subscription_plan_payment': return 'Subscription Plan'
     case 'ticket_booking_payment': return 'Ticket Booking'
     case 'wallet_payment': return 'Wallet Payment'
     case 'wallet_recharge': return 'Wallet Recharge'
+    case 'wallet_topup': return 'Wallet Top-up'
+    case 'wallet_credit': return 'Wallet Credit'
+    case 'wallet_debit': return 'Wallet Debit'
+    case 'cancellation': return 'Cancellation'
     default: return txType.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ')
   }
 }
 
-export default TransactionsPage
-
 function isCredit(tx) {
   if (!tx) return false;
   
   const type = (tx.transactionType || tx.type || '').toLowerCase()
-  return ['credit', 'refund', 'wallet_credit', 'wallet_recharge', 'recharge'].includes(type)
+  return ['credit', 'refund', 'wallet_credit', 'wallet_recharge', 'wallet_topup', 'recharge', 'cancellation'].includes(type)
 }
 
 function isDebit(tx) {
   if (!tx) return false;
   
   const type = (tx.transactionType || tx.type || '').toLowerCase()
-  return ['debit', 'payment', 'ticket', 'ticket_payment', 'subscription', 'subscription_payment', 'wallet_payment'].includes(type)
+  return ['debit', 'payment', 'ticket', 'ticket_payment', 'subscription', 'subscription_payment', 'wallet_payment', 'wallet_debit'].includes(type)
 }
+
+export default TransactionsPage

@@ -636,6 +636,7 @@ export const notificationAPI = {
   getNotifications: (userId) => userId
     ? api.get(`/notifications/user/${userId}`)
     : api.get("/notifications"),
+  getByUser: (userId) => api.get(`/notifications/user/${userId}`),
   markAsRead: (notificationId) =>
     api.patch(`/notifications/read/${notificationId}`),
   markAllAsRead: (userId) =>
@@ -683,6 +684,18 @@ export const tripAPI = {
 
 // User Journey API - New backend feature
 export const userJourneyAPI = {
+  // Backend expects /user-journeys/journeys/start with either {from_stop_id,to_stop_id} OR {tripId,sourceStationId,destinationStationId}
+  startJourney: (data) => api.post("/user-journeys/journeys/start", data),
+  
+  // Backend expects PATCH /user-journeys/journeys/:journeyId/end with { status }
+  endJourney: (journeyId, status = "completed") => api.patch(`/user-journeys/journeys/${journeyId}/end`, { status }),
+  
+  getJourneyById: (journeyId) => api.get(`/user-journeys/journeys/${journeyId}`),
+  
+  getAllJourneys: () => safeGet("/user-journeys/journeys", { defaultData: [] }),
+  
+  getUserJourneys: () => safeGet("/user-journeys", { defaultData: [] }),
+  
   getUserJourneys: async (userId) => {
     // Try multiple shapes: /user-journeys/:id, /journey-history/:id, /users/:id/journeys
     const candidates = [
@@ -698,14 +711,9 @@ export const userJourneyAPI = {
     }
     return { data: [] };
   },
-  // Backend expects /journeys/start with either {from_stop_id,to_stop_id} OR {tripId,sourceStationId,destinationStationId}
-  startJourney: (data) => api.post("/journeys/start", data),
-  // Backend expects PATCH /journeys/:journeyId/end with { status }
-  endJourney: (journeyId, status = "completed") => api.patch(`/journeys/${journeyId}/end`, { status }),
+  
   // Alternative endpoints for compatibility
-  getJourneyHistory: (userId) => safeGet(`/journey-history/${userId}`, { defaultData: [] }),
-  getAllJourneys: () => safeGet("/journeys", { defaultData: [] }),
-  getJourneyById: (journeyId) => api.get(`/journeys/${journeyId}`),
+  getJourneyHistory: (userId) => safeGet(`/journey-history/${userId}`, { defaultData: [] })
 };
 
 // Train Schedule API - Updated
@@ -757,6 +765,50 @@ export const adminAPI = {
     });
   },
   
+  updateUser: (userId, data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.put(`${apiBase}/admin/users/${userId}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  deleteUser: (userId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.delete(`${apiBase}/admin/users/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  createUser: (data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.post(`${apiBase}/admin/users`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getAllTickets: (params) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/tickets`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getAllSubscriptions: (params) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/subscriptions`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  runSystemTests: () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/test/system`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
   getPaymentAnalytics: (params) => {
     const token = localStorage.getItem('adminToken');
     return axios.get(`${apiBase}/admin/analytics/payments`, {
@@ -785,7 +837,101 @@ export const adminAPI = {
     return axios.delete(`${apiBase}/admin/models/${modelName}/${itemId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-  }
+  },
+  
+  // New admin API functions
+  getAdminProfile: () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  updateAdminProfile: (data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.put(`${apiBase}/admin/profile`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getAdminNotifications: () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/notifications`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  markAdminNotificationAsRead: (notificationId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.patch(`${apiBase}/admin/notifications/${notificationId}/read`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  // Ticket CRUD operations
+  updateTicket: (ticketId, data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.put(`${apiBase}/admin/models/tickets/${ticketId}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  createTicket: (data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.post(`${apiBase}/tickets/book`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  cancelTicket: (ticketId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.patch(`${apiBase}/tickets/${ticketId}/cancel`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getTicketDetails: (ticketId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/models/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  deleteTicket: (ticketId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.delete(`${apiBase}/admin/models/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  // Subscription CRUD operations
+  updateSubscription: (subscriptionId, data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.put(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  createSubscription: (data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.post(`${apiBase}/admin/models/subscriptions`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  deleteSubscription: (subscriptionId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.delete(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+  
+  getSubscriptionDetails: (subscriptionId) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.get(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
 };
 
 export default api;

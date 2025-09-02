@@ -138,6 +138,7 @@ const AdminCardManagement = () => {
             <Button 
               variant="primary" 
               onClick={() => setShowModal(true)}
+              data-testid="add-card-button"
             >
               <i className="fas fa-plus me-2"></i>Add Card
             </Button>
@@ -205,6 +206,7 @@ const AdminCardManagement = () => {
                             size="sm"
                             className="me-2"
                             onClick={() => handleView(card)}
+                            data-testid="view-button"
                           >
                             <i className="fas fa-eye"></i>
                           </Button>
@@ -213,6 +215,7 @@ const AdminCardManagement = () => {
                             size="sm"
                             className="me-2"
                             onClick={() => handleEdit(card)}
+                            data-testid="edit-button"
                           >
                             <i className="fas fa-edit"></i>
                           </Button>
@@ -221,6 +224,7 @@ const AdminCardManagement = () => {
                             size="sm"
                             className="me-2"
                             onClick={() => handleRecharge(card._id)}
+                            data-testid="recharge-button"
                           >
                             <i className="fas fa-plus-circle"></i>
                           </Button>
@@ -228,6 +232,7 @@ const AdminCardManagement = () => {
                             variant="outline-danger"
                             size="sm"
                             onClick={() => handleDelete(card._id)}
+                            data-testid="delete-button"
                           >
                             <i className="fas fa-trash"></i>
                           </Button>
@@ -243,7 +248,7 @@ const AdminCardManagement = () => {
       </Row>
 
       {/* Add/Edit Modal */}
-      <Modal show={showModal} onHide={handleCloseModal} size="lg">
+      <Modal show={showModal} onHide={handleCloseModal} size="lg" data-testid="card-modal">
         <Modal.Header closeButton>
           <Modal.Title>
             {editingCard ? 'Edit Card' : 'Add New Card'}
@@ -261,6 +266,7 @@ const AdminCardManagement = () => {
                     onChange={(e) => setFormData({...formData, userId: e.target.value})}
                     required
                     placeholder="Enter User ID"
+                    data-testid="user-id-input"
                   />
                 </Form.Group>
               </Col>
@@ -274,12 +280,14 @@ const AdminCardManagement = () => {
                       onChange={(e) => setFormData({...formData, cardNumber: e.target.value})}
                       required
                       placeholder="Enter card number"
+                      data-testid="card-number-input"
                     />
                     <Button
                       variant="outline-secondary"
                       className="ms-2"
                       type="button"
                       onClick={generateCardNumber}
+                      data-testid="generate-button"
                     >
                       Generate
                     </Button>
@@ -294,6 +302,7 @@ const AdminCardManagement = () => {
                   <Form.Select
                     value={formData.cardType}
                     onChange={(e) => setFormData({...formData, cardType: e.target.value})}
+                    data-testid="card-type-select"
                   >
                     <option value="primary">Primary</option>
                     <option value="secondary">Secondary</option>
@@ -310,6 +319,7 @@ const AdminCardManagement = () => {
                     value={formData.balance}
                     onChange={(e) => setFormData({...formData, balance: e.target.value})}
                     placeholder="0.00"
+                    data-testid="balance-input"
                   />
                 </Form.Group>
               </Col>
@@ -322,6 +332,7 @@ const AdminCardManagement = () => {
                     type="date"
                     value={formData.expiryDate}
                     onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
+                    data-testid="expiry-date-input"
                   />
                 </Form.Group>
               </Col>
@@ -332,16 +343,17 @@ const AdminCardManagement = () => {
                     label="Active Card"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                    data-testid="active-checkbox"
                   />
                 </Form.Group>
               </Col>
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} data-testid="cancel-button">
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" data-testid="submit-button">
               {editingCard ? 'Update Card' : 'Create Card'}
             </Button>
           </Modal.Footer>
@@ -349,7 +361,7 @@ const AdminCardManagement = () => {
       </Modal>
 
       {/* View Modal */}
-      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg">
+      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg" data-testid="view-modal">
         <Modal.Header closeButton>
           <Modal.Title>Card Details</Modal.Title>
         </Modal.Header>
@@ -374,7 +386,7 @@ const AdminCardManagement = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+          <Button variant="secondary" onClick={() => setShowViewModal(false)} data-testid="close-view-button">
             Close
           </Button>
         </Modal.Footer>

@@ -1,374 +1,396 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, Spinner, Alert, Tabs, Tab, Dropdown } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Badge, Spinner, Dropdown } from 'react-bootstrap';
 import { adminAPI } from '../../api/api';
 
 const AdminModelManagement = () => {
   const [selectedModel, setSelectedModel] = useState('users');
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState([]);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [formData, setFormData] = useState({});
   const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
+    currentPage: 1,
+    totalPages: 1,
     total: 0
   });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [itemDetailsVisible, setItemDetailsVisible] = useState(false);
-  const [itemDetails, setItemDetails] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
-  const models = [
-    { key: 'users', label: 'Users', icon: 'fas fa-users' },
-    { key: 'tickets', label: 'Tickets', icon: 'fas fa-ticket-alt' },
-    { key: 'payments', label: 'Payments', icon: 'fas fa-credit-card' },
-    { key: 'subscriptions', label: 'Subscriptions', icon: 'fas fa-calendar-check' },
-    { key: 'virtualcards', label: 'Virtual Cards', icon: 'fas fa-id-card' },
-    { key: 'transactions', label: 'Transactions', icon: 'fas fa-exchange-alt' },
-    { key: 'wallets', label: 'Wallets', icon: 'fas fa-wallet' },
-    { key: 'stations', label: 'Stations', icon: 'fas fa-map-marker-alt' },
-    { key: 'routes', label: 'Routes', icon: 'fas fa-route' },
-    { key: 'schedules', label: 'Schedules', icon: 'fas fa-clock' },
-    { key: 'plans', label: 'Subscription Plans', icon: 'fas fa-list-alt' },
-    { key: 'notifications', label: 'Notifications', icon: 'fas fa-bell' },
-    { key: 'journeys', label: 'User Journeys', icon: 'fas fa-map-signs' },
-    { key: 'fares', label: 'Fares', icon: 'fas fa-dollar-sign' },
-    { key: 'agencies', label: 'Agencies', icon: 'fas fa-building' }
-  ];
+  const availableModels = {
+    users: { name: 'Users', icon: 'fas fa-users' },
+    tickets: { name: 'Tickets', icon: 'fas fa-ticket-alt' },
+    payments: { name: 'Payments', icon: 'fas fa-credit-card' },
+    subscriptions: { name: 'Subscriptions', icon: 'fas fa-calendar-check' },
+    virtualcards: { name: 'Virtual Cards', icon: 'fas fa-id-card' },
+    transactions: { name: 'Transactions', icon: 'fas fa-exchange-alt' },
+    wallets: { name: 'Wallets', icon: 'fas fa-wallet' },
+    stations: { name: 'Stations', icon: 'fas fa-map-marker-alt' },
+    routes: { name: 'Routes', icon: 'fas fa-route' },
+    schedules: { name: 'Schedules', icon: 'fas fa-clock' },
+    plans: { name: 'Subscription Plans', icon: 'fas fa-list-alt' },
+    notifications: { name: 'Notifications', icon: 'fas fa-bell' },
+    journeys: { name: 'User Journeys', icon: 'fas fa-road' },
+    fares: { name: 'Fares', icon: 'fas fa-money-bill' },
+    agencies: { name: 'Agencies', icon: 'fas fa-building' }
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [selectedModel, pagination.current, pagination.pageSize, searchTerm]);
+    fetchItems();
+  }, [selectedModel, pagination.currentPage]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchItems = async () => {
     try {
-      const params = {
-        page: pagination.current,
-        limit: pagination.pageSize,
-        search: searchTerm
-      };
-      const response = await adminAPI.getModelData(selectedModel, params);
+      setLoading(true);
+      const response = await adminAPI.getModelData(selectedModel, {
+        page: pagination.currentPage,
+        limit: 20
+      });
       
-      const responseData = response.data || {};
-      setData(responseData.items || []);
-      setPagination(prev => ({
-        ...prev,
-        total: responseData.total || 0
-      }));
+      if (response.data && response.data.success) {
+        setItems(response.data.data.items || []);
+        setPagination({
+          currentPage: response.data.data.page || 1,
+          totalPages: response.data.data.totalPages || 1,
+          total: response.data.data.total || 0
+        });
+      } else {
+        setItems([]);
+      }
     } catch (error) {
-      console.error('Fetch data error:', error);
-      setData([]);
+      setError(`Failed to fetch ${selectedModel}: ${error.response?.data?.message || error.message}`);
+      setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchItemDetails = async (itemId) => {
-    setDetailsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const response = await adminAPI.getModelItem(selectedModel, itemId);
-      setItemDetails(response.data || {});
+      if (editingItem) {
+        await adminAPI.updateModelItem(selectedModel, editingItem._id, formData);
+      } else {
+        await adminAPI.createModelItem(selectedModel, formData);
+      }
+      setShowModal(false);
+      setEditingItem(null);
+      resetForm();
+      fetchItems();
     } catch (error) {
-      console.error('Fetch item details error:', error);
-      setItemDetails(null);
-    } finally {
-      setDetailsLoading(false);
+      setError(`Failed to ${editingItem ? 'update' : 'create'} ${selectedModel}: ${error.response?.data?.message || error.message}`);
     }
   };
 
-  const handleViewItem = async (item) => {
-    setSelectedItem(item);
-    setItemDetailsVisible(true);
-    await fetchItemDetails(item._id || item.id);
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setFormData({ ...item });
+    setShowModal(true);
   };
 
-  const handleDeleteItem = async (item) => {
-    if (window.confirm(`Are you sure you want to delete this ${selectedModel.slice(0, -1)}?`)) {
+  const handleView = (item) => {
+    setViewingItem(item);
+    setShowViewModal(true);
+  };
+
+  const handleDelete = async (itemId) => {
+    if (window.confirm(`Are you sure you want to delete this ${selectedModel} item?`)) {
       try {
-        await adminAPI.deleteModelItem(selectedModel, item._id || item.id);
-        fetchData();
-        alert('Item deleted successfully');
+        await adminAPI.deleteModelItem(selectedModel, itemId);
+        fetchItems();
       } catch (error) {
-        console.error('Delete error:', error);
-        alert('Failed to delete item');
+        setError(`Failed to delete ${selectedModel}: ${error.response?.data?.message || error.message}`);
       }
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPagination(prev => ({ ...prev, current: 1 }));
-    fetchData();
+  const resetForm = () => {
+    setFormData({});
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingItem(null);
+    resetForm();
+  };
+
+  const handleModelChange = (model) => {
+    setSelectedModel(model);
+    setPagination({ currentPage: 1, totalPages: 1, total: 0 });
+    setItems([]);
+    setError('');
   };
 
   const renderTableHeaders = () => {
-    const headerMap = {
-      users: ['ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Actions'],
-      tickets: ['ID', 'User', 'Source', 'Destination', 'Status', 'Amount', 'Actions'],
-      payments: ['ID', 'User', 'Amount', 'Status', 'Method', 'Date', 'Actions'],
-      subscriptions: ['ID', 'User', 'Plan', 'Status', 'Start Date', 'End Date', 'Actions'],
-      virtualcards: ['ID', 'User', 'Card Number', 'Status', 'Balance', 'Created', 'Actions'],
-      transactions: ['ID', 'User', 'Type', 'Amount', 'Status', 'Date', 'Actions'],
-      wallets: ['ID', 'User', 'Balance', 'Status', 'Last Updated', 'Actions'],
-      stations: ['ID', 'Name', 'Code', 'Location', 'Status', 'Actions'],
-      routes: ['ID', 'Name', 'Short Name', 'Type', 'Status', 'Actions'],
-      schedules: ['ID', 'Route', 'Departure', 'Arrival', 'Status', 'Actions'],
-      plans: ['ID', 'Name', 'Price', 'Duration', 'Features', 'Status', 'Actions'],
-      notifications: ['ID', 'User', 'Title', 'Type', 'Status', 'Date', 'Actions'],
-      journeys: ['ID', 'User', 'Source', 'Destination', 'Status', 'Date', 'Actions'],
-      fares: ['ID', 'From', 'To', 'Amount', 'Type', 'Actions'],
-      agencies: ['ID', 'Name', 'Code', 'Contact', 'Status', 'Actions']
+    const commonHeaders = ['ID', 'Created', 'Actions'];
+    const modelSpecificHeaders = {
+      users: ['Name', 'Email', 'Role', 'Status'],
+      tickets: ['Ticket ID', 'Route', 'Status', 'Price'],
+      payments: ['Amount', 'Status', 'Method', 'User'],
+      subscriptions: ['Plan', 'User', 'Status', 'Dates'],
+      virtualcards: ['Card Number', 'User', 'Balance', 'Status'],
+      transactions: ['Type', 'Amount', 'User', 'Status'],
+      wallets: ['User', 'Balance', 'Status'],
+      stations: ['Name', 'Code', 'Location'],
+      routes: ['Name', 'From', 'To', 'Distance'],
+      schedules: ['Route', 'Departure', 'Arrival'],
+      plans: ['Name', 'Price', 'Duration', 'Type'],
+      notifications: ['Title', 'Type', 'User', 'Read'],
+      journeys: ['User', 'From', 'To', 'Status'],
+      fares: ['From', 'To', 'Amount', 'Type'],
+      agencies: ['Name', 'Code', 'Contact']
     };
 
-    return headerMap[selectedModel] || ['ID', 'Data', 'Actions'];
+    return [...(modelSpecificHeaders[selectedModel] || []), ...commonHeaders];
   };
 
   const renderTableRow = (item) => {
-    const commonId = item._id || item.id || 'N/A';
+    const formatDate = (date) => new Date(date).toLocaleDateString();
+    const formatCurrency = (amount) => `₹${amount || 0}`;
+
+    const cellRenderers = {
+      users: [
+        item.name || 'N/A',
+        item.email || 'N/A',
+        <Badge bg={item.role === 'admin' ? 'danger' : 'primary'}>{item.role || 'user'}</Badge>,
+        <Badge bg={item.isActive ? 'success' : 'secondary'}>{item.isActive ? 'Active' : 'Inactive'}</Badge>
+      ],
+      tickets: [
+        item.ticketId || item._id?.slice(-8),
+        `${item.startStationId?.name || 'Unknown'} → ${item.endStationId?.name || 'Unknown'}`,
+        <Badge bg={item.status === 'completed' ? 'success' : item.status === 'cancelled' ? 'danger' : 'warning'}>{item.status}</Badge>,
+        formatCurrency(item.price)
+      ],
+      payments: [
+        formatCurrency(item.amount),
+        <Badge bg={item.status === 'paid' ? 'success' : item.status === 'failed' ? 'danger' : 'warning'}>{item.status}</Badge>,
+        item.paymentMethod || 'N/A',
+        item.userId?.name || item.user?.name || 'N/A'
+      ],
+      subscriptions: [
+        item.planId?.name || item.plan?.name || 'Unknown Plan',
+        item.user?.name || 'N/A',
+        <Badge bg={item.status === 'active' ? 'success' : 'secondary'}>{item.status}</Badge>,
+        `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`
+      ],
+      virtualcards: [
+        item.cardNumber || 'N/A',
+        item.user?.name || 'N/A',
+        formatCurrency(item.balance),
+        <Badge bg={item.isActive ? 'success' : 'secondary'}>{item.isActive ? 'Active' : 'Inactive'}</Badge>
+      ]
+    };
+
+    const defaultRenderer = [
+      item.name || item.title || item._id?.slice(-8) || 'N/A',
+      item.type || item.status || 'N/A',
+      item.amount ? formatCurrency(item.amount) : 'N/A',
+      item.user?.name || item.userId?.name || 'N/A'
+    ];
+
+    const cells = cellRenderers[selectedModel] || defaultRenderer;
     
-    switch (selectedModel) {
-      case 'users':
-        return (
-          <tr key={commonId}>
-            <td><code>{commonId.slice(-8)}</code></td>
-            <td>{item.name || 'N/A'}</td>
-            <td>{item.email || 'N/A'}</td>
-            <td>{item.phoneNumber || 'N/A'}</td>
-            <td>
-              <Badge bg={item.role === 'admin' ? 'danger' : 'primary'}>
-                {(item.role || 'user').toUpperCase()}
-              </Badge>
-            </td>
-            <td>
-              <Badge bg={item.isActive ? 'success' : 'secondary'}>
-                {item.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </td>
-            <td>{renderActions(item)}</td>
-          </tr>
-        );
-      
-      case 'tickets':
-        return (
-          <tr key={commonId}>
-            <td><code>{commonId.slice(-8)}</code></td>
-            <td>{item.user?.name || item.userId || 'N/A'}</td>
-            <td>{item.sourceStation?.name || item.source || 'N/A'}</td>
-            <td>{item.destinationStation?.name || item.destination || 'N/A'}</td>
-            <td>
-              <Badge bg={getStatusColor(item.status)}>
-                {(item.status || 'pending').toUpperCase()}
-              </Badge>
-            </td>
-            <td>₹{item.amount || 0}</td>
-            <td>{renderActions(item)}</td>
-          </tr>
-        );
-      
-      case 'payments':
-        return (
-          <tr key={commonId}>
-            <td><code>{commonId.slice(-8)}</code></td>
-            <td>{item.user?.name || item.userId || 'N/A'}</td>
-            <td>₹{item.amount || 0}</td>
-            <td>
-              <Badge bg={getStatusColor(item.status)}>
-                {(item.status || 'pending').toUpperCase()}
-              </Badge>
-            </td>
-            <td>{item.paymentMethod || 'N/A'}</td>
-            <td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</td>
-            <td>{renderActions(item)}</td>
-          </tr>
-        );
-      
-      default:
-        return (
-          <tr key={commonId}>
-            <td><code>{commonId.slice(-8)}</code></td>
-            <td>{JSON.stringify(item).slice(0, 100)}...</td>
-            <td>{renderActions(item)}</td>
-          </tr>
-        );
-    }
+    return [
+      ...cells,
+      <code>{item._id?.slice(-8)}</code>,
+      formatDate(item.createdAt),
+      (
+        <div>
+          <Button variant="outline-info" size="sm" className="me-1" onClick={() => handleView(item)}>
+            <i className="fas fa-eye"></i>
+          </Button>
+          <Button variant="outline-primary" size="sm" className="me-1" onClick={() => handleEdit(item)}>
+            <i className="fas fa-edit"></i>
+          </Button>
+          <Button variant="outline-danger" size="sm" onClick={() => handleDelete(item._id)}>
+            <i className="fas fa-trash"></i>
+          </Button>
+        </div>
+      )
+    ];
   };
 
-  const renderActions = (item) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => handleViewItem(item)}
-      >
-        <i className="fas fa-eye"></i>
-      </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeleteItem(item)}
-      >
-        <i className="fas fa-trash"></i>
-      </Button>
-    </div>
-  );
-
-  const getStatusColor = (status) => {
-    const statusColors = {
-      active: 'success',
-      inactive: 'secondary',
-      pending: 'warning',
-      completed: 'success',
-      failed: 'danger',
-      cancelled: 'secondary',
-      paid: 'success',
-      unpaid: 'warning'
+  const renderFormFields = () => {
+    const commonFields = ['name', 'description', 'status'];
+    const modelFields = {
+      users: ['name', 'email', 'phone', 'password', 'role', 'isActive'],
+      tickets: ['startStationId', 'endStationId', 'price', 'status', 'paymentMethod'],
+      payments: ['amount', 'status', 'paymentMethod', 'userId'],
+      subscriptions: ['planId', 'userId', 'status', 'startDate', 'endDate'],
+      virtualcards: ['cardNumber', 'userId', 'balance', 'isActive'],
+      stations: ['name', 'code', 'location', 'latitude', 'longitude'],
+      routes: ['name', 'fromStation', 'toStation', 'distance'],
+      plans: ['name', 'price', 'duration', 'type', 'description'],
+      notifications: ['title', 'message', 'type', 'userId'],
+      fares: ['fromStation', 'toStation', 'amount', 'type']
     };
-    return statusColors[status?.toLowerCase()] || 'secondary';
+
+    const fields = modelFields[selectedModel] || commonFields;
+
+    return fields.map(field => (
+      <Form.Group key={field} className="mb-3">
+        <Form.Label>{field.charAt(0).toUpperCase() + field.slice(1)}</Form.Label>
+        {field === 'status' ? (
+          <Form.Select
+            value={formData[field] || ''}
+            onChange={(e) => setFormData({...formData, [field]: e.target.value})}
+          >
+            <option value="">Select Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </Form.Select>
+        ) : field === 'isActive' ? (
+          <Form.Check
+            type="checkbox"
+            checked={formData[field] || false}
+            onChange={(e) => setFormData({...formData, [field]: e.target.checked})}
+          />
+        ) : field === 'role' ? (
+          <Form.Select
+            value={formData[field] || 'user'}
+            onChange={(e) => setFormData({...formData, [field]: e.target.value})}
+          >
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </Form.Select>
+        ) : field.includes('Date') ? (
+          <Form.Control
+            type="date"
+            value={formData[field] ? new Date(formData[field]).toISOString().split('T')[0] : ''}
+            onChange={(e) => setFormData({...formData, [field]: e.target.value})}
+          />
+        ) : (
+          <Form.Control
+            type={field === 'password' ? 'password' : field === 'email' ? 'email' : field.includes('price') || field.includes('amount') || field.includes('balance') ? 'number' : 'text'}
+            value={formData[field] || ''}
+            onChange={(e) => setFormData({...formData, [field]: e.target.value})}
+            placeholder={`Enter ${field}`}
+          />
+        )}
+      </Form.Group>
+    ));
   };
 
   return (
     <Container fluid className="p-4">
-      <Row>
+      <Row className="mb-4">
         <Col>
-          <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <h4 className="mb-0">
-                <i className="fas fa-database me-2"></i>
-                Model Management
-              </h4>
+          <div className="d-flex justify-content-between align-items-center">
+            <h2><i className="fas fa-database me-2"></i>Model Management</h2>
+            <div className="d-flex gap-2">
               <Dropdown>
-                <Dropdown.Toggle variant="primary" size="sm">
-                  <i className={models.find(m => m.key === selectedModel)?.icon}></i>
-                  {' '}
-                  {models.find(m => m.key === selectedModel)?.label}
+                <Dropdown.Toggle variant="outline-secondary">
+                  <i className={availableModels[selectedModel]?.icon}></i> {availableModels[selectedModel]?.name}
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  {models.map(model => (
-                    <Dropdown.Item
-                      key={model.key}
-                      onClick={() => setSelectedModel(model.key)}
-                      active={selectedModel === model.key}
-                    >
-                      <i className={`${model.icon} me-2`}></i>
-                      {model.label}
+                  {Object.entries(availableModels).map(([key, model]) => (
+                    <Dropdown.Item key={key} onClick={() => handleModelChange(key)}>
+                      <i className={model.icon}></i> {model.name}
                     </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
               </Dropdown>
+              <Button variant="primary" onClick={() => setShowModal(true)}>
+                <i className="fas fa-plus me-2"></i>Add {availableModels[selectedModel]?.name}
+              </Button>
+            </div>
+          </div>
+        </Col>
+      </Row>
+
+      {error && (
+        <Row className="mb-3">
+          <Col>
+            <Alert variant="danger" dismissible onClose={() => setError('')}>
+              {error}
+            </Alert>
+          </Col>
+        </Row>
+      )}
+
+      <Row>
+        <Col>
+          <Card>
+            <Card.Header>
+              <h5 className="mb-0">{availableModels[selectedModel]?.name} ({pagination.total})</h5>
             </Card.Header>
-
             <Card.Body>
-              {/* Search */}
-              <Form onSubmit={handleSearch} className="mb-3">
-                <Row>
-                  <Col md={8}>
-                    <Form.Control
-                      type="text"
-                      placeholder={`Search ${selectedModel}...`}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </Col>
-                  <Col md={4}>
-                    <Button type="submit" variant="outline-primary" className="w-100">
-                      <i className="fas fa-search me-2"></i>
-                      Search
-                    </Button>
-                  </Col>
-                </Row>
-              </Form>
-
-              {/* Data Table */}
-              <Table responsive striped hover>
-                <thead className="table-dark">
-                  <tr>
-                    {renderTableHeaders().map((header, index) => (
-                      <th key={index}>{header}</th>
+              {loading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" />
+                  <p className="mt-2">Loading {selectedModel}...</p>
+                </div>
+              ) : (
+                <Table responsive striped hover>
+                  <thead>
+                    <tr>
+                      {renderTableHeaders().map((header, index) => (
+                        <th key={index}>{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={item._id}>
+                        {renderTableRow(item).map((cell, index) => (
+                          <td key={index}>{cell}</td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={renderTableHeaders().length} className="text-center py-4">
-                        <Spinner animation="border" size="sm" className="me-2" />
-                        Loading {selectedModel}...
-                      </td>
-                    </tr>
-                  ) : data && data.length > 0 ? (
-                    data.map(renderTableRow)
-                  ) : (
-                    <tr>
-                      <td colSpan={renderTableHeaders().length} className="text-center py-4 text-muted">
-                        No {selectedModel} found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-
-              {/* Pagination */}
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  Showing {Math.min((pagination.current - 1) * pagination.pageSize + 1, pagination.total)} to{' '}
-                  {Math.min(pagination.current * pagination.pageSize, pagination.total)} of {pagination.total} {selectedModel}
-                </div>
-                <div>
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="me-2"
-                    disabled={pagination.current <= 1}
-                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
-                  >
-                    Previous
-                  </Button>
-                  <span className="mx-2">
-                    Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize) || 1}
-                  </span>
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="ms-2"
-                    disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
-                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+                  </tbody>
+                </Table>
+              )}
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
-      {/* Item Details Modal */}
-      <Modal
-        show={itemDetailsVisible}
-        onHide={() => setItemDetailsVisible(false)}
-        size="lg"
-      >
+      {/* Add/Edit Modal */}
+      <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>
-            {selectedModel.slice(0, -1).toUpperCase()} Details
+            {editingItem ? 'Edit' : 'Add'} {availableModels[selectedModel]?.name}
           </Modal.Title>
         </Modal.Header>
+        <Form onSubmit={handleSubmit}>
+          <Modal.Body>
+            <Row>
+              <Col>
+                {renderFormFields()}
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              {editingItem ? 'Update' : 'Create'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>{availableModels[selectedModel]?.name} Details</Modal.Title>
+        </Modal.Header>
         <Modal.Body>
-          {detailsLoading ? (
-            <div className="text-center py-4">
-              <Spinner animation="border" />
-              <p className="mt-2">Loading details...</p>
-            </div>
-          ) : itemDetails ? (
-            <pre className="bg-light p-3 rounded" style={{ maxHeight: '400px', overflow: 'auto' }}>
-              {JSON.stringify(itemDetails, null, 2)}
-            </pre>
-          ) : (
-            <Alert variant="warning">No details available</Alert>
+          {viewingItem && (
+            <Row>
+              <Col>
+                <pre>{JSON.stringify(viewingItem, null, 2)}</pre>
+              </Col>
+            </Row>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setItemDetailsVisible(false)}>
+          <Button variant="secondary" onClick={() => setShowViewModal(false)}>
             Close
           </Button>
         </Modal.Footer>

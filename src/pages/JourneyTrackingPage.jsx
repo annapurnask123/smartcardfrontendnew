@@ -25,6 +25,11 @@ function JourneyTrackingPage() {
   const [animationActive, setAnimationActive] = useState(false)
   const [timeToNextStation, setTimeToNextStation] = useState(60)
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [allStationsData, setAllStationsData] = useState([])
+  
   const { 
     journeys, 
     currentJourney, 
@@ -39,6 +44,7 @@ function JourneyTrackingPage() {
     dispatch(fetchJourneys())
     dispatch(fetchStations())
     fetchCardJourneys()
+    fetchAllStations()
   }, [dispatch])
 
   // Fetch card journeys from virtual cards
@@ -54,24 +60,44 @@ function JourneyTrackingPage() {
       let allCardJourneys = []
       cards.forEach(card => {
         if (card.journeys && Array.isArray(card.journeys)) {
-          const cardJourneysWithMeta = card.journeys.map(journey => ({
-            ...journey,
-            cardId: card._id || card.id,
-            cardNumber: card.cardNumber,
-            source: 'card',
-            _id: `card-${card._id || card.id}-${journey.startedAt || Date.now()}`,
-            status: journey.endTime ? 'completed' : 'in_progress',
-            startTime: journey.startedAt,
-            endTime: journey.endTime,
-            startStation: journey.startStationName || journey.startStationId,
-            endStation: journey.endStationName || journey.endStationId,
-            fare: journey.fare || 0
-          }))
+          const cardJourneysWithMeta = card.journeys.map(journey => {
+            // Calculate duration if both start and end times exist
+            let duration = null
+            if (journey.startTime && journey.endTime) {
+              const start = new Date(journey.startTime || journey.startedAt)
+              const end = new Date(journey.endTime)
+              const diffMs = end - start
+              const diffMins = Math.round(diffMs / (1000 * 60))
+              duration = diffMins > 0 ? `${diffMins} min` : '< 1 min'
+            }
+
+            // Resolve station names from IDs
+            const startStation = resolveStationName(journey.startStationId || journey.startStationName)
+            const endStation = resolveStationName(journey.endStationId || journey.endStationName)
+
+            return {
+              ...journey,
+              cardId: card._id || card.id,
+              cardNumber: card.cardNumber,
+              source: 'card',
+              _id: `card-${card._id || card.id}-${journey.startedAt || Date.now()}`,
+              status: journey.endTime ? 'completed' : 'in_progress',
+              startTime: journey.startedAt || journey.startTime,
+              endTime: journey.endTime,
+              startStation: startStation,
+              endStation: endStation,
+              fare: journey.fare || 0,
+              duration: duration,
+              date: new Date(journey.startTime || journey.startedAt).toLocaleDateString()
+            }
+          })
           allCardJourneys = [...allCardJourneys, ...cardJourneysWithMeta]
         }
 
         // Add current journey if exists
         if (card.currentJourney) {
+          const startStation = resolveStationName(card.currentJourney.startStationId || card.currentJourney.startStationName)
+          
           allCardJourneys.push({
             ...card.currentJourney,
             cardId: card._id || card.id,
@@ -79,10 +105,12 @@ function JourneyTrackingPage() {
             source: 'card',
             _id: `card-current-${card._id || card.id}`,
             status: 'in_progress',
-            startTime: card.currentJourney.startedAt,
-            startStation: card.currentJourney.startStationName || card.currentJourney.startStationId,
+            startTime: card.currentJourney.startedAt || card.currentJourney.startTime,
+            startStation: startStation,
             endStation: null,
-            fare: 0
+            fare: 0,
+            duration: null,
+            date: new Date(card.currentJourney.startedAt || card.currentJourney.startTime).toLocaleDateString()
           })
         }
       })
@@ -93,6 +121,106 @@ function JourneyTrackingPage() {
       addNotification('Failed to load card journeys', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Helper function to resolve station names from IDs
+  const resolveStationName = (stationIdOrName) => {
+    if (!stationIdOrName) return 'Unknown Station'
+    
+    // Convert to string for consistent comparison
+    const idStr = String(stationIdOrName)
+    
+    // If it's already a proper station name (contains letters and not just numbers/ObjectId), return it
+    if (typeof stationIdOrName === 'string' && 
+        !stationIdOrName.match(/^[0-9a-fA-F]{24}$/) && 
+        !stationIdOrName.match(/^\d+$/) &&
+        stationIdOrName.length > 3 &&
+        !stationIdOrName.startsWith('Station ')) {
+      return stationIdOrName
+    }
+    
+    console.log('Resolving station:', stationIdOrName, 'Available stations:', allStationsData.length)
+    
+    // First try with allStationsData (direct API call)
+    let station = allStationsData.find(s => {
+      const match = s._id === stationIdOrName || 
+             s.stop_id === stationIdOrName ||
+             s.stationId === stationIdOrName ||
+             s.id === stationIdOrName ||
+             s.name === stationIdOrName ||
+             // Check string versions
+             String(s._id) === idStr ||
+             String(s.stop_id) === idStr ||
+             String(s.stationId) === idStr ||
+             String(s.id) === idStr ||
+             // Check numeric versions for numeric IDs
+             (typeof stationIdOrName === 'number' && (
+               s.stop_id === stationIdOrName ||
+               s.stationId === stationIdOrName ||
+               s.id === stationIdOrName
+             )) ||
+             // Check parsed numeric versions
+             (idStr.match(/^\d+$/) && (
+               String(s.stop_id) === idStr ||
+               String(s.stationId) === idStr ||
+               String(s.id) === idStr
+             ))
+      
+      if (match) {
+        console.log('Station match found in allStationsData:', s.name, 'for ID:', stationIdOrName)
+      }
+      return match
+    })
+    
+    // Fallback to Redux stations if not found
+    if (!station) {
+      station = stations.find(s => {
+        const match = s._id === stationIdOrName || 
+               s.stop_id === stationIdOrName ||
+               s.stationId === stationIdOrName ||
+               s.id === stationIdOrName ||
+               s.name === stationIdOrName ||
+               // Check string versions
+               String(s._id) === idStr ||
+               String(s.stop_id) === idStr ||
+               String(s.stationId) === idStr ||
+               String(s.id) === idStr ||
+               // Check parsed numeric versions
+               (idStr.match(/^\d+$/) && (
+                 String(s.stop_id) === idStr ||
+                 String(s.stationId) === idStr ||
+                 String(s.id) === idStr
+               ))
+        
+        if (match) {
+          console.log('Station match found in Redux stations:', s.name, 'for ID:', stationIdOrName)
+        }
+        return match
+      })
+    }
+    
+    if (station) {
+      return station.name || station.station_name || `Station ${station.id || station.stop_id || stationIdOrName}`
+    }
+    
+    console.log('No station found for:', stationIdOrName, 'Returning fallback')
+    // If no station found, return a formatted version
+    return `Station ${stationIdOrName}`
+  }
+
+  const fetchAllStations = async () => {
+    try {
+      console.log('Fetching all stations from API...')
+      const response = await stationAPI.getAllStations()
+      const data = response.data || []
+      console.log('Fetched stations:', data.length, 'stations')
+      if (data.length > 0) {
+        console.log('Sample stations:', data.slice(0, 3).map(s => ({ stop_id: s.stop_id, name: s.name })))
+      }
+      setAllStationsData(data)
+    } catch (error) {
+      console.error('Failed to fetch all stations:', error)
     }
   }
 
@@ -320,12 +448,37 @@ function JourneyTrackingPage() {
   }
 
   // Filter and sort journeys
-  const allJourneys = [...journeys, ...cardJourneys]
+  const allJourneys = [
+    // Process Redux journeys (from tickets) to resolve station names
+    ...journeys.map(journey => ({
+      ...journey,
+      startStation: resolveStationName(journey.startStationId || journey.startStation),
+      endStation: resolveStationName(journey.endStationId || journey.endStation),
+      source: journey.source || 'ticket',
+      date: journey.date || new Date(journey.startTime || journey.createdAt).toLocaleDateString(),
+      duration: journey.duration || (journey.startTime && journey.endTime ? 
+        (() => {
+          const start = new Date(journey.startTime)
+          const end = new Date(journey.endTime)
+          const diffMs = end - start
+          const diffMins = Math.round(diffMs / (1000 * 60))
+          return diffMins > 0 ? `${diffMins} min` : '< 1 min'
+        })() : null
+      )
+    })),
+    // Card journeys already have resolved station names
+    ...cardJourneys
+  ]
   const activeJourneys = allJourneys.filter(j => j.status === 'in_progress')
   const completedJourneys = allJourneys
     .filter(j => j.status === 'completed')
     .sort((a, b) => new Date(b.endTime || b.startTime) - new Date(a.endTime || a.startTime))
     .slice(0, 10) // Show 10 most recent
+
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const paginatedCompletedJourneys = completedJourneys.slice(indexOfFirstItem, indexOfLastItem)
 
   return (
     <div className="container-fluid py-4">
@@ -516,35 +669,98 @@ function JourneyTrackingPage() {
           <h5>Recent Journeys</h5>
         </div>
         <div className="card-body">
-          {completedJourneys.length === 0 ? (
+          {paginatedCompletedJourneys.length === 0 ? (
             <div className="text-center py-4">
               <i className="fas fa-route fa-2x text-muted mb-3"></i>
               <p className="text-muted">No journey history found</p>
             </div>
           ) : (
-            completedJourneys.map((journey) => (
-              <div key={journey._id} className="border-bottom py-2">
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong>{journey.startStation} → {journey.endStation}</strong>
-                    <br />
-                    <small className="text-muted">
-                      {new Date(journey.startTime).toLocaleString()} - {journey.endTime ? new Date(journey.endTime).toLocaleString() : 'In Progress'}
-                      {journey.fare && <span className="ms-2 badge bg-success">₹{journey.fare}</span>}
-                      {journey.source === 'card' && (
-                        <span className="badge bg-info ms-2">Card: {journey.cardNumber}</span>
-                      )}
-                      {journey.source !== 'card' && (
-                        <span className="badge bg-success ms-2">Ticket</span>
-                      )}
-                    </small>
-                  </div>
-                  <div className="text-end">
-                    <span className="badge bg-success">Completed</span>
-                  </div>
-                </div>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Route</th>
+                    <th>Date</th>
+                    <th>Duration</th>
+                    <th>Amount</th>
+                    <th>Payment Method</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedCompletedJourneys.map((journey) => (
+                    <tr key={journey._id}>
+                      <td>
+                        <strong>{journey.startStation} → {journey.endStation || 'In Progress'}</strong>
+                        <br />
+                        <small className="text-muted">
+                          {journey.source === 'card' && (
+                            <span className="badge bg-info me-1">Card: {journey.cardNumber}</span>
+                          )}
+                          {journey.source !== 'card' && (
+                            <span className="badge bg-success me-1">Ticket</span>
+                          )}
+                        </small>
+                      </td>
+                      <td>
+                        <div>{journey.date}</div>
+                        <small className="text-muted">
+                          {new Date(journey.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          {journey.endTime && (
+                            <> - {new Date(journey.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</>
+                          )}
+                        </small>
+                      </td>
+                      <td>
+                        {journey.duration || (journey.status === 'in_progress' ? (
+                          <span className="text-primary">In Progress</span>
+                        ) : 'N/A')}
+                      </td>
+                      <td>
+                        {journey.fare > 0 ? (
+                          <span className="badge bg-success">₹{journey.fare}</span>
+                        ) : journey.paymentMethod === 'subscription' ? (
+                          <span className="badge bg-info">Free (Subscription)</span>
+                        ) : (
+                          <span className="text-muted">₹0</span>
+                        )}
+                      </td>
+                      <td>
+                        {journey.paymentMethod === 'subscription' ? (
+                          <span className="badge bg-primary">Subscription</span>
+                        ) : (
+                          <span className="badge bg-secondary">Balance</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${journey.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
+                          {journey.status === 'completed' ? 'Completed' : 'In Progress'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="pagination">
+                <button 
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2">
+                  Page {currentPage} of {Math.ceil(completedJourneys.length / itemsPerPage)}
+                </span>
+                <button 
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === Math.ceil(completedJourneys.length / itemsPerPage)}
+                >
+                  Next
+                </button>
               </div>
-            ))
+            </div>
           )}
         </div>
       </div>

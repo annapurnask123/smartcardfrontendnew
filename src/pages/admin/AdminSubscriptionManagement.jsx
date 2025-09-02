@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Badge, Spinner } from 'react-bootstrap';
-import { subscriptionAPI, subscriptionPlanAPI, userAPI } from '../../api/api';
+import { adminAPI, subscriptionPlanAPI } from '../../api/api';
 
 const AdminSubscriptionManagement = () => {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -11,6 +11,10 @@ const AdminSubscriptionManagement = () => {
   const [editingSubscription, setEditingSubscription] = useState(null);
   const [viewingSubscription, setViewingSubscription] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [formData, setFormData] = useState({
     userId: '',
     planId: '',
@@ -23,16 +27,29 @@ const AdminSubscriptionManagement = () => {
   useEffect(() => {
     fetchSubscriptions();
     fetchPlans();
-  }, []);
+  }, [currentPage, searchTerm, statusFilter]);
 
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
-      const response = await subscriptionAPI.getAllSubscriptions();
-      setSubscriptions(Array.isArray(response.data) ? response.data : []);
+      const params = {
+        page: currentPage,
+        limit: 20,
+        search: searchTerm,
+        status: statusFilter
+      };
+      const response = await adminAPI.getAllSubscriptions(params);
+      
+      if (response.data && response.data.success) {
+        setSubscriptions(Array.isArray(response.data.subscriptions) ? response.data.subscriptions : []);
+        setTotalPages(response.data.pagination?.totalPages || 1);
+      } else {
+        setSubscriptions([]);
+      }
     } catch (error) {
       setError('Failed to fetch subscriptions');
       console.error('Error fetching subscriptions:', error);
+      setSubscriptions([]);
     } finally {
       setLoading(false);
     }
@@ -51,9 +68,9 @@ const AdminSubscriptionManagement = () => {
     e.preventDefault();
     try {
       if (editingSubscription) {
-        await subscriptionAPI.updateSubscription(editingSubscription._id, formData);
+        await adminAPI.updateSubscription(editingSubscription._id, formData);
       } else {
-        await subscriptionAPI.createSubscription(formData);
+        await adminAPI.createSubscription(formData);
       }
       setShowModal(false);
       setEditingSubscription(null);
@@ -85,7 +102,7 @@ const AdminSubscriptionManagement = () => {
   const handleCancel = async (subscriptionId) => {
     if (window.confirm('Are you sure you want to cancel this subscription?')) {
       try {
-        await subscriptionAPI.cancelSubscription(subscriptionId);
+        await adminAPI.cancelSubscription(subscriptionId);
         fetchSubscriptions();
       } catch (error) {
         setError('Failed to cancel subscription');
@@ -96,7 +113,7 @@ const AdminSubscriptionManagement = () => {
   const handleRenew = async (subscriptionId) => {
     if (window.confirm('Are you sure you want to renew this subscription?')) {
       try {
-        await subscriptionAPI.renewSubscription(subscriptionId);
+        await adminAPI.renewSubscription(subscriptionId);
         fetchSubscriptions();
       } catch (error) {
         setError('Failed to renew subscription');

@@ -83,8 +83,9 @@ const AdminLogin = () => {
 
                 <Form onSubmit={handleSubmit}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
+                    <Form.Label htmlFor="admin-email">Email</Form.Label>
                     <Form.Control
+                      id="admin-email"
                       type="email"
                       name="email"
                       value={formData.email}
@@ -96,8 +97,9 @@ const AdminLogin = () => {
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label>Password</Form.Label>
+                    <Form.Label htmlFor="admin-password">Password</Form.Label>
                     <Form.Control
+                      id="admin-password"
                       type="password"
                       name="password"
                       value={formData.password}

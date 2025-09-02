@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Badge, Spinner } from 'react-bootstrap';
-import { ticketAPI, stationAPI, userAPI } from '../../api/api';
+import { adminAPI, stationAPI, userAPI } from '../../api/api';
 
 const AdminTicketManagement = () => {
   const [tickets, setTickets] = useState([]);
@@ -28,11 +28,17 @@ const AdminTicketManagement = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await ticketAPI.getAllTickets();
-      setTickets(Array.isArray(response.data) ? response.data : []);
+      const response = await adminAPI.getAllTickets();
+      
+      if (response.data && response.data.success) {
+        setTickets(Array.isArray(response.data.tickets) ? response.data.tickets : []);
+      } else {
+        setTickets([]);
+      }
     } catch (error) {
       setError('Failed to fetch tickets');
       console.error('Error fetching tickets:', error);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -51,16 +57,16 @@ const AdminTicketManagement = () => {
     e.preventDefault();
     try {
       if (editingTicket) {
-        await ticketAPI.updateTicket(editingTicket._id, formData);
+        await adminAPI.updateTicket(editingTicket._id, formData);
       } else {
-        await ticketAPI.bookTicket(formData);
+        await adminAPI.createTicket(formData);
       }
       setShowModal(false);
       setEditingTicket(null);
       resetForm();
       fetchTickets();
     } catch (error) {
-      setError(`Failed to ${editingTicket ? 'update' : 'create'} ticket`);
+      setError(`Failed to ${editingTicket ? 'update' : 'create'} ticket: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -85,10 +91,10 @@ const AdminTicketManagement = () => {
   const handleDelete = async (ticketId) => {
     if (window.confirm('Are you sure you want to delete this ticket?')) {
       try {
-        await ticketAPI.cancelTicket(ticketId);
+        await adminAPI.deleteTicket(ticketId);
         fetchTickets();
       } catch (error) {
-        setError('Failed to delete ticket');
+        setError(`Failed to delete ticket: ${error.response?.data?.message || error.message}`);
       }
     }
   };

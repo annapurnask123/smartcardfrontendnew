@@ -87,15 +87,15 @@ const AdminDashboard = () => {
     transactions: item.totalTransactions
   })) || [];
 
-  const ticketStatusData = dashboardData?.ticketStats ? [
-    { type: 'Pending', value: dashboardData.ticketStats.pending },
-    { type: 'Booked', value: dashboardData.ticketStats.booked },
-    { type: 'In Progress', value: dashboardData.ticketStats.inProgress },
-    { type: 'Completed', value: dashboardData.ticketStats.completed },
-    { type: 'Cancelled', value: dashboardData.ticketStats.cancelled }
+  const ticketStatusData = dashboardData?.data?.ticketStats ? [
+    { type: 'Pending', value: dashboardData.data.ticketStats.pending },
+    { type: 'Booked', value: dashboardData.data.ticketStats.booked },
+    { type: 'In Progress', value: dashboardData.data.ticketStats.inProgress },
+    { type: 'Completed', value: dashboardData.data.ticketStats.completed },
+    { type: 'Cancelled', value: dashboardData.data.ticketStats.cancelled }
   ] : [];
 
-  const userGrowthData = dashboardData?.userGrowth?.map(item => ({
+  const userGrowthData = dashboardData?.data?.userGrowth?.map(item => ({
     month: item._id,
     users: item.count
   })) || [];
@@ -113,7 +113,7 @@ const AdminDashboard = () => {
                 <div className="text-success mb-2">
                   <i className="fas fa-users fa-2x"></i>
                 </div>
-                <h3 className="text-success">{dashboardData?.totalUsers || 0}</h3>
+                <h3 className="text-success">{dashboardData?.data?.overview?.totalUsers || 0}</h3>
                 <p className="text-muted mb-0">Total Users</p>
               </Card.Body>
             </Card>
@@ -124,7 +124,7 @@ const AdminDashboard = () => {
                 <div className="text-primary mb-2">
                   <i className="fas fa-ticket-alt fa-2x"></i>
                 </div>
-                <h3 className="text-primary">{dashboardData?.totalTickets || 0}</h3>
+                <h3 className="text-primary">{dashboardData?.data?.overview?.totalTickets || 0}</h3>
                 <p className="text-muted mb-0">Total Tickets</p>
               </Card.Body>
             </Card>
@@ -135,7 +135,7 @@ const AdminDashboard = () => {
                 <div className="text-danger mb-2">
                   <i className="fas fa-rupee-sign fa-2x"></i>
                 </div>
-                <h3 className="text-danger">₹{dashboardData?.totalRevenue || 0}</h3>
+                <h3 className="text-danger">₹{dashboardData?.data?.overview?.totalRevenue || 0}</h3>
                 <p className="text-muted mb-0">Total Revenue</p>
               </Card.Body>
             </Card>
@@ -146,7 +146,7 @@ const AdminDashboard = () => {
                 <div className="text-warning mb-2">
                   <i className="fas fa-chart-line fa-2x"></i>
                 </div>
-                <h3 className="text-warning">{dashboardData?.activeSubscriptions || 0}</h3>
+                <h3 className="text-warning">{dashboardData?.data?.overview?.totalActiveSubscriptions || 0}</h3>
                 <p className="text-muted mb-0">Active Subscriptions</p>
               </Card.Body>
             </Card>
@@ -297,7 +297,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {dashboardData?.recentTransactions?.slice(0, 10).map((transaction, index) => (
+                    {dashboardData?.data?.recentTransactions?.slice(0, 10).map((transaction, index) => (
                       <tr key={index}>
                         <td>
                           <Badge bg="secondary">{transaction.type}</Badge>
