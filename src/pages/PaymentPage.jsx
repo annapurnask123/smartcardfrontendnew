@@ -359,6 +359,14 @@ const handleWalletPayment = async () => {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              // Provide context so backend can finalize business logic
+              type: backendType,
+              id: paymentId,
+              userId,
+              amount: paymentInfo.amount,
+              description: paymentInfo.description,
+              paymentMethod: 'razorpay',
+              expected_order_id: order.order_id || order.id
             });
 
             if (verifyResponse.data.success) {

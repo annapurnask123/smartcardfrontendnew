@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { cardAPI, stationAPI, subscriptionAPI } from '../api/api';
 import { fetchUserCard, setCards } from '../slices/cardSlice';
 import RechargeByCardNumber from '../components/RechargeByCardNumber';
@@ -9,18 +9,15 @@ import SimpleNotification from '../components/SimpleNotification';
 function CardsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { cards, loading, error } = useSelector(s => s.card);
+    const { cards, loading, error } = useSelector(s => s.card);
   const user = useSelector(s => s.auth.user);
   const [stations, setStations] = useState([]);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '');
+    const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '');
   const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '');
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [showRechargeByNumberModal, setShowRechargeByNumberModal] = useState(false);
-  const [rechargeAmount, setRechargeAmount] = useState('');
-  const [selectedCardForRecharge, setSelectedCardForRecharge] = useState(null);
-  const [message, setMessage] = useState('');
+  const [rechargeAmount, setRechargeAmount] = useState(0);
+    const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -43,8 +40,7 @@ function CardsPage() {
     try {
       const { data } = await stationAPI.getAllStations();
       const stationList = Array.isArray(data) ? data : data.items || [];
-      console.log('Loaded stations:', stationList.length);
-      setStations(stationList);
+            setStations(stationList);
     } catch (error) {
       console.error('Failed to fetch stations:', error);
       setMessage('Failed to fetch stations. Please try again later.');
@@ -76,8 +72,8 @@ function CardsPage() {
       try {
         const rechargeData = JSON.parse(pendingRecharge);
         const updatedCards = cards.map(card => {
-          if (getCardId(card) === rechargeData.cardId) {
-            return { ...card, balance: (card.balance || 0) + rechargeData.amount };
+          if (card.cardNumber === rechargeData.cardNumber) {
+            return { ...card, balance: (card.balance || 0) + Number(rechargeData.amount) };
           }
           return card;
         });
@@ -130,6 +126,14 @@ function CardsPage() {
       const response = await cardAPI.checkBalance(cardId);
       const balance = response.data?.balance || response.data || 0;
       
+      // Update local store with the fetched balance
+      try {
+        const updated = cards.map(c =>
+          getCardId(c) === cardId ? { ...c, balance: Number(balance) } : c
+        );
+        dispatch(setCards(updated));
+      } catch (_) {}
+      
       setMessage(`Card balance: ₹${Number(balance).toFixed(2)}`);
       setMessageType('success');
       
@@ -159,6 +163,10 @@ function CardsPage() {
         }));
         
         dispatch(setCards(updated));
+        // Refresh from server to avoid drift
+        if (user?.id || user?._id) {
+          dispatch(fetchUserCard(user.id || user._id));
+        }
         setMessage('Primary card updated successfully');
         setMessageType('success');
       } else {
@@ -173,7 +181,8 @@ function CardsPage() {
 
   async function handleRecharge(cardId, amount) {
     if (!amount || amount <= 0) {
-      alert('Please enter a valid recharge amount');
+      setMessage('Please enter a valid recharge amount');
+      setMessageType('error');
       return;
     }
     
@@ -187,19 +196,11 @@ function CardsPage() {
         return;
       }
       
-      console.log('Recharge details:', {
-        cardId,
-        cardNumber: card.cardNumber,
-        amount: parseFloat(amount),
-        cardType: card.type || 'primary',
-        isPrimary: card.isPrimary
-      });
-      
+            
       // Start Razorpay payment flow for recharge
       localStorage.setItem('pendingRecharge', JSON.stringify({
-        cardId: card.cardNumber,
         cardNumber: card.cardNumber,
-        amount: parseFloat(amount)
+        amount: Number(amount)
       }));
       navigate('/payment', {
         state: {
@@ -234,12 +235,14 @@ function CardsPage() {
 
   function handleRechargeModal(cardId, cardNumber) {
     if (!cardId) {
-      alert('Please select a card to recharge');
+      setMessage('Please select a card to recharge');
+      setMessageType('error');
       return;
     }
 
     if (!rechargeAmount || rechargeAmount <= 0) {
-      alert('Please enter a valid amount');
+      setMessage('Please enter a valid amount');
+      setMessageType('error');
       return;
     }
 
@@ -253,9 +256,8 @@ function CardsPage() {
     
     // Store recharge info for after payment
     localStorage.setItem('pendingRecharge', JSON.stringify({
-      cardId: cardNumber, // Use card number instead of ObjectId
       cardNumber: cardNumber,
-      amount: rechargeAmount
+      amount: Number(rechargeAmount)
     }));
     
     navigate('/payment', {
@@ -267,13 +269,15 @@ function CardsPage() {
 
   async function handleTapIn(cardId, tapInStation) {
     if (!tapInStation) {
-      alert('Please select a station to tap in');
+      setMessage('Please select a station to tap in');
+      setMessageType('error');
       return;
     }
     
     const card = cards.find(c => getCardId(c) === cardId);
     if (!card) {
-      alert('Card not found');
+      setMessage('Card not found');
+      setMessageType('error');
       return;
     }
     
@@ -301,22 +305,24 @@ function CardsPage() {
       setUserSubscriptions(transformedSubscriptions);
       
       // Always show payment modal if user has any payment options
-      if (transformedSubscriptions.length > 0 || (card.isPrimary && card.balance > 0)) {
+      if (transformedSubscriptions.length > 0 || (card.balance > 0)) {
+        setPaymentMethod('');
+        setSelectedPlanId('');
         setShowPaymentModal(true);
         return;
       } else {
         // No payment options available
-        const errorMessage = card.isPrimary 
-          ? 'No payment methods available. Please recharge your card or purchase a subscription.'
-          : 'Secondary cards require an active subscription. Please purchase a subscription first.';
+        const errorMessage = 'No payment methods available. Please recharge your card or purchase a subscription.';
         setMessage(errorMessage);
         setMessageType('error');
       }
     } catch (error) {
       console.error('Failed to check subscriptions:', error);
       // If subscription check fails but card has balance, show modal
-      if (card.isPrimary && card.balance > 0) {
+      if (card.balance > 0) {
         setUserSubscriptions([]);
+        setPaymentMethod('');
+        setSelectedPlanId('');
         setShowPaymentModal(true);
       } else {
         setMessage('Failed to load payment options. Please try again.');
@@ -327,7 +333,8 @@ function CardsPage() {
 
 async function handleTapOut(cardId, tapOutStation) {
   if (!tapOutStation) {
-    alert('Please select a station to tap out');
+    setMessage('Please select a station to tap out');
+    setMessageType('error');
     return;
   }
 
@@ -344,14 +351,16 @@ async function handleTapOut(cardId, tapOutStation) {
   try {
     const card = cards.find(c => getCardId(c) === cardId);
     if (!card) {
-      alert('Card not found');
+      setMessage('Card not found');
+      setMessageType('error');
       return;
     }
 
     const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
       || stations.find(s => (s._id || s.id) === tapOutStation);
     if (!outStation) {
-      alert('Station not found');
+      setMessage('Station not found');
+      setMessageType('error');
       return;
     }
 
@@ -368,13 +377,29 @@ async function handleTapOut(cardId, tapOutStation) {
 
     const response = await cardAPI.tapOut(cardId, tapOutData);
 
-    if (response.data?.balance !== undefined) {
+    // Enhanced balance update handling
+    const updatedBalance = response.data?.balance ?? response.data?.card?.balance ?? response.data?.remainingBalance;
+    const fareCharged = response.data?.fareCharged ?? response.data?.fare ?? 0;
+    
+    console.log('Tap-out response:', {
+      balance: updatedBalance,
+      fareCharged: fareCharged,
+      paymentMethod: response.data?.paymentMethod,
+      fullResponse: response.data
+    });
+
+    if (updatedBalance !== undefined) {
       const updatedCards = cards.map(c =>
         getCardId(c) === cardId
-          ? { ...c, balance: response.data.balance, status: 'Active' }
+          ? { ...c, balance: updatedBalance, status: 'Active' }
           : c
       );
       dispatch(setCards(updatedCards));
+      console.log(`Card balance updated: ₹${updatedBalance}`);
+    } else {
+      // Force refresh if balance not in response
+      console.log('Balance not found in response, refreshing cards...');
+      dispatch(fetchUserCard(user.id || user._id));
     }
 
     // Determine selected payment method before clearing storage
@@ -455,7 +480,8 @@ async function handleTapOut(cardId, tapOutStation) {
     const inStation = stations.find(s => String(s.stop_id) === String(tapInStation))
       || stations.find(s => (s._id || s.id) === tapInStation);
     if (!inStation) {
-      alert('Station not found');
+      setMessage('Station not found');
+      setMessageType('error');
       return;
     }
     
@@ -491,7 +517,10 @@ async function handleTapOut(cardId, tapOutStation) {
       }
     }
   } catch (error) {
-    // ...existing error handling...
+    console.error('Tap In error:', error);
+    const msg = error?.response?.data?.error || error?.message || 'Tap In failed. Please try again.';
+    setMessage(msg);
+    setMessageType('error');
   } finally {
     setActionLoading(null);
     setShowPaymentModal(false);
@@ -1024,7 +1053,7 @@ async function handleTapOut(cardId, tapOutStation) {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .credit-card {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;

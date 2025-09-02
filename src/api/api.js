@@ -227,8 +227,20 @@ export const cardAPI = {
   rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
   rechargeByCardNumber: (data) => api.post("/virtualcards/recharge-by-number", data),
   tapIn: (cardId, data) => {
+    const startId = String(
+      data.startStationId ||
+      data.stationIdentifier ||
+      data.stationId ||
+      data.from_stop_id ||
+      data.startStation ||
+      ''
+    );
     const payload = {
-      stationIdentifier: data.stationIdentifier || data.stationId,
+      // Provide multiple keys to satisfy different backend expectations
+      startStationId: startId,
+      from_stop_id: startId,
+      stationIdentifier: startId,
+      stationId: startId,
       deviceId: data.deviceId || getDeviceId(),
       qrData: data.qrData || JSON.stringify({
         cardNumber: data.cardNumber || 'VM-DEFAULT',
@@ -240,8 +252,20 @@ export const cardAPI = {
     return api.post(`/virtualcards/${cardId}/tap-in`, payload);
   },
   tapOut: (cardId, data) => {
+    const endId = String(
+      data.endStationId ||
+      data.endStation ||
+      data.stationId ||
+      data.to_stop_id ||
+      data.destinationStation ||
+      ''
+    );
     const payload = {
-      endStation: data.endStation || data.stationId,
+      // Provide multiple keys to satisfy different backend expectations
+      endStationId: endId,
+      to_stop_id: endId,
+      endStation: endId,
+      stationId: endId,
       deviceId: data.deviceId || getDeviceId(),
       qrData: data.qrData || JSON.stringify({
         cardNumber: data.cardNumber || 'VM-DEFAULT',
