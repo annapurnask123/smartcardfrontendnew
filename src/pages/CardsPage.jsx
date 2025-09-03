@@ -476,7 +476,63 @@ async function handleTapOut(cardId, tapOutStation) {
   setActionLoading(getCardId(card));
   
   try {
-    // ...existing code...
+    // Add detailed logging for debugging
+    console.log('=== TAP-IN DEBUG INFO ===');
+    console.log('Card data:', {
+      id: getCardId(card),
+      cardNumber: card.cardNumber,
+      balance: card.balance,
+      isPrimary: card.isPrimary,
+      currentJourney: card.currentJourney,
+      isActive: card.isActive
+    });
+    console.log('Selected payment method:', selectedPaymentMethod);
+    console.log('Tap-in station:', tapInStation);
+    console.log('Plan ID:', planId);
+    
+    // Check for existing journey - offer to clear it instead of blocking
+    if (card.currentJourney) {
+      const shouldClear = window.confirm(
+        'You have an active journey in progress. Would you like to clear it and start a new journey?\n\n' +
+        'Click OK to clear and start new journey, or Cancel to keep existing journey.'
+      );
+      
+      if (!shouldClear) {
+        setMessage('Tap-in cancelled. Please complete your current journey first.');
+        setMessageType('info');
+        return;
+      }
+      
+      // Clear the existing journey by calling tap-out or force clear
+      console.log(' Clearing existing journey to start new one...');
+      try {
+        // Force clear the journey by updating the card
+        await cardAPI.clearCurrentJourney(getCardId(card));
+        console.log(' Existing journey cleared successfully');
+        
+        // Refresh card data to get updated state
+        await dispatch(fetchUserCard(user.id || user._id));
+        setMessage('Previous journey cleared. Starting new journey...');
+        setMessageType('info');
+      } catch (clearError) {
+        console.warn('Failed to clear existing journey, proceeding anyway:', clearError);
+      }
+    }
+    
+    // Check minimum balance for balance payments
+    if (selectedPaymentMethod === 'balance' && card.balance < 20) {
+      setMessage(`Insufficient balance. Minimum ₹20 required. Current balance: ₹${card.balance}`);
+      setMessageType('error');
+      return;
+    }
+    
+    // Check secondary card restrictions
+    if (card.isPrimary === false && selectedPaymentMethod === 'balance') {
+      setMessage('Secondary cards cannot use balance payment. Please select subscription payment.');
+      setMessageType('error');
+      return;
+    }
+
     const inStation = stations.find(s => String(s.stop_id) === String(tapInStation))
       || stations.find(s => (s._id || s.id) === tapInStation);
     if (!inStation) {
@@ -498,7 +554,14 @@ async function handleTapOut(cardId, tapOutStation) {
       ...(resolvedPlanId && { chosenPlanId: resolvedPlanId })
     };
     
+    console.log('=== TAP-IN PAYLOAD ===');
+    console.log('Tap-in data being sent:', tapInData);
+    console.log('API URL will be:', `http://localhost:5000/api/v1/virtualcards/${getCardId(card)}/tap-in`);
+    
     const response = await cardAPI.tapIn(getCardId(card), tapInData);
+    
+    console.log('=== TAP-IN RESPONSE ===');
+    console.log('Response received:', response);
     
     if (response.data) {
       setMessage(`Tap In successful at ${inStation.name}! Journey started with ${selectedPaymentMethod} payment.`);
@@ -518,8 +581,48 @@ async function handleTapOut(cardId, tapOutStation) {
     }
   } catch (error) {
     console.error('Tap In error:', error);
-    const msg = error?.response?.data?.error || error?.message || 'Tap In failed. Please try again.';
-    setMessage(msg);
+    
+    let errorMessage = 'Tap In failed. Please try again.';
+    
+    // Handle specific error cases
+    if (error.response?.status === 400) {
+      const errorData = error.response.data;
+      console.log('400 Error details:', errorData);
+      
+      if (errorData.insufficientBalance) {
+        errorMessage = errorData.error || `Insufficient balance. Current: ₹${errorData.currentBalance}, Required: ₹${errorData.minimumRequired}`;
+        setMessageType('error');
+        setMessage(errorMessage);
+        return;
+      } else if (errorData.error?.includes('Journey already in progress')) {
+        errorMessage = 'Journey already in progress. Please complete current journey first.';
+      } else if (errorData.error?.includes('Station identifier is required')) {
+        errorMessage = 'Invalid station selection. Please select a valid station.';
+      } else if (errorData.error?.includes('Device ID is required')) {
+        errorMessage = 'Device validation failed. Please try again.';
+      } else if (errorData.error?.includes('Card number missing from QR data')) {
+        errorMessage = 'Card validation failed. Please try again.';
+      } else if (errorData.error?.includes('Minimum')) {
+        errorMessage = errorData.error;
+      } else if (errorData.error?.includes('subscription')) {
+        errorMessage = errorData.error;
+      } else {
+        errorMessage = errorData.error || 'Validation failed. Please check your selection and try again.';
+      }
+    } else if (error.response?.status === 403) {
+      const errorData = error.response.data;
+      if (errorData.error?.includes('Secondary cards cannot use balance payment')) {
+        errorMessage = 'Secondary cards require subscription payment. Please select a subscription.';
+      } else {
+        errorMessage = errorData.error || 'Access denied. Please check your permissions.';
+      }
+    } else if (error.response?.status === 404) {
+      errorMessage = 'Card or station not found. Please try again.';
+    } else if (error.response?.status >= 500) {
+      errorMessage = 'Server error. Please try again later.';
+    }
+    
+    setMessage(errorMessage);
     setMessageType('error');
   } finally {
     setActionLoading(null);

@@ -227,28 +227,32 @@ export const cardAPI = {
   rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
   rechargeByCardNumber: (data) => api.post("/virtualcards/recharge-by-number", data),
   tapIn: (cardId, data) => {
-    const startId = String(
-      data.startStationId ||
+    const stationIdentifier = String(
       data.stationIdentifier ||
+      data.startStationId ||
       data.stationId ||
       data.from_stop_id ||
       data.startStation ||
       ''
     );
+    
     const payload = {
-      // Provide multiple keys to satisfy different backend expectations
-      startStationId: startId,
-      from_stop_id: startId,
-      stationIdentifier: startId,
-      stationId: startId,
+      stationIdentifier: stationIdentifier,
       deviceId: data.deviceId || getDeviceId(),
       qrData: data.qrData || JSON.stringify({
         cardNumber: data.cardNumber || 'VM-DEFAULT',
-        token: data.token || `web-token-${Date.now()}`
+        token: data.token || `web-token-${Date.now()}`,
+        deviceId: data.deviceId || getDeviceId()
       }),
-      chosenPlanId: data.chosenPlanId || data.subscriptionId || null,
-      paymentMethod: data.paymentMethod || 'subscription'
+      paymentMethod: data.paymentMethod || 'balance'
     };
+    
+    // Only add chosenPlanId if it exists and payment method is subscription
+    if (data.chosenPlanId && data.paymentMethod === 'subscription') {
+      payload.chosenPlanId = data.chosenPlanId;
+    }
+    
+    console.log('Tap-in API payload:', payload);
     return api.post(`/virtualcards/${cardId}/tap-in`, payload);
   },
   tapOut: (cardId, data) => {
@@ -275,6 +279,10 @@ export const cardAPI = {
       chosenPlanId: data.chosenPlanId || data.subscriptionId || null
     };
     return api.post(`/virtualcards/${cardId}/tap-out`, payload);
+  },
+  clearCurrentJourney: (cardId) => {
+    console.log('Clearing current journey for card:', cardId);
+    return api.post(`/virtualcards/${cardId}/clear-journey`);
   },
   // Device assignment endpoints commented out for future implementation
   // assignDevice: (data) => api.post("/virtualcards/assign-device", data),
