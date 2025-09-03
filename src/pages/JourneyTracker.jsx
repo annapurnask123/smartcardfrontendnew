@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import api, { stationAPI, userJourneyAPI } from '../api/api';
+const LS_KEY = 'journey_progress';
 
 // Utility: parse query params
 function useQuery() {
@@ -129,6 +130,40 @@ function JourneyTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist progress into localStorage as it changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.currentIndex = currentIndex;
+        data.status = paused ? 'paused' : (running ? 'running' : 'stopped');
+        data.lastUpdatedAt = new Date().toISOString();
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+    } catch (_) {}
+  }, [currentIndex, running, paused]);
+
+  // Once journeyId is known, persist it
+  useEffect(() => {
+    if (!journeyId) return;
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.journeyId = journeyId;
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+    } catch (_) {}
+  }, [journeyId]);
+
+  // Clear localStorage when journey finishes
+  useEffect(() => {
+    if (!running && endedAt) {
+      try { localStorage.removeItem(LS_KEY); } catch (_) {}
+    }
+  }, [running, endedAt]);
+
   const currentStation = routeStations[currentIndex] || null;
   const nextStation = routeStations[currentIndex + 1] || null;
   const remainingCount = Math.max(0, routeStations.length - currentIndex - 1);
@@ -212,6 +247,21 @@ function JourneyTracker() {
     setRunning(true);
     setPaused(false);
     setStartedAt(Date.now());
+    // Initialize localStorage snapshot
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        journeyId: null,
+        mode,
+        relatedId: relatedId ? String(relatedId) : undefined,
+        startStationId: String(startStationId),
+        endStationId: String(endStationId),
+        route: routeStations.map((s) => s.id),
+        currentIndex: 0,
+        startedAt: Date.now(),
+        status: 'running',
+        stepMs: STEP_MS
+      }));
+    } catch (_) {}
 
     // Record first station
     if (journeyId) {
@@ -256,12 +306,28 @@ function JourneyTracker() {
     setPaused(true);
     resetTimer();
     setStatusMsg('Paused');
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.status = 'paused';
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+    } catch (_) {}
   }, [paused, resetTimer, running]);
 
   const resumeSimulation = useCallback(() => {
     if (!running || !paused) return;
     setPaused(false);
     setStatusMsg('Resuming...');
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.status = 'running';
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+    } catch (_) {}
 
     timerRef.current = setInterval(() => {
       setCurrentIndex((prev) => {
@@ -297,6 +363,7 @@ function JourneyTracker() {
   const resetSimulation = useCallback(() => {
     clearAll();
     buildRoute();
+    try { localStorage.removeItem(LS_KEY); } catch (_) {}
   }, [buildRoute, clearAll]);
 
   useEffect(() => () => resetTimer(), [resetTimer]);

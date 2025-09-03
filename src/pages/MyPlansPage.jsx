@@ -211,6 +211,22 @@ function MyPlansPage() {
   // Renew subscription
   function renew(sub) {
     setRenewingPlan(sub.id || sub._id);
+
+    // Allow renew only after end date
+    const isExpired = isPlanExpired(sub) || (sub.status || '').toLowerCase() === 'expired';
+    if (!isExpired) {
+      alert('Renewal is only available after the subscription end date.');
+      setRenewingPlan(null);
+      return;
+    }
+
+    // Ask user: choose new plan or renew same plan
+    if (window.confirm('Do you want to choose a new plan to renew?\nClick OK to choose a plan, or Cancel to renew the same plan.')) {
+      navigate('/plans');
+      setRenewingPlan(null);
+      return;
+    }
+
     const startDate = new Date();
     const planName = sub.planId?.name || sub.planName || sub.name || 'Unnamed Plan';
     const expiryDate = calculateExpiryDate(planName, startDate);
@@ -553,6 +569,7 @@ function MyPlansPage() {
           const daysLeft = daysUntilExpiry(sub.expiryDate);
           const isExpiringSoon = daysLeft !== null && daysLeft <= 7 && daysLeft > 0;
           const isPending = (sub.status || '').toLowerCase() === 'pending';
+          const isExpired = isPlanExpired(sub) || (sub.status || '').toLowerCase() === 'expired';
           
           return (
             <div className="col-md-6 mb-4" key={sub.id || sub._id || i}>
@@ -616,10 +633,8 @@ function MyPlansPage() {
                         <button
                           className="btn btn-outline-primary btn-sm flex-fill"
                           onClick={() => renew(sub)}
-                          disabled={sub.status === 'cancelled' || sub.status === 'active' || sub.status === 'pending' || renewingPlan === (sub.id || sub._id)}
-                          title={sub.status === 'active' ? 'Active subscriptions cannot be renewed' : 
-                                 sub.status === 'pending' ? 'Renewal already in progress' : 
-                                 sub.status === 'cancelled' ? 'Cancelled subscriptions cannot be renewed' : ''}
+                          disabled={!isExpired || renewingPlan === (sub.id || sub._id)}
+                          title={!isExpired ? 'Renewal is available after the end date' : ''}
                         >
                           {renewingPlan === (sub.id || sub._id) ? (
                             <>
