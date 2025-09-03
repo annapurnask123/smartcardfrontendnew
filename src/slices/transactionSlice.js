@@ -1,24 +1,50 @@
-// src/redux/slices/transactionSlice.js
+// src/slices/transactionSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../../api/api";
+import { transactionAPI } from "../api/api";
 
 // Async thunk to fetch transactions
 export const fetchTransactions = createAsyncThunk(
   "transactions/fetchTransactions",
-  async () => {
-    const response = await api.get("/transactions");
-    return response.data;
+  async (_, { getState }) => {
+    const state = getState();
+    const userId = state.auth.user?.id || state.auth.user?._id;
+    if (!userId) throw new Error("User not authenticated");
+    
+    try {
+      const response = await transactionAPI.getUserTransactions(userId);
+      return Array.isArray(response.data) ? response.data : response.data?.items || [];
+    } catch (error) {
+      // Try alternative endpoints if primary fails
+      try {
+        const response = await transactionAPI.getUserTransactionHistory(userId);
+        return Array.isArray(response.data) ? response.data : response.data?.items || [];
+      } catch (secondError) {
+        try {
+          const response = await transactionAPI.getTransactionHistory();
+          return Array.isArray(response.data) ? response.data : response.data?.items || [];
+        } catch (thirdError) {
+          // If all endpoints fail, return empty array
+          console.warn('All transaction endpoints failed:', { error, secondError, thirdError });
+          return [];
+        }
+      }
+    }
   }
 );
 
 const transactionSlice = createSlice({
   name: "transactions",
   initialState: { transactions: [], loading: false, error: null },
-  reducers: {},
+  reducers: {
+    addTransaction: (state, action) => {
+      state.transactions.unshift(action.payload);
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchTransactions.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchTransactions.fulfilled, (state, action) => {
         state.loading = false;
@@ -31,4 +57,5 @@ const transactionSlice = createSlice({
   },
 });
 
+export const { addTransaction } = transactionSlice.actions;
 export default transactionSlice.reducer;

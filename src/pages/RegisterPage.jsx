@@ -3,7 +3,7 @@ import { Form, Button, Alert, Spinner, Row, Col, Card } from "react-bootstrap";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { authAPI } from "../api/api";
-import metroplatform from "../../public/assets/metroplatform.jpeg";
+import metroplatform from "/assets/metroplatform.jpeg";
 import { useNavigate } from "react-router-dom";
 
 

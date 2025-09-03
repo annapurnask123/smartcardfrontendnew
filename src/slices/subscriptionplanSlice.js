@@ -6,11 +6,21 @@ export const fetchSubscriptionPlans = createAsyncThunk(
   "subscriptionPlans/fetchAll",
   async (_, thunkAPI) => {
     try {
-      const res = await subscriptionPlanAPI.getAll(); // <-- use API helper
-      return res.data;
+      const res = await subscriptionPlanAPI.getAll();
+      console.log('Subscription plans API response:', res.data);
+      
+      // Ensure we only return real backend data
+      if (!res.data || (Array.isArray(res.data) && res.data.length === 0)) {
+        console.warn('No subscription plans found in backend');
+        return [];
+      }
+      
+      return Array.isArray(res.data) ? res.data : res.data.items || [];
     } catch (err) {
+      console.error('Failed to fetch subscription plans from backend:', err);
+      // Do NOT return dummy data - return empty array to force user to check backend
       return thunkAPI.rejectWithValue(
-        err.response?.data || "Failed to fetch subscription plans"
+        "Failed to fetch subscription plans from backend. Please ensure backend is running and has subscription plans data."
       );
     }
   }

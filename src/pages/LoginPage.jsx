@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { loginSuccess } from '../slices/authSlice'
 import { useNavigate, Link } from 'react-router-dom'
 import { authAPI } from '../api/api'
-import metroplatform from "../../public/assets/metroplatform.jpeg"
+import metroplatform from "/assets/metroplatform.jpeg"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
 
