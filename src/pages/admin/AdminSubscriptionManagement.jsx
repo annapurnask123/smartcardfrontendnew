@@ -210,7 +210,7 @@ const AdminSubscriptionManagement = () => {
                   </thead>
                   <tbody>
                     {subscriptions.map((subscription) => (
-                      <tr key={subscription._id}>
+                      <tr key={subscription._id || subscription.id}>
                         <td>{subscription.userId?.name || subscription.userId || 'N/A'}</td>
                         <td><strong>{getPlanName(subscription.planId)}</strong></td>
                         <td>
@@ -305,7 +305,7 @@ const AdminSubscriptionManagement = () => {
                   >
                     <option value="">Select Plan</option>
                     {plans.map(plan => (
-                      <option key={plan._id} value={plan._id}>
+                      <option key={`plan-${plan._id}`} value={plan._id}>
                         {plan.name} - ₹{plan.price}
                       </option>
                     ))}

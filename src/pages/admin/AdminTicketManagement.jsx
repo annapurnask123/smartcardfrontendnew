@@ -189,7 +189,7 @@ const AdminTicketManagement = () => {
                   </thead>
                   <tbody>
                     {tickets.map((ticket) => (
-                      <tr key={ticket._id}>
+                      <tr key={ticket._id || ticket.ticketId}>
                         <td><code>{ticket.ticketId || ticket._id}</code></td>
                         <td>
                           <div>
@@ -264,7 +264,7 @@ const AdminTicketManagement = () => {
                   >
                     <option value="">Select Start Station</option>
                     {stations.map(station => (
-                      <option key={station._id} value={station._id}>
+                      <option key={`start-${station._id}`} value={station._id}>
                         {station.name}
                       </option>
                     ))}
@@ -281,7 +281,7 @@ const AdminTicketManagement = () => {
                   >
                     <option value="">Select End Station</option>
                     {stations.map(station => (
-                      <option key={station._id} value={station._id}>
+                      <option key={`end-${station._id}`} value={station._id}>
                         {station.name}
                       </option>
                     ))}

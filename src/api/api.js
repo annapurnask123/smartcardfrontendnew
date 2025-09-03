@@ -866,6 +866,20 @@ export const adminAPI = {
     });
   },
 
+  createModelItem: (modelName, data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.post(`${apiBase}/admin/models/${modelName}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
+  updateModelItem: (modelName, itemId, data) => {
+    const token = localStorage.getItem('adminToken');
+    return axios.put(`${apiBase}/admin/models/${modelName}/${itemId}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
   deleteModelItem: (modelName, itemId) => {
     const token = localStorage.getItem('adminToken');
     return axios.delete(`${apiBase}/admin/models/${modelName}/${itemId}`, {
@@ -912,7 +926,7 @@ export const adminAPI = {
   
   createTicket: (data) => {
     const token = localStorage.getItem('adminToken');
-    return axios.post(`${apiBase}/tickets/book`, data, {
+    return axios.post(`${apiBase}/admin/models/tickets`, data, {
       headers: { Authorization: `Bearer ${token}` }
     });
   },
