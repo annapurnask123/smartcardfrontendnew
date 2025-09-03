@@ -1,9 +1,8 @@
 import axios from "axios";
 
-const apiBase = (import.meta?.env?.VITE_API_BASE_URL || "http://localhost:5000/api/v1").replace(
-  /\/$/,
-  ""
-);
+const apiBase = (
+  import.meta?.env?.VITE_API_BASE_URL || "http://localhost:5000/api/v1"
+).replace(/\/$/, "");
 const api = axios.create({
   baseURL: apiBase,
   headers: { "Content-Type": "application/json" },
@@ -52,7 +51,11 @@ async function safeGet(url, options = {}) {
     return await api.get(url, options);
   } catch (err) {
     if (err?.response?.status === 404) {
-      return { data: Array.isArray(options?.defaultData) ? [] : (options?.defaultData ?? []) };
+      return {
+        data: Array.isArray(options?.defaultData)
+          ? []
+          : options?.defaultData ?? [],
+      };
     }
     throw err;
   }
@@ -224,16 +227,18 @@ export const cardAPI = {
   updateCard: (cardId, data) => api.put(`/virtualcards/${cardId}`, data),
   deleteCard: (cardId) => api.delete(`/virtualcards/${cardId}`),
   checkBalance: (cardId) => api.get(`/virtualcards/${cardId}/balance`),
-  rechargeCard: (cardId, data) => api.post(`/virtualcards/${cardId}/recharge`, data),
-  rechargeByCardNumber: (data) => api.post("/virtualcards/recharge-by-number", data),
+  rechargeCard: (cardId, data) =>
+    api.post(`/virtualcards/${cardId}/recharge`, data),
+  rechargeByCardNumber: (data) =>
+    api.post("/virtualcards/recharge-by-number", data),
   tapIn: (cardId, data) => {
     const startId = String(
       data.startStationId ||
-      data.stationIdentifier ||
-      data.stationId ||
-      data.from_stop_id ||
-      data.startStation ||
-      ''
+        data.stationIdentifier ||
+        data.stationId ||
+        data.from_stop_id ||
+        data.startStation ||
+        ""
     );
     const payload = {
       // Provide multiple keys to satisfy different backend expectations
@@ -242,23 +247,25 @@ export const cardAPI = {
       stationIdentifier: startId,
       stationId: startId,
       deviceId: data.deviceId || getDeviceId(),
-      qrData: data.qrData || JSON.stringify({
-        cardNumber: data.cardNumber || 'VM-DEFAULT',
-        token: data.token || `web-token-${Date.now()}`
-      }),
+      qrData:
+        data.qrData ||
+        JSON.stringify({
+          cardNumber: data.cardNumber || "VM-DEFAULT",
+          token: data.token || `web-token-${Date.now()}`,
+        }),
       chosenPlanId: data.chosenPlanId || data.subscriptionId || null,
-      paymentMethod: data.paymentMethod || 'subscription'
+      paymentMethod: data.paymentMethod || "subscription",
     };
     return api.post(`/virtualcards/${cardId}/tap-in`, payload);
   },
   tapOut: (cardId, data) => {
     const endId = String(
       data.endStationId ||
-      data.endStation ||
-      data.stationId ||
-      data.to_stop_id ||
-      data.destinationStation ||
-      ''
+        data.endStation ||
+        data.stationId ||
+        data.to_stop_id ||
+        data.destinationStation ||
+        ""
     );
     const payload = {
       // Provide multiple keys to satisfy different backend expectations
@@ -267,29 +274,34 @@ export const cardAPI = {
       endStation: endId,
       stationId: endId,
       deviceId: data.deviceId || getDeviceId(),
-      qrData: data.qrData || JSON.stringify({
-        cardNumber: data.cardNumber || 'VM-DEFAULT',
-        token: data.token || `web-token-${Date.now()}`
-      }),
+      qrData:
+        data.qrData ||
+        JSON.stringify({
+          cardNumber: data.cardNumber || "VM-DEFAULT",
+          token: data.token || `web-token-${Date.now()}`,
+        }),
       paymentMethod: data.paymentMethod || data.method,
-      chosenPlanId: data.chosenPlanId || data.subscriptionId || null
+      chosenPlanId: data.chosenPlanId || data.subscriptionId || null,
     };
     return api.post(`/virtualcards/${cardId}/tap-out`, payload);
   },
   // Device assignment endpoints commented out for future implementation
   // assignDevice: (data) => api.post("/virtualcards/assign-device", data),
   // unassignDevice: (data) => api.post("/virtualcards/unassign-device", data),
-  getCardByNumber: (cardNumber) => api.get(`/virtualcards/by-number/${cardNumber}`),
+  getCardByNumber: (cardNumber) =>
+    api.get(`/virtualcards/by-number/${cardNumber}`),
   // QR Code Generation
   generateQR: (cardId) => api.get(`/virtualcards/${cardId}/qr`),
 };
 
 // Helper function to generate device ID
 function getDeviceId() {
-  let deviceId = localStorage.getItem('deviceId');
+  let deviceId = localStorage.getItem("deviceId");
   if (!deviceId) {
-    deviceId = `web-${navigator.userAgent.slice(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}`;
-    localStorage.setItem('deviceId', deviceId);
+    deviceId = `web-${navigator.userAgent
+      .slice(0, 20)
+      .replace(/[^a-zA-Z0-9]/g, "")}-${Date.now()}`;
+    localStorage.setItem("deviceId", deviceId);
   }
   return deviceId;
 }
@@ -309,10 +321,8 @@ export const stationAPI = {
     api.get(`/stations/${stationCode}/next-trains`),
   getStationDepartures: (stationId) =>
     api.get(`/stations/${stationId}/departures`),
-  getStationArrivals: (stationId) =>
-    api.get(`/stations/${stationId}/arrivals`),
-  getStationSchedule: (stationId) =>
-    api.get(`/stations/${stationId}/schedule`),
+  getStationArrivals: (stationId) => api.get(`/stations/${stationId}/arrivals`),
+  getStationSchedule: (stationId) => api.get(`/stations/${stationId}/schedule`),
 };
 
 // Route API - Updated to match backend routes
@@ -335,43 +345,45 @@ export const ticketAPI = {
       // Ensure all IDs are strings to prevent ObjectId casting issues
       userId: String(data.userId),
       startStationId: String(data.startStationId),
-      endStationId: String(data.endStationId)
+      endStationId: String(data.endStationId),
     };
     return api.post("/tickets/book", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   bookMultiRouteTicket: (data) => {
     const payload = {
       ...data,
       userId: String(data.userId),
-      stations: data.stations.map(station => ({
+      stations: data.stations.map((station) => ({
         ...station,
-        stationId: String(station.stationId)
-      }))
+        stationId: String(station.stationId),
+      })),
     };
     return api.post("/tickets/book-multi-route", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
-  getUserTickets: (userId) => api.get(`/tickets/user/${String(userId)}`, {
-    headers: {
-      'X-Id-Type': 'string'
-    }
-  }),
-  
-  getTicket: (ticketId) => api.get(`/tickets/${String(ticketId)}`, {
-    headers: {
-      'X-Id-Type': 'string'
-    }
-  }),
-  
+
+  getUserTickets: (userId) =>
+    api.get(`/tickets/user/${String(userId)}`, {
+      headers: {
+        "X-Id-Type": "string",
+      },
+    }),
+
+  getTicket: (ticketId) =>
+    api.get(`/tickets/${String(ticketId)}`, {
+      headers: {
+        "X-Id-Type": "string",
+      },
+    }),
+
   tapIn: (data) => {
     if (!data.ticketId || !data.stationId) {
       throw new Error("ticketId and stationId are required");
@@ -379,7 +391,7 @@ export const ticketAPI = {
     const payload = {
       ticketId: String(data.ticketId),
       stationId: String(data.stationId),
-      timestamp: data.timestamp || new Date().toISOString()
+      timestamp: data.timestamp || new Date().toISOString(),
     };
     return api.post("/tickets/tapin", payload, {
       headers: { "X-Id-Type": "string" },
@@ -399,48 +411,47 @@ export const ticketAPI = {
     });
   },
 
-  
   cancelTicket: (data) => {
     const payload = {
       ...data,
       ticketId: String(data.ticketId),
-      userId: String(data.userId)
+      userId: String(data.userId),
     };
     return api.post("/tickets/cancel", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   dropEarly: (data) => {
     const payload = {
       ...data,
       ticketId: String(data.ticketId),
-      userId: String(data.userId)
+      userId: String(data.userId),
     };
     return api.post("/tickets/drop-early", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   extendTicket: (data) => {
     const payload = {
       ...data,
       ticketId: String(data.ticketId),
       userId: String(data.userId),
       newEndStationId: String(data.newEndStationId),
-      additionalFare: data.additionalFare
+      additionalFare: data.additionalFare,
     };
     return api.post("/tickets/extend", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   extendJourney: (data) => {
     const payload = {
       ...data,
@@ -450,150 +461,158 @@ export const ticketAPI = {
       additionalFare: data.additionalFare,
       amount: data.amount || data.additionalFare,
       paymentMethod: data.paymentMethod || "card",
-      description: data.description
+      description: data.description,
     };
     return api.post("/tickets/extend", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   validateQR: (data) => {
     const payload = {
       ...data,
-      ticketId: String(data.ticketId)
+      ticketId: String(data.ticketId),
     };
     return api.post("/tickets/validate-qr", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   updateTicketStatus: (ticketId, data) => {
     const payload = {
       ...data,
-      userId: data.userId ? String(data.userId) : undefined
+      userId: data.userId ? String(data.userId) : undefined,
     };
     return api.patch(`/tickets/${String(ticketId)}/status`, payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
+
   calculateFare: (data) => {
     const payload = {
       ...data,
       startStationId: String(data.startStationId),
-      endStationId: String(data.endStationId)
+      endStationId: String(data.endStationId),
     };
-    return api.post('/tickets/calculate-fare', payload, {
+    return api.post("/tickets/calculate-fare", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
 
   // QR Code Generation
-  generateQR: (ticketId) => api.get(`/tickets/${String(ticketId)}/qr`, {
-    headers: {
-      'X-Id-Type': 'string'
-    }
-  }),
+  generateQR: (ticketId) =>
+    api.get(`/tickets/${String(ticketId)}/qr`, {
+      headers: {
+        "X-Id-Type": "string",
+      },
+    }),
 };
 
 // Payment API
 export const paymentAPI = {
   createPaymentOrder: (data) => {
     let payload;
-    
+
     // Handle wallet_payment type by using the original type
-    const actualType = data.type === 'wallet_payment' ? (data.originalType || 'ticket') : data.type;
-    
+    const actualType =
+      data.type === "wallet_payment"
+        ? data.originalType || "ticket"
+        : data.type;
+
     switch (actualType) {
-      case 'subscription':
+      case "subscription":
         payload = {
-          type: 'subscription',
+          type: "subscription",
           id: String(data.subscriptionId || data.id),
           userId: String(data.userId),
           amount: data.amount,
-          paymentMethod: data.paymentMethod || "razorpay"
+          paymentMethod: data.paymentMethod || "razorpay",
         };
         break;
-        
-      case 'ticket':
+
+      case "ticket":
         // Ensure we have a valid ticket ID
         const ticketId = data.ticketId || data.id;
-        if (!ticketId || ticketId === 'undefined') {
-          throw new Error('Valid ticket ID is required for ticket payments');
+        if (!ticketId || ticketId === "undefined") {
+          throw new Error("Valid ticket ID is required for ticket payments");
         }
-        
+
         payload = {
-          type: 'ticket',
+          type: "ticket",
           id: String(ticketId),
           userId: String(data.userId),
           amount: data.amount,
-          paymentMethod: data.paymentMethod || "razorpay"
+          paymentMethod: data.paymentMethod || "razorpay",
         };
         break;
-        
-      case 'ticket_extend':
+
+      case "ticket_extend":
         const extendTicketId = data.ticketId || data.id;
-        if (!extendTicketId || extendTicketId === 'undefined') {
-          throw new Error('Valid ticket ID is required for ticket extension');
+        if (!extendTicketId || extendTicketId === "undefined") {
+          throw new Error("Valid ticket ID is required for ticket extension");
         }
-        
+
         payload = {
-          type: 'ticket',
+          type: "ticket",
           id: String(extendTicketId),
           userId: String(data.userId),
           amount: data.amount || data.additionalFare,
-          paymentMethod: data.paymentMethod || "razorpay"
+          paymentMethod: data.paymentMethod || "razorpay",
         };
         break;
-        
-      case 'recharge':
-      case 'card_recharge':
-      case 'card_recharge_by_number':
+
+      case "recharge":
+      case "card_recharge":
+      case "card_recharge_by_number":
         payload = {
-          type: 'recharge',
+          type: "recharge",
           id: String(data.id),
           userId: String(data.userId),
           amount: data.amount,
-          paymentMethod: data.paymentMethod || "razorpay"
+          paymentMethod: data.paymentMethod || "razorpay",
         };
         break;
-        
+
       default:
         payload = {
           type: actualType,
           id: String(data.id),
           userId: String(data.userId),
           amount: data.amount,
-          paymentMethod: data.paymentMethod || "razorpay"
+          paymentMethod: data.paymentMethod || "razorpay",
         };
     }
-    
+
     // Final validation
-    if (!payload.id || payload.id === 'undefined') {
-      throw new Error(`Invalid ID for payment type ${actualType}: ${payload.id}`);
+    if (!payload.id || payload.id === "undefined") {
+      throw new Error(
+        `Invalid ID for payment type ${actualType}: ${payload.id}`
+      );
     }
-    
-    console.log('Payment API payload:', payload);
-    
-    return api.post("/payments/create-order", payload, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }).catch(error => {
-      console.error('Payment order creation failed:', error);
-      console.error('Error response:', error.response?.data);
-      throw error;
-    });
+
+    console.log("Payment API payload:", payload);
+
+    return api
+      .post("/payments/create-order", payload, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+      .catch((error) => {
+        console.error("Payment order creation failed:", error);
+        console.error("Error response:", error.response?.data);
+        throw error;
+      });
   },
-  
+
   // Fallback for legacy endpoints
   createPaymentOrderLegacy: (data) => {
     const payload = {
@@ -601,23 +620,24 @@ export const paymentAPI = {
       id: String(data.id),
       userId: String(data.userId),
       amount: data.amount,
-      paymentMethod: data.paymentMethod || "upi"
+      paymentMethod: data.paymentMethod || "upi",
     };
-    
+
     return api.post("/payments/orders", payload, {
       headers: {
-        'X-Id-Type': 'string'
-      }
+        "X-Id-Type": "string",
+      },
     });
   },
-  
-  verifyPayment: (data) => api.post("/payments/verify", data, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }),
-  
-  handleWebhook: (data) => api.post("/payments/webhook", data)
+
+  verifyPayment: (data) =>
+    api.post("/payments/verify", data, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }),
+
+  handleWebhook: (data) => api.post("/payments/webhook", data),
 };
 
 export const subscriptionPlanAPI = {
@@ -659,9 +679,10 @@ export const legacyScheduleAPI = {
 // Notification API
 export const notificationAPI = {
   // When userId is provided, use user-scoped endpoints
-  getNotifications: (userId) => userId
-    ? api.get(`/notifications/user/${userId}`)
-    : api.get("/notifications"),
+  getNotifications: (userId) =>
+    userId
+      ? api.get(`/notifications/user/${userId}`)
+      : api.get("/notifications"),
   getByUser: (userId) => api.get(`/notifications/user/${userId}`),
   markAsRead: (notificationId) =>
     api.patch(`/notifications/read/${notificationId}`),
@@ -669,7 +690,8 @@ export const notificationAPI = {
     api.patch(`/notifications/user/${userId}/read-all`),
   deleteNotification: (notificationId) =>
     api.delete(`/notifications/${notificationId}`),
-  getUnreadCount: (userId) => api.get(`/notifications/user/${userId}/unread-count`),
+  getUnreadCount: (userId) =>
+    api.get(`/notifications/user/${userId}/unread-count`),
 };
 
 // Transaction API - New backend feature
@@ -687,15 +709,20 @@ export const transactionAPI = {
 // Wallet API
 export const walletAPI = {
   getBalance: (userId) => api.get(`/wallet/${userId}/balance`),
-  addMoney: (userId, amount, description) => api.post(`/wallet/${userId}/add`, { amount, description }),
-  deductMoney: (userId, amount, description) => api.post(`/wallet/${userId}/deduct`, { amount, description }),
-  getTransactions: (userId, params = {}) => api.get(`/wallet/${userId}/transactions`, { params }),
-  
+  addMoney: (userId, amount, description) =>
+    api.post(`/wallet/${userId}/add`, { amount, description }),
+  deductMoney: (userId, amount, description) =>
+    api.post(`/wallet/${userId}/deduct`, { amount, description }),
+  getTransactions: (userId, params = {}) =>
+    api.get(`/wallet/${userId}/transactions`, { params }),
+
   // Legacy wallet endpoints
   getUserWallet: (userId) => api.get(`/wallet/${userId}`),
-  addToWallet: (userId, amount) => api.post(`/wallet/${userId}/add`, { amount }),
-  deductFromWallet: (userId, amount) => api.post(`/wallet/${userId}/deduct`, { amount }),
-  checkBalance: (userId) => api.get(`/wallet/${userId}/check`)
+  addToWallet: (userId, amount) =>
+    api.post(`/wallet/${userId}/add`, { amount }),
+  deductFromWallet: (userId, amount) =>
+    api.post(`/wallet/${userId}/deduct`, { amount }),
+  checkBalance: (userId) => api.get(`/wallet/${userId}/check`),
 };
 
 // Trip API - New backend feature
@@ -712,16 +739,18 @@ export const tripAPI = {
 export const userJourneyAPI = {
   // Backend expects /user-journeys/journeys/start with either {from_stop_id,to_stop_id} OR {tripId,sourceStationId,destinationStationId}
   startJourney: (data) => api.post("/user-journeys/journeys/start", data),
-  
+
   // Backend expects PATCH /user-journeys/journeys/:journeyId/end with { status }
-  endJourney: (journeyId, status = "completed") => api.patch(`/user-journeys/journeys/${journeyId}/end`, { status }),
-  
-  getJourneyById: (journeyId) => api.get(`/user-journeys/journeys/${journeyId}`),
-  
+  endJourney: (journeyId, status = "completed") =>
+    api.patch(`/user-journeys/journeys/${journeyId}/end`, { status }),
+
+  getJourneyById: (journeyId) =>
+    api.get(`/user-journeys/journeys/${journeyId}`),
+
   getAllJourneys: () => safeGet("/user-journeys/journeys", { defaultData: [] }),
-  
+
   getUserJourneys: () => safeGet("/user-journeys", { defaultData: [] }),
-  
+
   getUserJourneys: async (userId) => {
     // Try multiple shapes: /user-journeys/:id, /journey-history/:id, /users/:id/journeys
     const candidates = [
@@ -732,14 +761,16 @@ export const userJourneyAPI = {
     for (const path of candidates) {
       try {
         const res = await safeGet(path, { defaultData: [] });
-        if (Array.isArray(res.data) ? res.data.length >= 0 : res.data) return res;
+        if (Array.isArray(res.data) ? res.data.length >= 0 : res.data)
+          return res;
       } catch (_) {}
     }
     return { data: [] };
   },
-  
+
   // Alternative endpoints for compatibility
-  getJourneyHistory: (userId) => safeGet(`/journey-history/${userId}`, { defaultData: [] })
+  getJourneyHistory: (userId) =>
+    safeGet(`/journey-history/${userId}`, { defaultData: [] }),
 };
 
 // Train Schedule API - Updated
@@ -763,200 +794,217 @@ export const adminAPI = {
   },
 
   getDashboardStats: () => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/dashboard/stats`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getSystemHealth: () => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/dashboard/health`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getUsers: (params) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/users`, {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getUserDetails: (userId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/users/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   updateUser: (userId, data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.put(`${apiBase}/admin/users/${userId}`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   deleteUser: (userId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.delete(`${apiBase}/admin/users/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   createUser: (data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.post(`${apiBase}/admin/users`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getAllTickets: (params) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/tickets`, {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getAllSubscriptions: (params) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/subscriptions`, {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   runSystemTests: () => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/test/system`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getPaymentAnalytics: (params) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/analytics/payments`, {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getModelData: (modelName, params) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/models/${modelName}`, {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
 
   getModelItem: (modelName, itemId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/models/${modelName}/${itemId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
 
   deleteModelItem: (modelName, itemId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.delete(`${apiBase}/admin/models/${modelName}/${itemId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   // New admin API functions
   getAdminProfile: () => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/profile`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   updateAdminProfile: (data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.put(`${apiBase}/admin/profile`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   getAdminNotifications: () => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/notifications`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   markAdminNotificationAsRead: (notificationId) => {
-    const token = localStorage.getItem('adminToken');
-    return axios.patch(`${apiBase}/admin/notifications/${notificationId}/read`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const token = localStorage.getItem("adminToken");
+    return axios.patch(
+      `${apiBase}/admin/notifications/${notificationId}/read`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
   },
-  
+
   // Ticket CRUD operations
   updateTicket: (ticketId, data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.put(`${apiBase}/admin/models/tickets/${ticketId}`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   createTicket: (data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.post(`${apiBase}/tickets/book`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   cancelTicket: (ticketId) => {
-    const token = localStorage.getItem('adminToken');
-    return axios.patch(`${apiBase}/tickets/${ticketId}/cancel`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const token = localStorage.getItem("adminToken");
+    return axios.patch(
+      `${apiBase}/tickets/${ticketId}/cancel`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
   },
-  
+
   getTicketDetails: (ticketId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.get(`${apiBase}/admin/models/tickets/${ticketId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   deleteTicket: (ticketId) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.delete(`${apiBase}/admin/models/tickets/${ticketId}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   // Subscription CRUD operations
   updateSubscription: (subscriptionId, data) => {
-    const token = localStorage.getItem('adminToken');
-    return axios.put(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, data, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const token = localStorage.getItem("adminToken");
+    return axios.put(
+      `${apiBase}/admin/models/subscriptions/${subscriptionId}`,
+      data,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
   },
-  
+
   createSubscription: (data) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem("adminToken");
     return axios.post(`${apiBase}/admin/models/subscriptions`, data, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
-  
+
   deleteSubscription: (subscriptionId) => {
-    const token = localStorage.getItem('adminToken');
-    return axios.delete(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const token = localStorage.getItem("adminToken");
+    return axios.delete(
+      `${apiBase}/admin/models/subscriptions/${subscriptionId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
   },
-  
+
   getSubscriptionDetails: (subscriptionId) => {
-    const token = localStorage.getItem('adminToken');
-    return axios.get(`${apiBase}/admin/models/subscriptions/${subscriptionId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const token = localStorage.getItem("adminToken");
+    return axios.get(
+      `${apiBase}/admin/models/subscriptions/${subscriptionId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
   },
 };
 

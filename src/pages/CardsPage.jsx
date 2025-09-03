@@ -9,15 +9,15 @@ import SimpleNotification from '../components/SimpleNotification';
 function CardsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-    const { cards, loading, error } = useSelector(s => s.card);
+  const { cards, loading, error } = useSelector(s => s.card);
   const user = useSelector(s => s.auth.user);
   const [stations, setStations] = useState([]);
-    const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '');
+  const [tapInStation, setTapInStation] = useState(localStorage.getItem('tap_in_station') || '');
   const [tapOutStation, setTapOutStation] = useState(localStorage.getItem('tap_out_station') || '');
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [showRechargeByNumberModal, setShowRechargeByNumberModal] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState(0);
-    const [message, setMessage] = useState('');
+  const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -40,7 +40,7 @@ function CardsPage() {
     try {
       const { data } = await stationAPI.getAllStations();
       const stationList = Array.isArray(data) ? data : data.items || [];
-            setStations(stationList);
+      setStations(stationList);
     } catch (error) {
       console.error('Failed to fetch stations:', error);
       setMessage('Failed to fetch stations. Please try again later.');
@@ -196,7 +196,6 @@ function CardsPage() {
         return;
       }
       
-            
       // Start Razorpay payment flow for recharge
       localStorage.setItem('pendingRecharge', JSON.stringify({
         cardNumber: card.cardNumber,
@@ -290,14 +289,16 @@ function CardsPage() {
       // Get user subscriptions to show in payment modal
       const response = await subscriptionAPI.getAllSubscriptions();
       const allSubscriptions = response.data?.subscriptions || response.data || [];
-      const activeSubscriptions = allSubscriptions.filter(sub => sub.status === 'active');
+      const activeSubscriptions = allSubscriptions.filter(sub => 
+        sub.status === 'active' || sub.status === 'Active'
+      );
       
       // Transform subscriptions to match expected format
       const transformedSubscriptions = activeSubscriptions.map(sub => ({
-        subscriptionId: sub._id,
-        planName: sub.planId?.name || 'Unknown Plan',
+        subscriptionId: sub._id || sub.id,
+        planName: sub.planId?.name || sub.planName || 'Unknown Plan',
         planType: sub.planType || 'Standard',
-        validUntil: sub.endDate,
+        validUntil: sub.endDate || sub.validUntil,
         description: 'Travel using your active subscription (no charge)',
         cost: 0
       }));
@@ -331,201 +332,227 @@ function CardsPage() {
     }
   }
 
-async function handleTapOut(cardId, tapOutStation) {
-  if (!tapOutStation) {
-    setMessage('Please select a station to tap out');
-    setMessageType('error');
-    return;
-  }
-
-  // Check tap-in info in localStorage (soft check; server will validate)
-  const tappedInCardId = localStorage.getItem('tappedInCardId');
-  const tapInTime = localStorage.getItem('tapInTime');
-  const isLikelyValidJourney = tappedInCardId && String(tappedInCardId) === String(cardId) && !!tapInTime;
-  if (!isLikelyValidJourney) {
-    console.warn('Local journey state not found or mismatched; proceeding with server-side validation', { tappedInCardId, cardId, tapInTime });
-  }
-
-  setActionLoading(cardId);
-
-  try {
-    const card = cards.find(c => getCardId(c) === cardId);
-    if (!card) {
-      setMessage('Card not found');
+  async function handleTapOut(cardId, tapOutStation) {
+    if (!tapOutStation) {
+      setMessage('Please select a station to tap out');
       setMessageType('error');
       return;
     }
 
-    const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
-      || stations.find(s => (s._id || s.id) === tapOutStation);
-    if (!outStation) {
-      setMessage('Station not found');
-      setMessageType('error');
-      return;
+    // Check tap-in info in localStorage (soft check; server will validate)
+    const tappedInCardId = localStorage.getItem('tappedInCardId');
+    const tapInTime = localStorage.getItem('tapInTime');
+    const isLikelyValidJourney = tappedInCardId && String(tappedInCardId) === String(cardId) && !!tapInTime;
+    if (!isLikelyValidJourney) {
+      console.warn('Local journey state not found or mismatched; proceeding with server-side validation', { tappedInCardId, cardId, tapInTime });
     }
 
-    const tapOutData = {
-      endStation: String(outStation.stop_id || outStation._id || outStation.id),
-      deviceId: 'web-portal',
-      qrData: JSON.stringify({
-        cardNumber: card.cardNumber,
-        token: `web-token-${Date.now()}`
-      }),
-      paymentMethod: localStorage.getItem('journeyPaymentMethod') || undefined,
-      chosenPlanId: localStorage.getItem('journeySubscriptionId') || undefined
-    };
+    setActionLoading(cardId);
 
-    const response = await cardAPI.tapOut(cardId, tapOutData);
+    try {
+      const card = cards.find(c => getCardId(c) === cardId);
+      if (!card) {
+        setMessage('Card not found');
+        setMessageType('error');
+        return;
+      }
 
-    // Enhanced balance update handling
-    const updatedBalance = response.data?.balance ?? response.data?.card?.balance ?? response.data?.remainingBalance;
-    const fareCharged = response.data?.fareCharged ?? response.data?.fare ?? 0;
-    
-    console.log('Tap-out response:', {
-      balance: updatedBalance,
-      fareCharged: fareCharged,
-      paymentMethod: response.data?.paymentMethod,
-      fullResponse: response.data
-    });
+      const outStation = stations.find(s => String(s.stop_id) === String(tapOutStation))
+        || stations.find(s => (s._id || s.id) === tapOutStation);
+      if (!outStation) {
+        setMessage('Station not found');
+        setMessageType('error');
+        return;
+      }
 
-    if (updatedBalance !== undefined) {
-      const updatedCards = cards.map(c =>
-        getCardId(c) === cardId
-          ? { ...c, balance: updatedBalance, status: 'Active' }
-          : c
-      );
-      dispatch(setCards(updatedCards));
-      console.log(`Card balance updated: ₹${updatedBalance}`);
-    } else {
-      // Force refresh if balance not in response
-      console.log('Balance not found in response, refreshing cards...');
-      dispatch(fetchUserCard(user.id || user._id));
-    }
+      const tapOutData = {
+        endStation: String(outStation.stop_id || outStation._id || outStation.id),
+        deviceId: 'web-portal',
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: `web-token-${Date.now()}`
+        }),
+        paymentMethod: localStorage.getItem('journeyPaymentMethod') || undefined,
+        chosenPlanId: localStorage.getItem('journeySubscriptionId') || undefined
+      };
 
-    // Determine selected payment method before clearing storage
-    const selectedMethod = localStorage.getItem('journeyPaymentMethod') || response.data?.paymentMethod || '';
+      const response = await cardAPI.tapOut(cardId, tapOutData);
 
-    setTapOutStation('');
-    localStorage.removeItem('tap_out_station');
-    localStorage.removeItem('tappedInCardId');
-    localStorage.removeItem('tapInTime');
-    // Clear journey payment selections
-    localStorage.removeItem('journeyPaymentMethod');
-    localStorage.removeItem('journeySubscriptionId');
+      // Enhanced balance update handling
+      const updatedBalance = response.data?.balance ?? response.data?.card?.balance ?? response.data?.remainingBalance;
+      const fareCharged = response.data?.fareCharged ?? response.data?.fare ?? 0;
+      
+      console.log('Tap-out response:', {
+        balance: updatedBalance,
+        fareCharged: fareCharged,
+        paymentMethod: response.data?.paymentMethod,
+        fullResponse: response.data
+      });
 
-    // Extract fare and balance robustly from API response
-    const fare = response.data?.fare ?? response.data?.actualFare ?? response.data?.calculatedFare ?? response.data?.amount ?? response.data?.deducted;
-    const newBalance = response.data?.balance ?? response.data?.card?.balance ?? response.data?.newBalance;
-
-    let detailsMsg = '';
-    if (selectedMethod === 'subscription' || fare === 0) {
-      detailsMsg = ' No fare deducted (subscription).';
-    } else if (typeof fare === 'number') {
-      detailsMsg = ` Fare deducted: ₹${fare}.`;
-    }
-
-    if (typeof newBalance === 'number') {
-      detailsMsg += ` New balance: ₹${newBalance}.`;
-    } else {
-      // If balance not provided, refresh cards to reflect any server-side updates
-      if (user?.id || user?._id) {
+      if (updatedBalance !== undefined) {
+        const updatedCards = cards.map(c =>
+          getCardId(c) === cardId
+            ? { ...c, balance: updatedBalance, status: 'Active' }
+            : c
+        );
+        dispatch(setCards(updatedCards));
+        console.log(`Card balance updated: ₹${updatedBalance}`);
+      } else {
+        // Force refresh if balance not in response
+        console.log('Balance not found in response, refreshing cards...');
         dispatch(fetchUserCard(user.id || user._id));
       }
-    }
 
-    setMessage(`Successfully tapped out at ${outStation.name}.${detailsMsg}`);
-    setMessageType('success');
+      // Determine selected payment method before clearing storage
+      const selectedMethod = localStorage.getItem('journeyPaymentMethod') || response.data?.paymentMethod || '';
 
-    setTimeout(() => {
-      setMessage('');
-    }, 5000);
+      setTapOutStation('');
+      localStorage.removeItem('tap_out_station');
+      localStorage.removeItem('tappedInCardId');
+      localStorage.removeItem('tapInTime');
+      // Clear journey payment selections
+      localStorage.removeItem('journeyPaymentMethod');
+      localStorage.removeItem('journeySubscriptionId');
 
-  } catch (error) {
-    console.error('Tap Out error:', error);
-    let errorMessage = 'Tap Out failed. Please try again.';
+      // Extract fare and balance robustly from API response
+      const fare = response.data?.fare ?? response.data?.actualFare ?? response.data?.calculatedFare ?? response.data?.amount ?? response.data?.deducted;
+      const newBalance = response.data?.balance ?? response.data?.card?.balance ?? response.data?.newBalance;
 
-    if (error.response?.status === 400) {
-      const errorData = error.response.data;
-      if (errorData?.error) {
-        errorMessage = errorData.error;
-      } else {
-        errorMessage = 'Invalid tap-out request. Please check your journey status.';
+      let detailsMsg = '';
+      if (selectedMethod === 'subscription' || fare === 0) {
+        detailsMsg = ' No fare deducted (subscription).';
+      } else if (typeof fare === 'number') {
+        detailsMsg = ` Fare deducted: ₹${fare}.`;
       }
-      console.error('Validation error details:', error.response.data);
-    } else if (error.response?.status === 403) {
-      errorMessage = error.response.data?.error || 'Insufficient balance or journey access denied.';
-    } else if (error.response?.status === 404) {
-      errorMessage = 'No active journey found for this card.';
-    } else if (error.response?.status === 500) {
-      errorMessage = 'Server error during tap-out. Please try again later.';
-      console.error('Server error details:', error.response.data);
-    }
 
-    if (error.response?.data) {
-      console.error('Full error response:', error.response.data);
-    }
+      if (typeof newBalance === 'number') {
+        detailsMsg += ` New balance: ₹${newBalance}.`;
+      } else {
+        // If balance not provided, refresh cards to reflect any server-side updates
+        if (user?.id || user?._id) {
+          dispatch(fetchUserCard(user.id || user._id));
+        }
+      }
 
-    setMessage(errorMessage);
-    setMessageType('error');
-  } finally {
-    setActionLoading(null);
+      setMessage(`Successfully tapped out at ${outStation.name}.${detailsMsg}`);
+      setMessageType('success');
+
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
+
+    } catch (error) {
+      console.error('Tap Out error:', error);
+      let errorMessage = 'Tap Out failed. Please try again.';
+
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        if (errorData?.error) {
+          errorMessage = errorData.error;
+        } else {
+          errorMessage = 'Invalid tap-out request. Please check your journey status.';
+        }
+        console.error('Validation error details:', error.response.data);
+      } else if (error.response?.status === 403) {
+        errorMessage = error.response.data?.error || 'Insufficient balance or journey access denied.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'No active journey found for this card.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error during tap-out. Please try again later.';
+        console.error('Server error details:', error.response.data);
+      }
+
+      if (error.response?.data) {
+        console.error('Full error response:', error.response.data);
+      }
+
+      setMessage(errorMessage);
+      setMessageType('error');
+    } finally {
+      setActionLoading(null);
+    }
   }
-}
 
   async function performTapIn(card, tapInStation, selectedPaymentMethod, planId) {
-  setActionLoading(getCardId(card));
-  
-  try {
-    // ...existing code...
-    const inStation = stations.find(s => String(s.stop_id) === String(tapInStation))
-      || stations.find(s => (s._id || s.id) === tapInStation);
-    if (!inStation) {
-      setMessage('Station not found');
-      setMessageType('error');
-      return;
-    }
+    setActionLoading(getCardId(card));
     
-    const resolvedPlanId = selectedPaymentMethod === 'subscription' ? (planId || userSubscriptions[0]?.subscriptionId || null) : null;
-    const tapInData = {
-      stationIdentifier: inStation.stop_id || inStation._id,
-      deviceId: 'web-device',
-      qrData: JSON.stringify({
-        cardNumber: card.cardNumber,
-        token: `web-token-${Date.now()}`,
-        deviceId: 'web-device'
-      }),
-      paymentMethod: selectedPaymentMethod,
-      ...(resolvedPlanId && { chosenPlanId: resolvedPlanId })
-    };
-    
-    const response = await cardAPI.tapIn(getCardId(card), tapInData);
-    
-    if (response.data) {
-      setMessage(`Tap In successful at ${inStation.name}! Journey started with ${selectedPaymentMethod} payment.`);
-      setMessageType('success');
-      dispatch(fetchUserCard(user.id || user._id));
-      setTapInStation('');
-      localStorage.removeItem('tap_in_station');
-
-      // Store tap-in info for tap-out validation
-      localStorage.setItem('tappedInCardId', String(getCardId(card)));
-      localStorage.setItem('tapInTime', String(Date.now()));
-      // Persist chosen payment method for this journey
-      localStorage.setItem('journeyPaymentMethod', selectedPaymentMethod);
-      if (resolvedPlanId) {
-        localStorage.setItem('journeySubscriptionId', String(resolvedPlanId));
+    try {
+      const inStation = stations.find(s => String(s.stop_id) === String(tapInStation))
+        || stations.find(s => String(s._id) === String(tapInStation))
+        || stations.find(s => String(s.id) === String(tapInStation));
+      
+      if (!inStation) {
+        setMessage('Station not found');
+        setMessageType('error');
+        return;
       }
+      
+      // Use stop_id as the primary identifier, fallback to _id
+      const stationIdentifier = inStation.stop_id || inStation._id || inStation.id;
+      
+      const resolvedPlanId = selectedPaymentMethod === 'subscription' ? 
+        (planId || (userSubscriptions[0]?.subscriptionId) || null) : null;
+      
+      // Prepare the tap-in data with proper formatting
+      const tapInData = {
+        stationIdentifier: stationIdentifier,
+        deviceId: 'web-device-' + Math.random().toString(36).substr(2, 9),
+        qrData: JSON.stringify({
+          cardNumber: card.cardNumber,
+          token: `web-token-${Date.now()}`,
+          deviceId: 'web-device'
+        }),
+        paymentMethod: selectedPaymentMethod,
+        ...(resolvedPlanId && { chosenPlanId: resolvedPlanId })
+      };
+      
+      console.log('Sending tap-in data:', tapInData);
+      
+      const response = await cardAPI.tapIn(getCardId(card), tapInData);
+      
+      if (response.data) {
+        setMessage(`Tap In successful at ${inStation.name}! Journey started with ${selectedPaymentMethod} payment.`);
+        setMessageType('success');
+        
+        // Refresh card data
+        if (user?.id || user?._id) {
+          dispatch(fetchUserCard(user.id || user._id));
+        }
+        
+        setTapInStation('');
+        localStorage.removeItem('tap_in_station');
+
+        // Store tap-in info for tap-out validation
+        localStorage.setItem('tappedInCardId', String(getCardId(card)));
+        localStorage.setItem('tapInTime', String(Date.now()));
+        
+        // Persist chosen payment method for this journey
+        localStorage.setItem('journeyPaymentMethod', selectedPaymentMethod);
+        if (resolvedPlanId) {
+          localStorage.setItem('journeySubscriptionId', String(resolvedPlanId));
+        }
+      }
+    } catch (error) {
+      console.error('Tap In error:', error);
+      
+      let errorMessage = 'Tap In failed. Please try again.';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Invalid request. Please check your inputs.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. You may not have permission to tap in.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Card or station not found.';
+      }
+      
+      setMessage(errorMessage);
+      setMessageType('error');
+    } finally {
+      setActionLoading(null);
+      setShowPaymentModal(false);
     }
-  } catch (error) {
-    console.error('Tap In error:', error);
-    const msg = error?.response?.data?.error || error?.message || 'Tap In failed. Please try again.';
-    setMessage(msg);
-    setMessageType('error');
-  } finally {
-    setActionLoading(null);
-    setShowPaymentModal(false);
   }
-}
 
   const primaryCard = cards?.find(c => c.isPrimary || c.type === 'primary') || cards?.[0];
   const secondaryCards = cards?.filter(c => !c.isPrimary && c.type !== 'primary') || [];
