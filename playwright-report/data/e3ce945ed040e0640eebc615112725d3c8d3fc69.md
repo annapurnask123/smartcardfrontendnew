@@ -1,0 +1,245 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link " Tapido" [ref=e6] [cursor=pointer]:
+        - /url: /home
+        - generic [ref=e7] [cursor=pointer]: 
+        - text: Tapido
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - link " Home" [ref=e11] [cursor=pointer]:
+            - /url: /home
+            - generic [ref=e12] [cursor=pointer]: 
+            - text: Home
+        - listitem [ref=e13]:
+          - link " Plans" [ref=e14] [cursor=pointer]:
+            - /url: /plans
+            - generic [ref=e15] [cursor=pointer]: 
+            - text: Plans
+        - listitem [ref=e16]:
+          - link " My Plans" [ref=e17] [cursor=pointer]:
+            - /url: /my-plans
+            - generic [ref=e18] [cursor=pointer]: 
+            - text: My Plans
+        - listitem [ref=e19]:
+          - link " Tickets" [ref=e20] [cursor=pointer]:
+            - /url: /tickets
+            - generic [ref=e21] [cursor=pointer]: 
+            - text: Tickets
+        - listitem [ref=e22]:
+          - link " Cards" [ref=e23] [cursor=pointer]:
+            - /url: /cards
+            - generic [ref=e24] [cursor=pointer]: 
+            - text: Cards
+        - listitem [ref=e25]:
+          - link " Wallet" [ref=e26] [cursor=pointer]:
+            - /url: /wallet
+            - generic [ref=e27] [cursor=pointer]: 
+            - text: Wallet
+        - listitem [ref=e28]:
+          - link " Journey" [ref=e29] [cursor=pointer]:
+            - /url: /journey
+            - generic [ref=e30] [cursor=pointer]: 
+            - text: Journey
+        - listitem [ref=e31]:
+          - link " Schedules" [ref=e32] [cursor=pointer]:
+            - /url: /schedules
+            - generic [ref=e33] [cursor=pointer]: 
+            - text: Schedules
+      - search [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]: 
+          - textbox "Search stations, plans, tickets..." [ref=e38]
+      - generic [ref=e39]:
+        - link "" [ref=e40] [cursor=pointer]:
+          - /url: /notifications
+          - generic [ref=e41] [cursor=pointer]: 
+        - button " Find Me" [ref=e42] [cursor=pointer]:
+          - generic [ref=e43] [cursor=pointer]: 
+          - text: Find Me
+        - generic [ref=e44]:
+          - button " Test User" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46] [cursor=pointer]: 
+            - generic [ref=e47] [cursor=pointer]: Test User
+          - text:   
+  - main [ref=e49]:
+    - generic [ref=e52]:
+      - heading " Profile" [level=2] [ref=e53]:
+        - generic [ref=e54]: 
+        - text: Profile
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e60]:
+            - generic [ref=e61]: Full Name
+            - textbox [ref=e62]: Test User
+          - generic [ref=e64]:
+            - generic [ref=e65]: Phone Number
+            - textbox [ref=e66]: "+919876543210"
+        - generic [ref=e67]:
+          - generic [ref=e68]: Email Address
+          - textbox [ref=e69]: test@example.com
+        - generic [ref=e70]:
+          - generic [ref=e71]: Change Password
+          - textbox "Enter new password" [ref=e72]
+        - generic [ref=e73]:
+          - generic [ref=e74]: Confirm Password
+          - textbox "Confirm new password" [ref=e75]
+        - button " Update Profile" [ref=e76] [cursor=pointer]:
+          - generic [ref=e77] [cursor=pointer]: 
+          - text: Update Profile
+  - contentinfo [ref=e78]:
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - generic [ref=e84]: 
+            - heading "Tapido" [level=5] [ref=e85]
+          - paragraph [ref=e86]: Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
+          - generic [ref=e87]:
+            - link "" [ref=e88] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e89] [cursor=pointer]: 
+            - link "" [ref=e90] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e91] [cursor=pointer]: 
+            - link "" [ref=e92] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e93] [cursor=pointer]: 
+            - link "" [ref=e94] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e95] [cursor=pointer]: 
+        - generic [ref=e96]:
+          - heading "Services" [level=6] [ref=e97]
+          - list [ref=e98]:
+            - listitem [ref=e99]:
+              - link " Book Tickets" [ref=e100] [cursor=pointer]:
+                - /url: /tickets
+                - generic [ref=e101] [cursor=pointer]: 
+                - text: Book Tickets
+            - listitem [ref=e102]:
+              - link " Virtual Cards" [ref=e103] [cursor=pointer]:
+                - /url: /cards
+                - generic [ref=e104] [cursor=pointer]: 
+                - text: Virtual Cards
+            - listitem [ref=e105]:
+              - link " Subscription Plans" [ref=e106] [cursor=pointer]:
+                - /url: /plans
+                - generic [ref=e107] [cursor=pointer]: 
+                - text: Subscription Plans
+            - listitem [ref=e108]:
+              - link " Train Schedules" [ref=e109] [cursor=pointer]:
+                - /url: /schedules
+                - generic [ref=e110] [cursor=pointer]: 
+                - text: Train Schedules
+            - listitem [ref=e111]:
+              - link " Journey Tracking" [ref=e112] [cursor=pointer]:
+                - /url: /journey
+                - generic [ref=e113] [cursor=pointer]: 
+                - text: Journey Tracking
+        - generic [ref=e114]:
+          - heading "Support" [level=6] [ref=e115]
+          - list [ref=e116]:
+            - listitem [ref=e117]:
+              - link " Email Support" [ref=e118] [cursor=pointer]:
+                - /url: mailto:support@tapido.com
+                - generic [ref=e119] [cursor=pointer]: 
+                - text: Email Support
+            - listitem [ref=e120]:
+              - link " 24/7 Helpline" [ref=e121] [cursor=pointer]:
+                - /url: tel:+91-1800-123-4567
+                - generic [ref=e122] [cursor=pointer]: 
+                - text: 24/7 Helpline
+            - listitem [ref=e123]:
+              - link " FAQ" [ref=e124] [cursor=pointer]:
+                - /url: /faq
+                - generic [ref=e125] [cursor=pointer]: 
+                - text: FAQ
+            - listitem [ref=e126]:
+              - link " Help Center" [ref=e127] [cursor=pointer]:
+                - /url: /help
+                - generic [ref=e128] [cursor=pointer]: 
+                - text: Help Center
+            - listitem [ref=e129]:
+              - link " Feedback" [ref=e130] [cursor=pointer]:
+                - /url: /feedback
+                - generic [ref=e131] [cursor=pointer]: 
+                - text: Feedback
+        - generic [ref=e132]:
+          - heading "Company" [level=6] [ref=e133]
+          - list [ref=e134]:
+            - listitem [ref=e135]:
+              - link " About Us" [ref=e136] [cursor=pointer]:
+                - /url: /about
+                - generic [ref=e137] [cursor=pointer]: 
+                - text: About Us
+            - listitem [ref=e138]:
+              - link " Careers" [ref=e139] [cursor=pointer]:
+                - /url: /careers
+                - generic [ref=e140] [cursor=pointer]: 
+                - text: Careers
+            - listitem [ref=e141]:
+              - link " Press" [ref=e142] [cursor=pointer]:
+                - /url: /press
+                - generic [ref=e143] [cursor=pointer]: 
+                - text: Press
+            - listitem [ref=e144]:
+              - link " Partners" [ref=e145] [cursor=pointer]:
+                - /url: /partners
+                - generic [ref=e146] [cursor=pointer]: 
+                - text: Partners
+            - listitem [ref=e147]:
+              - link " Contact" [ref=e148] [cursor=pointer]:
+                - /url: /contact
+                - generic [ref=e149] [cursor=pointer]: 
+                - text: Contact
+        - generic [ref=e150]:
+          - heading "Legal" [level=6] [ref=e151]
+          - list [ref=e152]:
+            - listitem [ref=e153]:
+              - link " Privacy Policy" [ref=e154] [cursor=pointer]:
+                - /url: /privacy
+                - generic [ref=e155] [cursor=pointer]: 
+                - text: Privacy Policy
+            - listitem [ref=e156]:
+              - link " Terms of Service" [ref=e157] [cursor=pointer]:
+                - /url: /terms
+                - generic [ref=e158] [cursor=pointer]: 
+                - text: Terms of Service
+            - listitem [ref=e159]:
+              - link " Refund Policy" [ref=e160] [cursor=pointer]:
+                - /url: /refund
+                - generic [ref=e161] [cursor=pointer]: 
+                - text: Refund Policy
+            - listitem [ref=e162]:
+              - link " Cookie Policy" [ref=e163] [cursor=pointer]:
+                - /url: /cookies
+                - generic [ref=e164] [cursor=pointer]: 
+                - text: Cookie Policy
+            - listitem [ref=e165]:
+              - link " Accessibility" [ref=e166] [cursor=pointer]:
+                - /url: /accessibility
+                - generic [ref=e167] [cursor=pointer]: 
+                - text: Accessibility
+      - separator [ref=e168]
+      - generic [ref=e169]:
+        - generic [ref=e171]:
+          - generic [ref=e172]: 2025 Tapido. All rights reserved.
+          - generic [ref=e173]:
+            - img "SSL Secure" [ref=e174]
+            - img "PCI Compliant" [ref=e175]
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - generic [ref=e179]: 
+            - text: English (IN)
+          - generic [ref=e180]:
+            - generic [ref=e181]: 
+            - text: India
+          - generic [ref=e182]:
+            - text: Made with
+            - generic [ref=e183]: 
+            - text: for commuters
+  - generic [ref=e185] [cursor=pointer]: 
+```

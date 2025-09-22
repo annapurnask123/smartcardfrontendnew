@@ -1,0 +1,218 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "Tapido" [ref=e6] [cursor=pointer]:
+        - /url: /home
+        - text: Tapido
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "Home" [ref=e10] [cursor=pointer]:
+            - /url: /home
+            - text: Home
+        - listitem [ref=e11]:
+          - link "Plans" [ref=e12] [cursor=pointer]:
+            - /url: /plans
+            - text: Plans
+        - listitem [ref=e13]:
+          - link "My Plans" [ref=e14] [cursor=pointer]:
+            - /url: /my-plans
+            - text: My Plans
+        - listitem [ref=e15]:
+          - link "Tickets" [ref=e16] [cursor=pointer]:
+            - /url: /tickets
+            - text: Tickets
+        - listitem [ref=e17]:
+          - link "Cards" [ref=e18] [cursor=pointer]:
+            - /url: /cards
+            - text: Cards
+        - listitem [ref=e19]:
+          - link "Wallet" [ref=e20] [cursor=pointer]:
+            - /url: /wallet
+            - text: Wallet
+        - listitem [ref=e21]:
+          - link "Journey" [ref=e22] [cursor=pointer]:
+            - /url: /journey
+            - text: Journey
+        - listitem [ref=e23]:
+          - link "Schedules" [ref=e24] [cursor=pointer]:
+            - /url: /schedules
+            - text: Schedules
+      - search [ref=e25]:
+        - textbox "Search stations, plans, tickets..." [ref=e28]
+      - generic [ref=e29]:
+        - link [ref=e30] [cursor=pointer]:
+          - /url: /notifications
+        - button "Find Me" [ref=e31] [cursor=pointer]: Find Me
+        - button "Test User" [ref=e33] [cursor=pointer]:
+          - generic [ref=e34] [cursor=pointer]: Test User
+  - main [ref=e36]:
+    - generic [ref=e37]:
+      - heading "Book Ticket" [level=3] [ref=e38]
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: From Station
+          - generic [ref=e42]:
+            - combobox [ref=e43]:
+              - option "Select source station"
+              - option "Alpha Station" [selected]
+              - option "Beta Station"
+            - button "Nearby" [ref=e44] [cursor=pointer]: Nearby
+        - generic [ref=e45]:
+          - generic [ref=e46]: To Station
+          - combobox [ref=e47]:
+            - option "Select destination station" [selected]
+            - option "Alpha Station"
+            - option "Beta Station"
+        - generic [ref=e48]:
+          - generic [ref=e49]: Number of Passengers
+          - combobox [ref=e50]:
+            - option "1 Passenger" [selected]
+            - option "2 Passengers"
+            - option "3 Passengers"
+            - option "4 Passengers"
+            - option "5 Passengers"
+            - option "6 Passengers"
+            - option "7 Passengers"
+            - option "8 Passengers"
+            - option "9 Passengers"
+            - option "10 Passengers"
+          - generic [ref=e51]: Select number of passengers (1-10). Each passenger will get a separate QR code.
+        - generic [ref=e52]:
+          - generic [ref=e53]: Journey Type
+          - combobox [ref=e54]:
+            - option "One Way" [selected]
+            - option "Two Way"
+        - generic [ref=e55]:
+          - heading "Fare Details" [level=5] [ref=e56]
+          - generic [ref=e57]:
+            - generic [ref=e58]: "Base Fare:"
+            - generic [ref=e59]: ₹0
+          - separator [ref=e60]
+          - generic [ref=e61]:
+            - generic [ref=e62]: "Total Fare:"
+            - generic [ref=e63]: ₹0
+        - button "Confirm Booking & Proceed to Payment" [ref=e64] [cursor=pointer]
+  - contentinfo [ref=e65]:
+    - generic [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e69]:
+          - heading "Tapido" [level=5] [ref=e71]
+          - paragraph [ref=e72]: Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
+          - generic [ref=e73]:
+            - link "Facebook" [ref=e74] [cursor=pointer]:
+              - /url: "#"
+            - link "Twitter" [ref=e75] [cursor=pointer]:
+              - /url: "#"
+            - link "Instagram" [ref=e76] [cursor=pointer]:
+              - /url: "#"
+            - link "LinkedIn" [ref=e77] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e78]:
+          - heading "Services" [level=6] [ref=e79]
+          - list [ref=e80]:
+            - listitem [ref=e81]:
+              - link "Book Tickets" [ref=e82] [cursor=pointer]:
+                - /url: /tickets
+                - text: Book Tickets
+            - listitem [ref=e83]:
+              - link "Virtual Cards" [ref=e84] [cursor=pointer]:
+                - /url: /cards
+                - text: Virtual Cards
+            - listitem [ref=e85]:
+              - link "Subscription Plans" [ref=e86] [cursor=pointer]:
+                - /url: /plans
+                - text: Subscription Plans
+            - listitem [ref=e87]:
+              - link "Train Schedules" [ref=e88] [cursor=pointer]:
+                - /url: /schedules
+                - text: Train Schedules
+            - listitem [ref=e89]:
+              - link "Journey Tracking" [ref=e90] [cursor=pointer]:
+                - /url: /journey
+                - text: Journey Tracking
+        - generic [ref=e91]:
+          - heading "Support" [level=6] [ref=e92]
+          - list [ref=e93]:
+            - listitem [ref=e94]:
+              - link "Email Support" [ref=e95] [cursor=pointer]:
+                - /url: mailto:support@tapido.com
+                - text: Email Support
+            - listitem [ref=e96]:
+              - link "24/7 Helpline" [ref=e97] [cursor=pointer]:
+                - /url: tel:+91-1800-123-4567
+                - text: 24/7 Helpline
+            - listitem [ref=e98]:
+              - link "FAQ" [ref=e99] [cursor=pointer]:
+                - /url: /faq
+                - text: FAQ
+            - listitem [ref=e100]:
+              - link "Help Center" [ref=e101] [cursor=pointer]:
+                - /url: /help
+                - text: Help Center
+            - listitem [ref=e102]:
+              - link "Feedback" [ref=e103] [cursor=pointer]:
+                - /url: /feedback
+                - text: Feedback
+        - generic [ref=e104]:
+          - heading "Company" [level=6] [ref=e105]
+          - list [ref=e106]:
+            - listitem [ref=e107]:
+              - link "About Us" [ref=e108] [cursor=pointer]:
+                - /url: /about
+                - text: About Us
+            - listitem [ref=e109]:
+              - link "Careers" [ref=e110] [cursor=pointer]:
+                - /url: /careers
+                - text: Careers
+            - listitem [ref=e111]:
+              - link "Press" [ref=e112] [cursor=pointer]:
+                - /url: /press
+                - text: Press
+            - listitem [ref=e113]:
+              - link "Partners" [ref=e114] [cursor=pointer]:
+                - /url: /partners
+                - text: Partners
+            - listitem [ref=e115]:
+              - link "Contact" [ref=e116] [cursor=pointer]:
+                - /url: /contact
+                - text: Contact
+        - generic [ref=e117]:
+          - heading "Legal" [level=6] [ref=e118]
+          - list [ref=e119]:
+            - listitem [ref=e120]:
+              - link "Privacy Policy" [ref=e121] [cursor=pointer]:
+                - /url: /privacy
+                - text: Privacy Policy
+            - listitem [ref=e122]:
+              - link "Terms of Service" [ref=e123] [cursor=pointer]:
+                - /url: /terms
+                - text: Terms of Service
+            - listitem [ref=e124]:
+              - link "Refund Policy" [ref=e125] [cursor=pointer]:
+                - /url: /refund
+                - text: Refund Policy
+            - listitem [ref=e126]:
+              - link "Cookie Policy" [ref=e127] [cursor=pointer]:
+                - /url: /cookies
+                - text: Cookie Policy
+            - listitem [ref=e128]:
+              - link "Accessibility" [ref=e129] [cursor=pointer]:
+                - /url: /accessibility
+                - text: Accessibility
+      - separator [ref=e130]
+      - generic [ref=e131]:
+        - generic [ref=e133]:
+          - generic [ref=e134]: 2025 Tapido. All rights reserved.
+          - generic [ref=e135]:
+            - img "SSL Secure" [ref=e136]
+            - img "PCI Compliant" [ref=e137]
+        - generic [ref=e139]:
+          - generic [ref=e140]: English (IN)
+          - generic [ref=e141]: India
+          - generic [ref=e142]:
+            - text: Made with
+            - text: for commuters
+```

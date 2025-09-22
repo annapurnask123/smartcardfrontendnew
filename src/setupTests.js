@@ -26,8 +26,9 @@ console.error = (...args) => {
   originalConsoleError(...args);
 };
 
-// Mock window.confirm for tests
+// Mock window.confirm and window.alert for tests
 global.confirm = jest.fn(() => true);
+global.alert = jest.fn();
 
 // Mock localStorage
 const localStorageMock = {
@@ -80,5 +81,21 @@ jest.mock('sweetalert2', () => ({
   __esModule: true,
   default: {
     fire: jest.fn().mockResolvedValue({ isConfirmed: true, isDenied: false, isDismissed: false })
+  }
+}));
+
+// Mock API services
+jest.mock('./api/api', () => ({
+  subscriptionPlanAPI: {
+    getAll: jest.fn().mockResolvedValue({ data: [] })
+  },
+  stationAPI: {
+    getAllStations: jest.fn().mockResolvedValue({ data: [] })
+  },
+  default: {
+    get: jest.fn().mockResolvedValue({ data: [] }),
+    post: jest.fn().mockResolvedValue({ data: {} }),
+    put: jest.fn().mockResolvedValue({ data: {} }),
+    delete: jest.fn().mockResolvedValue({ data: {} })
   }
 }));

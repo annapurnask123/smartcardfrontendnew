@@ -1,0 +1,46 @@
+{
+  "cookies": [
+    {
+      "name": "rzp_unified_session_id",
+      "value": "RKePr7Ur1EAkPJ",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1758546672,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "rzp_device_id",
+          "value": "1.2697fcf176b36e9cf2ccb5bb42a36fd93e0606f8.1758544872139.84232943"
+        },
+        {
+          "name": "token",
+          "value": "jwt-test-token-global"
+        },
+        {
+          "name": "user",
+          "value": "{\"id\":\"user-test-1\",\"_id\":\"user-test-1\",\"name\":\"Test User\",\"email\":\"test@example.com\",\"phone\":\"+919876543210\"}"
+        },
+        {
+          "name": "rzp_checkout_anon_id",
+          "value": "12256b1dd8ff496e8a92064527a5dbae"
+        }
+      ]
+    },
+    {
+      "origin": "https://api.razorpay.com",
+      "localStorage": [
+        {
+          "name": "rzp_device_id",
+          "value": "1.2697fcf176b36e9cf2ccb5bb42a36fd93e0606f8.1758544872377.08209365"
+        }
+      ]
+    }
+  ]
+}

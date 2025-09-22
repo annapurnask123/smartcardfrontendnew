@@ -1,0 +1,228 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "Tapido" [ref=e6] [cursor=pointer]:
+        - /url: /home
+        - text: Tapido
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "Home" [ref=e10] [cursor=pointer]:
+            - /url: /home
+            - text: Home
+        - listitem [ref=e11]:
+          - link "Plans" [ref=e12] [cursor=pointer]:
+            - /url: /plans
+            - text: Plans
+        - listitem [ref=e13]:
+          - link "My Plans" [ref=e14] [cursor=pointer]:
+            - /url: /my-plans
+            - text: My Plans
+        - listitem [ref=e15]:
+          - link "Tickets" [ref=e16] [cursor=pointer]:
+            - /url: /tickets
+            - text: Tickets
+        - listitem [ref=e17]:
+          - link "Cards" [ref=e18] [cursor=pointer]:
+            - /url: /cards
+            - text: Cards
+        - listitem [ref=e19]:
+          - link "Wallet" [ref=e20] [cursor=pointer]:
+            - /url: /wallet
+            - text: Wallet
+        - listitem [ref=e21]:
+          - link "Journey" [ref=e22] [cursor=pointer]:
+            - /url: /journey
+            - text: Journey
+        - listitem [ref=e23]:
+          - link "Schedules" [ref=e24] [cursor=pointer]:
+            - /url: /schedules
+            - text: Schedules
+      - search [ref=e25]:
+        - textbox "Search stations, plans, tickets..." [ref=e28]
+      - generic [ref=e29]:
+        - link [ref=e30] [cursor=pointer]:
+          - /url: /notifications
+        - button "Find Me" [ref=e31] [cursor=pointer]: Find Me
+        - button "Test User" [ref=e33] [cursor=pointer]:
+          - generic [ref=e34] [cursor=pointer]: Test User
+  - main [ref=e36]:
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - heading "Subscription Plans" [level=2] [ref=e39]: Subscription Plans
+        - button "My Plans" [ref=e40] [cursor=pointer]: My Plans
+      - generic [ref=e41]:
+        - text: Subscription verification is temporarily unavailable. You can still purchase plans.
+        - button "Retry" [ref=e42] [cursor=pointer]: Retry
+      - generic [ref=e43]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - heading "Monthly Metro Pass" [level=5] [ref=e48]
+            - generic [ref=e49]: Available
+          - paragraph [ref=e50]:
+            - text: ₹1200
+            - generic [ref=e51]: / period
+          - button "Purchase Now" [ref=e53] [cursor=pointer]: Purchase Now
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - heading "Daily Pass" [level=5] [ref=e58]
+            - generic [ref=e59]: Available
+          - paragraph [ref=e60]:
+            - text: ₹50
+            - generic [ref=e61]: / period
+          - button "Purchase Now" [ref=e63] [cursor=pointer]: Purchase Now
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - heading "Weekly Pass" [level=5] [ref=e68]
+            - generic [ref=e69]: Available
+          - paragraph [ref=e70]:
+            - text: ₹300
+            - generic [ref=e71]: / period
+          - button "Purchase Now" [ref=e73] [cursor=pointer]: Purchase Now
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - heading "Student Pass" [level=5] [ref=e78]
+            - generic [ref=e79]: Available
+          - paragraph [ref=e80]:
+            - text: ₹200
+            - generic [ref=e81]: / period
+          - button "Purchase Now" [ref=e83] [cursor=pointer]: Purchase Now
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - heading "Family Card Monthly Pass" [level=5] [ref=e88]
+            - generic [ref=e89]: Available
+          - paragraph [ref=e90]:
+            - text: ₹2500
+            - generic [ref=e91]: / period
+          - button "Purchase Now" [ref=e93] [cursor=pointer]: Purchase Now
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - heading "weekly Metro Pass" [level=5] [ref=e98]
+            - generic [ref=e99]: Available
+          - paragraph [ref=e100]:
+            - text: ₹700
+            - generic [ref=e101]: / period
+          - button "Purchase Now" [ref=e103] [cursor=pointer]: Purchase Now
+  - contentinfo [ref=e104]:
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e108]:
+          - heading "Tapido" [level=5] [ref=e110]
+          - paragraph [ref=e111]: Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
+          - generic [ref=e112]:
+            - link "Facebook" [ref=e113] [cursor=pointer]:
+              - /url: "#"
+            - link "Twitter" [ref=e114] [cursor=pointer]:
+              - /url: "#"
+            - link "Instagram" [ref=e115] [cursor=pointer]:
+              - /url: "#"
+            - link "LinkedIn" [ref=e116] [cursor=pointer]:
+              - /url: "#"
+        - generic [ref=e117]:
+          - heading "Services" [level=6] [ref=e118]
+          - list [ref=e119]:
+            - listitem [ref=e120]:
+              - link "Book Tickets" [ref=e121] [cursor=pointer]:
+                - /url: /tickets
+                - text: Book Tickets
+            - listitem [ref=e122]:
+              - link "Virtual Cards" [ref=e123] [cursor=pointer]:
+                - /url: /cards
+                - text: Virtual Cards
+            - listitem [ref=e124]:
+              - link "Subscription Plans" [ref=e125] [cursor=pointer]:
+                - /url: /plans
+                - text: Subscription Plans
+            - listitem [ref=e126]:
+              - link "Train Schedules" [ref=e127] [cursor=pointer]:
+                - /url: /schedules
+                - text: Train Schedules
+            - listitem [ref=e128]:
+              - link "Journey Tracking" [ref=e129] [cursor=pointer]:
+                - /url: /journey
+                - text: Journey Tracking
+        - generic [ref=e130]:
+          - heading "Support" [level=6] [ref=e131]
+          - list [ref=e132]:
+            - listitem [ref=e133]:
+              - link "Email Support" [ref=e134] [cursor=pointer]:
+                - /url: mailto:support@tapido.com
+                - text: Email Support
+            - listitem [ref=e135]:
+              - link "24/7 Helpline" [ref=e136] [cursor=pointer]:
+                - /url: tel:+91-1800-123-4567
+                - text: 24/7 Helpline
+            - listitem [ref=e137]:
+              - link "FAQ" [ref=e138] [cursor=pointer]:
+                - /url: /faq
+                - text: FAQ
+            - listitem [ref=e139]:
+              - link "Help Center" [ref=e140] [cursor=pointer]:
+                - /url: /help
+                - text: Help Center
+            - listitem [ref=e141]:
+              - link "Feedback" [ref=e142] [cursor=pointer]:
+                - /url: /feedback
+                - text: Feedback
+        - generic [ref=e143]:
+          - heading "Company" [level=6] [ref=e144]
+          - list [ref=e145]:
+            - listitem [ref=e146]:
+              - link "About Us" [ref=e147] [cursor=pointer]:
+                - /url: /about
+                - text: About Us
+            - listitem [ref=e148]:
+              - link "Careers" [ref=e149] [cursor=pointer]:
+                - /url: /careers
+                - text: Careers
+            - listitem [ref=e150]:
+              - link "Press" [ref=e151] [cursor=pointer]:
+                - /url: /press
+                - text: Press
+            - listitem [ref=e152]:
+              - link "Partners" [ref=e153] [cursor=pointer]:
+                - /url: /partners
+                - text: Partners
+            - listitem [ref=e154]:
+              - link "Contact" [ref=e155] [cursor=pointer]:
+                - /url: /contact
+                - text: Contact
+        - generic [ref=e156]:
+          - heading "Legal" [level=6] [ref=e157]
+          - list [ref=e158]:
+            - listitem [ref=e159]:
+              - link "Privacy Policy" [ref=e160] [cursor=pointer]:
+                - /url: /privacy
+                - text: Privacy Policy
+            - listitem [ref=e161]:
+              - link "Terms of Service" [ref=e162] [cursor=pointer]:
+                - /url: /terms
+                - text: Terms of Service
+            - listitem [ref=e163]:
+              - link "Refund Policy" [ref=e164] [cursor=pointer]:
+                - /url: /refund
+                - text: Refund Policy
+            - listitem [ref=e165]:
+              - link "Cookie Policy" [ref=e166] [cursor=pointer]:
+                - /url: /cookies
+                - text: Cookie Policy
+            - listitem [ref=e167]:
+              - link "Accessibility" [ref=e168] [cursor=pointer]:
+                - /url: /accessibility
+                - text: Accessibility
+      - separator [ref=e169]
+      - generic [ref=e170]:
+        - generic [ref=e172]:
+          - generic [ref=e173]: 2025 Tapido. All rights reserved.
+          - generic [ref=e174]:
+            - img "SSL Secure" [ref=e175]
+            - img "PCI Compliant" [ref=e176]
+        - generic [ref=e178]:
+          - generic [ref=e179]: English (IN)
+          - generic [ref=e180]: India
+          - generic [ref=e181]:
+            - text: Made with
+            - text: for commuters
+```

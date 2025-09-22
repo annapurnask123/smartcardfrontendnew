@@ -1,0 +1,351 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link " Tapido" [ref=e6] [cursor=pointer]:
+        - /url: /home
+        - generic [ref=e7] [cursor=pointer]: 
+        - text: Tapido
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - link " Home" [ref=e11] [cursor=pointer]:
+            - /url: /home
+            - generic [ref=e12] [cursor=pointer]: 
+            - text: Home
+        - listitem [ref=e13]:
+          - link " Plans" [ref=e14] [cursor=pointer]:
+            - /url: /plans
+            - generic [ref=e15] [cursor=pointer]: 
+            - text: Plans
+        - listitem [ref=e16]:
+          - link " My Plans" [ref=e17] [cursor=pointer]:
+            - /url: /my-plans
+            - generic [ref=e18] [cursor=pointer]: 
+            - text: My Plans
+        - listitem [ref=e19]:
+          - link " Tickets" [ref=e20] [cursor=pointer]:
+            - /url: /tickets
+            - generic [ref=e21] [cursor=pointer]: 
+            - text: Tickets
+        - listitem [ref=e22]:
+          - link " Cards" [ref=e23] [cursor=pointer]:
+            - /url: /cards
+            - generic [ref=e24] [cursor=pointer]: 
+            - text: Cards
+        - listitem [ref=e25]:
+          - link " Wallet" [ref=e26] [cursor=pointer]:
+            - /url: /wallet
+            - generic [ref=e27] [cursor=pointer]: 
+            - text: Wallet
+        - listitem [ref=e28]:
+          - link " Journey" [ref=e29] [cursor=pointer]:
+            - /url: /journey
+            - generic [ref=e30] [cursor=pointer]: 
+            - text: Journey
+        - listitem [ref=e31]:
+          - link " Schedules" [ref=e32] [cursor=pointer]:
+            - /url: /schedules
+            - generic [ref=e33] [cursor=pointer]: 
+            - text: Schedules
+      - search [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]: 
+          - textbox "Search stations, plans, tickets..." [ref=e38]
+      - generic [ref=e39]:
+        - link "" [ref=e40] [cursor=pointer]:
+          - /url: /notifications
+          - generic [ref=e41] [cursor=pointer]: 
+        - button " Find Me" [ref=e42] [cursor=pointer]:
+          - generic [ref=e43] [cursor=pointer]: 
+          - text: Find Me
+        - generic [ref=e44]:
+          - button " Test User" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46] [cursor=pointer]: 
+            - generic [ref=e47] [cursor=pointer]: Test User
+          - text:   
+  - main [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - heading " My Cards" [level=2] [ref=e52]:
+          - generic [ref=e53]: 
+          - text: My Cards
+        - generic [ref=e54]:
+          - button " Check Balance" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56] [cursor=pointer]: 
+            - text: Check Balance
+          - button "+ Recharge Card" [ref=e57] [cursor=pointer]:
+            - generic [ref=e58] [cursor=pointer]: +
+            - text: Recharge Card
+          - button " Recharge Any Card" [ref=e59] [cursor=pointer]:
+            - generic [ref=e60] [cursor=pointer]: 
+            - text: Recharge Any Card
+          - button "+ Get New Card" [ref=e61] [cursor=pointer]:
+            - generic [ref=e62] [cursor=pointer]: +
+            - text: Get New Card
+      - generic [ref=e64]:
+        - heading "Primary Card" [level=5] [ref=e65]
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e71]: SMART METRO
+            - generic [ref=e72]: 
+          - generic [ref=e73]:
+            - generic [ref=e74]: VM-1234
+            - generic [ref=e75]:
+              - generic [ref=e76]: VALID THRU
+              - generic [ref=e77]: 12/25
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - generic [ref=e80]: CARD HOLDER
+              - generic [ref=e81]: Test User
+            - generic [ref=e82]:
+              - generic [ref=e83]: BALANCE
+              - generic [ref=e84]: ₹25.00
+              - button "+ Recharge" [ref=e85] [cursor=pointer]:
+                - generic [ref=e86] [cursor=pointer]: +
+                - text: Recharge
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - combobox [ref=e90]:
+                - option "Select Tap-In Station" [selected]
+                - option "Alpha Station"
+                - option "Beta Station"
+                - option "Gamma Station"
+              - generic [ref=e91]:
+                - button " Tap In" [disabled]:
+                  - generic: 
+                  - text: Tap In
+            - generic [ref=e92]:
+              - combobox [ref=e94]:
+                - option "Select Tap-Out Station" [selected]
+                - option "Alpha Station"
+                - option "Beta Station"
+                - option "Gamma Station"
+              - generic [ref=e95]:
+                - button " Tap Out" [disabled]:
+                  - generic: 
+                  - text: Tap Out
+      - generic [ref=e97]:
+        - heading "Secondary Cards" [level=5] [ref=e99]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e106]: SMART METRO
+            - generic [ref=e107]: 
+          - generic [ref=e108]:
+            - generic [ref=e109]: VM-5678
+            - generic [ref=e110]:
+              - generic [ref=e111]: STATUS
+              - generic [ref=e112]: active
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]: CARD HOLDER
+              - generic [ref=e116]: Secondary Card
+            - generic [ref=e117]:
+              - generic [ref=e118]: BALANCE
+              - generic [ref=e119]: ₹50.00
+          - generic [ref=e120]:
+            - button "+ Recharge" [ref=e121] [cursor=pointer]:
+              - generic [ref=e122] [cursor=pointer]: +
+              - text: Recharge
+            - button "Set Primary" [ref=e123] [cursor=pointer]
+            - button " Balance" [ref=e124] [cursor=pointer]:
+              - generic [ref=e125] [cursor=pointer]: 
+              - text: Balance
+            - generic [ref=e126]:
+              - combobox [ref=e128]:
+                - option "Select Tap-In Station" [selected]
+                - option "Alpha Station"
+                - option "Beta Station"
+                - option "Gamma Station"
+              - generic [ref=e129]:
+                - button " Tap In" [disabled]:
+                  - generic: 
+                  - text: Tap In
+            - generic [ref=e130]:
+              - combobox [ref=e132]:
+                - option "Select Tap-Out Station" [selected]
+                - option "Alpha Station"
+                - option "Beta Station"
+                - option "Gamma Station"
+              - generic [ref=e133]:
+                - button " Tap Out" [disabled]:
+                  - generic: 
+                  - text: Tap Out
+      - generic [ref=e135]:
+        - generic [ref=e136]:
+          - heading " Recharge Card" [level=5] [ref=e137]:
+            - generic [ref=e138]: 
+            - text: Recharge Card
+          - button [ref=e139] [cursor=pointer]
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: Recharge Amount (₹)
+            - spinbutton [active] [ref=e143]: "50"
+          - generic [ref=e144]:
+            - generic [ref=e145]: 
+            - text: Minimum recharge amount is ₹10. The amount will be added to your card balance.
+          - generic [ref=e146]:
+            - button "₹50" [ref=e148] [cursor=pointer]
+            - button "₹100" [ref=e150] [cursor=pointer]
+          - generic [ref=e151]:
+            - button "₹200" [ref=e153] [cursor=pointer]
+            - button "₹500" [ref=e155] [cursor=pointer]
+        - generic [ref=e156]:
+          - button "Cancel" [ref=e157] [cursor=pointer]
+          - button " Proceed to Payment" [ref=e158] [cursor=pointer]:
+            - generic [ref=e159] [cursor=pointer]: 
+            - text: Proceed to Payment
+  - contentinfo [ref=e160]:
+    - generic [ref=e161]:
+      - generic [ref=e162]:
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - generic [ref=e166]: 
+            - heading "Tapido" [level=5] [ref=e167]
+          - paragraph [ref=e168]: Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
+          - generic [ref=e169]:
+            - link "" [ref=e170] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e171] [cursor=pointer]: 
+            - link "" [ref=e172] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e173] [cursor=pointer]: 
+            - link "" [ref=e174] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e175] [cursor=pointer]: 
+            - link "" [ref=e176] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e177] [cursor=pointer]: 
+        - generic [ref=e178]:
+          - heading "Services" [level=6] [ref=e179]
+          - list [ref=e180]:
+            - listitem [ref=e181]:
+              - link " Book Tickets" [ref=e182] [cursor=pointer]:
+                - /url: /tickets
+                - generic [ref=e183] [cursor=pointer]: 
+                - text: Book Tickets
+            - listitem [ref=e184]:
+              - link " Virtual Cards" [ref=e185] [cursor=pointer]:
+                - /url: /cards
+                - generic [ref=e186] [cursor=pointer]: 
+                - text: Virtual Cards
+            - listitem [ref=e187]:
+              - link " Subscription Plans" [ref=e188] [cursor=pointer]:
+                - /url: /plans
+                - generic [ref=e189] [cursor=pointer]: 
+                - text: Subscription Plans
+            - listitem [ref=e190]:
+              - link " Train Schedules" [ref=e191] [cursor=pointer]:
+                - /url: /schedules
+                - generic [ref=e192] [cursor=pointer]: 
+                - text: Train Schedules
+            - listitem [ref=e193]:
+              - link " Journey Tracking" [ref=e194] [cursor=pointer]:
+                - /url: /journey
+                - generic [ref=e195] [cursor=pointer]: 
+                - text: Journey Tracking
+        - generic [ref=e196]:
+          - heading "Support" [level=6] [ref=e197]
+          - list [ref=e198]:
+            - listitem [ref=e199]:
+              - link " Email Support" [ref=e200] [cursor=pointer]:
+                - /url: mailto:support@tapido.com
+                - generic [ref=e201] [cursor=pointer]: 
+                - text: Email Support
+            - listitem [ref=e202]:
+              - link " 24/7 Helpline" [ref=e203] [cursor=pointer]:
+                - /url: tel:+91-1800-123-4567
+                - generic [ref=e204] [cursor=pointer]: 
+                - text: 24/7 Helpline
+            - listitem [ref=e205]:
+              - link " FAQ" [ref=e206] [cursor=pointer]:
+                - /url: /faq
+                - generic [ref=e207] [cursor=pointer]: 
+                - text: FAQ
+            - listitem [ref=e208]:
+              - link " Help Center" [ref=e209] [cursor=pointer]:
+                - /url: /help
+                - generic [ref=e210] [cursor=pointer]: 
+                - text: Help Center
+            - listitem [ref=e211]:
+              - link " Feedback" [ref=e212] [cursor=pointer]:
+                - /url: /feedback
+                - generic [ref=e213] [cursor=pointer]: 
+                - text: Feedback
+        - generic [ref=e214]:
+          - heading "Company" [level=6] [ref=e215]
+          - list [ref=e216]:
+            - listitem [ref=e217]:
+              - link " About Us" [ref=e218] [cursor=pointer]:
+                - /url: /about
+                - generic [ref=e219] [cursor=pointer]: 
+                - text: About Us
+            - listitem [ref=e220]:
+              - link " Careers" [ref=e221] [cursor=pointer]:
+                - /url: /careers
+                - generic [ref=e222] [cursor=pointer]: 
+                - text: Careers
+            - listitem [ref=e223]:
+              - link " Press" [ref=e224] [cursor=pointer]:
+                - /url: /press
+                - generic [ref=e225] [cursor=pointer]: 
+                - text: Press
+            - listitem [ref=e226]:
+              - link " Partners" [ref=e227] [cursor=pointer]:
+                - /url: /partners
+                - generic [ref=e228] [cursor=pointer]: 
+                - text: Partners
+            - listitem [ref=e229]:
+              - link " Contact" [ref=e230] [cursor=pointer]:
+                - /url: /contact
+                - generic [ref=e231] [cursor=pointer]: 
+                - text: Contact
+        - generic [ref=e232]:
+          - heading "Legal" [level=6] [ref=e233]
+          - list [ref=e234]:
+            - listitem [ref=e235]:
+              - link " Privacy Policy" [ref=e236] [cursor=pointer]:
+                - /url: /privacy
+                - generic [ref=e237] [cursor=pointer]: 
+                - text: Privacy Policy
+            - listitem [ref=e238]:
+              - link " Terms of Service" [ref=e239] [cursor=pointer]:
+                - /url: /terms
+                - generic [ref=e240] [cursor=pointer]: 
+                - text: Terms of Service
+            - listitem [ref=e241]:
+              - link " Refund Policy" [ref=e242] [cursor=pointer]:
+                - /url: /refund
+                - generic [ref=e243] [cursor=pointer]: 
+                - text: Refund Policy
+            - listitem [ref=e244]:
+              - link " Cookie Policy" [ref=e245] [cursor=pointer]:
+                - /url: /cookies
+                - generic [ref=e246] [cursor=pointer]: 
+                - text: Cookie Policy
+            - listitem [ref=e247]:
+              - link " Accessibility" [ref=e248] [cursor=pointer]:
+                - /url: /accessibility
+                - generic [ref=e249] [cursor=pointer]: 
+                - text: Accessibility
+      - separator [ref=e250]
+      - generic [ref=e251]:
+        - generic [ref=e253]:
+          - generic [ref=e254]: 2025 Tapido. All rights reserved.
+          - generic [ref=e255]:
+            - img "SSL Secure" [ref=e256]
+            - img "PCI Compliant" [ref=e257]
+        - generic [ref=e259]:
+          - generic [ref=e260]:
+            - generic [ref=e261]: 
+            - text: English (IN)
+          - generic [ref=e262]:
+            - generic [ref=e263]: 
+            - text: India
+          - generic [ref=e264]:
+            - text: Made with
+            - generic [ref=e265]: 
+            - text: for commuters
+  - generic [ref=e267] [cursor=pointer]: 
+```

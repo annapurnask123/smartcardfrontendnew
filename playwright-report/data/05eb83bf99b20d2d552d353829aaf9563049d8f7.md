@@ -1,0 +1,1363 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link " Tapido" [ref=e6] [cursor=pointer]:
+        - /url: /home
+        - generic [ref=e7] [cursor=pointer]: 
+        - text: Tapido
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - link " Home" [ref=e11] [cursor=pointer]:
+            - /url: /home
+            - generic [ref=e12] [cursor=pointer]: 
+            - text: Home
+        - listitem [ref=e13]:
+          - link " Plans" [ref=e14] [cursor=pointer]:
+            - /url: /plans
+            - generic [ref=e15] [cursor=pointer]: 
+            - text: Plans
+        - listitem [ref=e16]:
+          - link " My Plans" [ref=e17] [cursor=pointer]:
+            - /url: /my-plans
+            - generic [ref=e18] [cursor=pointer]: 
+            - text: My Plans
+        - listitem [ref=e19]:
+          - link " Tickets" [ref=e20] [cursor=pointer]:
+            - /url: /tickets
+            - generic [ref=e21] [cursor=pointer]: 
+            - text: Tickets
+        - listitem [ref=e22]:
+          - link " Cards" [ref=e23] [cursor=pointer]:
+            - /url: /cards
+            - generic [ref=e24] [cursor=pointer]: 
+            - text: Cards
+        - listitem [ref=e25]:
+          - link " Wallet" [ref=e26] [cursor=pointer]:
+            - /url: /wallet
+            - generic [ref=e27] [cursor=pointer]: 
+            - text: Wallet
+        - listitem [ref=e28]:
+          - link " Journey" [ref=e29] [cursor=pointer]:
+            - /url: /journey
+            - generic [ref=e30] [cursor=pointer]: 
+            - text: Journey
+        - listitem [ref=e31]:
+          - link " Schedules" [ref=e32] [cursor=pointer]:
+            - /url: /schedules
+            - generic [ref=e33] [cursor=pointer]: 
+            - text: Schedules
+      - search [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]: 
+          - textbox "Search stations, plans, tickets..." [ref=e38]
+      - generic [ref=e39]:
+        - link "" [ref=e40] [cursor=pointer]:
+          - /url: /notifications
+          - generic [ref=e41] [cursor=pointer]: 
+        - button " Find Me" [ref=e42] [cursor=pointer]:
+          - generic [ref=e43] [cursor=pointer]: 
+          - text: Find Me
+        - generic [ref=e44]:
+          - button " Test User" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46] [cursor=pointer]: 
+            - generic [ref=e47] [cursor=pointer]: Test User
+          - text:   
+  - main [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - heading " My Cards" [level=2] [ref=e52]:
+          - generic [ref=e53]: 
+          - text: My Cards
+        - generic [ref=e54]:
+          - button " Check Balance" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56] [cursor=pointer]: 
+            - text: Check Balance
+          - button "+ Recharge Card" [ref=e57] [cursor=pointer]:
+            - generic [ref=e58] [cursor=pointer]: +
+            - text: Recharge Card
+          - button " Recharge Any Card" [ref=e59] [cursor=pointer]:
+            - generic [ref=e60] [cursor=pointer]: 
+            - text: Recharge Any Card
+          - button "+ Get New Card" [ref=e61] [cursor=pointer]:
+            - generic [ref=e62] [cursor=pointer]: +
+            - text: Get New Card
+      - generic [ref=e64]:
+        - heading "Primary Card" [level=5] [ref=e65]
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e71]: SMART METRO
+            - generic [ref=e72]: 
+          - generic [ref=e73]:
+            - generic [ref=e74]: VM-5678
+            - generic [ref=e75]:
+              - generic [ref=e76]: VALID THRU
+              - generic [ref=e77]: 12/25
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - generic [ref=e80]: CARD HOLDER
+              - generic [ref=e81]: Test User
+            - generic [ref=e82]:
+              - generic [ref=e83]: BALANCE
+              - generic [ref=e84]: ₹100.00
+              - button "+ Recharge" [ref=e85] [cursor=pointer]:
+                - generic [ref=e86] [cursor=pointer]: +
+                - text: Recharge
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - combobox [ref=e90]:
+                - option "Select Tap-In Station" [selected]
+                - option "AIIMS"
+                - option "Adarsh Nagar"
+                - option "Akshardham"
+                - option "Alpha 1"
+                - option "Anand Vihar"
+                - option "Arjan Garh"
+                - option "Arthala"
+                - option "Ashok Park Main"
+                - option "Ashram"
+                - option "Azadpur"
+                - option "Badarpur Border"
+                - option "Badkal Mor"
+                - option "Bahadurgarh City"
+                - option "Barakhamba"
+                - option "Bata Chowk"
+                - option "Belvedere Towers (Rapid Metro)"
+                - option "Bhikaji Cama Place"
+                - option "Botanical Garden"
+                - option "Brigadier Hoshiyar Singh"
+                - option "Central Secretariat"
+                - option "Chandni Chowk"
+                - option "Chawri Bazar"
+                - option "Chhattarpur"
+                - option "Chirag Delhi"
+                - option "Civil Lines"
+                - option "Cyber City (Rapid Metro)"
+                - option "Dabri Mor - Janakpuri South"
+                - option "Dashrath Puri"
+                - option "Delhi Aerocity"
+                - option "Delhi Cantt."
+                - option "Delhi Gate"
+                - option "Delta 1"
+                - option "Depot Station"
+                - option "Dhansa Bus Stand"
+                - option "Dhaula Kuan"
+                - option "Dilli Haat - INA"
+                - option "Dilshad Garden"
+                - option "Durgabai Deshmukh South Campus"
+                - option "Dwarka"
+                - option "Dwarka Mor"
+                - option "Dwarka Sector - 10"
+                - option "Dwarka Sector - 11"
+                - option "Dwarka Sector - 12"
+                - option "Dwarka Sector - 13"
+                - option "Dwarka Sector - 14"
+                - option "Dwarka Sector - 21"
+                - option "Dwarka Sector - 8"
+                - option "Dwarka Sector - 9"
+                - option "ESI Basai Darapur"
+                - option "East Azad Nagar"
+                - option "East Vinod Nagar - Mayur Vihar-II"
+                - option "Escorts Mujesar"
+                - option "GNIDA Office"
+                - option "Ghevra Metro station"
+                - option "Ghitorni"
+                - option "Gokulpuri"
+                - option "Golf Course"
+                - option "Govind Puri"
+                - option "Greater Kailash"
+                - option "Green Park"
+                - option "Guru Tegh Bahadur Nagar"
+                - option "Gurudronacharya"
+                - option "Haiderpur Badli Mor"
+                - option "Harkesh Nagar Okhla"
+                - option "Hauz Khas"
+                - option "Hindon River"
+                - option "Huda City Centre"
+                - option "IFFCO Chowk"
+                - option "IGI Airport"
+                - option "IIT"
+                - option "IP Extension"
+                - option "ITO"
+                - option "Inderlok"
+                - option "Indraprastha"
+                - option "Jafrabad"
+                - option "Jahangirpuri"
+                - option "Jama Masjid"
+                - option "Jamia Millia Islamia"
+                - option "Janak Puri East"
+                - option "Janak Puri West"
+                - option "Jangpura"
+                - option "Janpath"
+                - option "Jasola Vihar Shaheen Bagh"
+                - option "Jasola-Apollo"
+                - option "Jawahar Lal Nehru Stadium"
+                - option "Jhandewalan"
+                - option "Jhilmil"
+                - option "Johri Enclave"
+                - option "Jorbagh"
+                - option "Kailash Colony"
+                - option "Kalindi Kunj"
+                - option "Kalkaji Mandir"
+                - option "Kanhaiya Nagar"
+                - option "Karkarduma"
+                - option "Karkarduma Court"
+                - option "Karol Bagh"
+                - option "Kashmere Gate"
+                - option "Kaushambi"
+                - option "Keshav Puram"
+                - option "Khan Market"
+                - option "Kirti Nagar"
+                - option "Knowledge Park"
+                - option "Kohat Enclave"
+                - option "Krishna Nagar"
+                - option "Lajpat Nagar"
+                - option "Lal Quila"
+                - option "Laxmi Nagar"
+                - option "Lok Kalyan Marg"
+                - option "MG Road"
+                - option "Madipur"
+                - option "Maharaja Surajmal Stadium"
+                - option "Majlis Park"
+                - option "Major Mohit Sharma Rajender Nagar"
+                - option "Malviya Nagar"
+                - option "Mandawali - West Vinod Nagar"
+                - option "Mandi House"
+                - option "Mansrover park"
+                - option "Maujpur - Babarpur"
+                - option "Mayapuri"
+                - option "Mayur Vihar Ext"
+                - option "Mayur Vihar Pocket 1"
+                - option "Mayur Vihar-I"
+                - option "Mewala Maharajpur"
+                - option "Model Town"
+                - option "Mohan Estate"
+                - option "Mohan Nagar"
+                - option "Moolchand"
+                - option "Moti Nagar"
+                - option "Moulsari Avenue (Rapid Metro)"
+                - option "Mundka"
+                - option "Mundka Industrial Area (M.I.A)"
+                - option "Munirka"
+                - option "NHPC Chowk"
+                - option "NSEZ"
+                - option "Najafgarh"
+                - option "Nangli"
+                - option "Nangloi"
+                - option "Nangloi Railway Station"
+                - option "Naraina Vihar"
+                - option "Nawada"
+                - option "Neelam Chowk Ajronda"
+                - option "Nehru Enclave"
+                - option "Nehru Place"
+                - option "Netaji Subash Place"
+                - option "New Ashok Nagar"
+                - option "New Delhi"
+                - option "Nirman Vihar"
+                - option "Noida City Centre"
+                - option "Noida Electronic City"
+                - option "Noida Sec -15"
+                - option "Noida Sec -16"
+                - option "Noida Sec -18"
+                - option "Noida Sec-34"
+                - option "Noida Sec-52"
+                - option "Noida Sec-59"
+                - option "Noida Sec-61"
+                - option "Noida Sec-62"
+                - option "Noida Sector 101"
+                - option "Noida Sector 137"
+                - option "Noida Sector 142"
+                - option "Noida Sector 143"
+                - option "Noida Sector 144"
+                - option "Noida Sector 145"
+                - option "Noida Sector 146"
+                - option "Noida Sector 147"
+                - option "Noida Sector 148"
+                - option "Noida Sector 50"
+                - option "Noida Sector 51"
+                - option "Noida Sector 76"
+                - option "Noida Sector 81"
+                - option "Noida Sector 83"
+                - option "Okhla Bird Sanctuary"
+                - option "Okhla NSIC"
+                - option "Okhla Vihar"
+                - option "Old Faridabad"
+                - option "Palam"
+                - option "Panchsheel Park"
+                - option "Pandit Shree Ram Sharma"
+                - option "Pari Chowk"
+                - option "Paschim Vihar (East)"
+                - option "Paschim Vihar (West)"
+                - option "Patel Chowk"
+                - option "Patel Nagar"
+                - option "Peera Garhi"
+                - option "Phase 2 (Rapid Metro)"
+                - option "Phase 3 (Rapid Metro)"
+                - option "Phase-I (Rapid Metro)"
+                - option "Pitampura"
+                - option "Pratap Nagar"
+                - option "Preet Vihar"
+                - option "Pul Bangash"
+                - option "Punjabi Bagh"
+                - option "Punjabi Bagh West"
+                - option "Qutab Minar"
+                - option "RK Ashram Marg"
+                - option "RK Puram"
+                - option "Raj Bagh"
+                - option "Raja Nahar Singh"
+                - option "Rajdhani Park"
+                - option "Rajendra Place"
+                - option "Rajiv Chowk"
+                - option "Rajouri Garden"
+                - option "Ramesh Nagar"
+                - option "Rithala"
+                - option "Rohini East"
+                - option "Rohini Sector 18-19"
+                - option "Rohini West"
+                - option "Sadar Bazar Contonment"
+                - option "Saket"
+                - option "Samaypur Badli"
+                - option "Sant Surdas (Sihi)"
+                - option "Sarai"
+                - option "Sarai Kale Khan - Nizamuddin"
+                - option "Sarita Vihar"
+                - option "Sarojini Nagar"
+                - option "Satguru Ram Singh Marg"
+                - option "Sector 42-43 (Rapid Metro)"
+                - option "Sector 53-54 (Rapid Metro)"
+                - option "Sector 54 Chowk (Rapid Metro)"
+                - option "Sector 55-56 (Rapid Metro)"
+                - option "Sector-28"
+                - option "Seelam Pur"
+                - option "Shadipur"
+                - option "Shahdara"
+                - option "Shaheed Nagar"
+                - option "Shaheed Sthal (New Bus Adda)"
+                - option "Shakurpur"
+                - option "Shalimar Bagh"
+                - option "Shankar Vihar"
+                - option "Shastri Nagar"
+                - option "Shastri Park"
+                - option "Shiv Vihar"
+                - option "Shivaji Park"
+                - option "Shivaji Stadium"
+                - option "Shyam Park"
+                - option "Sikanderpur"
+                - option "Sikanderpur (Rapid Metro)"
+                - option "Sir Vishweshwaraiah Moti Bagh"
+                - option "South Extension"
+                - option "Subash Nagar"
+                - option "Sukhdev Vihar"
+                - option "Sultanpur"
+                - option "Supreme Court"
+                - option "Tagore Garden"
+                - option "Terminal 1- IGI Airport"
+                - option "Tikri Border"
+                - option "Tikri Kalan"
+                - option "Tilak Nagar"
+                - option "Tis Hazari"
+                - option "Trilokpuri Sanjay Lake"
+                - option "Tughlakabad Station"
+                - option "Udyog Bhawan"
+                - option "Udyog Nagar"
+                - option "Uttam Nagar East"
+                - option "Uttam Nagar West"
+                - option "Vaishali"
+                - option "Vasant Vihar"
+                - option "Vidhan Sabha"
+                - option "Vinobapuri"
+                - option "Vishwavidyalaya"
+                - option "Welcome"
+                - option "Yamuna Bank"
+              - generic [ref=e91]:
+                - button " Tap In" [disabled]:
+                  - generic: 
+                  - text: Tap In
+            - generic [ref=e92]:
+              - combobox [ref=e94]:
+                - option "Select Tap-Out Station" [selected]
+                - option "AIIMS"
+                - option "Adarsh Nagar"
+                - option "Akshardham"
+                - option "Alpha 1"
+                - option "Anand Vihar"
+                - option "Arjan Garh"
+                - option "Arthala"
+                - option "Ashok Park Main"
+                - option "Ashram"
+                - option "Azadpur"
+                - option "Badarpur Border"
+                - option "Badkal Mor"
+                - option "Bahadurgarh City"
+                - option "Barakhamba"
+                - option "Bata Chowk"
+                - option "Belvedere Towers (Rapid Metro)"
+                - option "Bhikaji Cama Place"
+                - option "Botanical Garden"
+                - option "Brigadier Hoshiyar Singh"
+                - option "Central Secretariat"
+                - option "Chandni Chowk"
+                - option "Chawri Bazar"
+                - option "Chhattarpur"
+                - option "Chirag Delhi"
+                - option "Civil Lines"
+                - option "Cyber City (Rapid Metro)"
+                - option "Dabri Mor - Janakpuri South"
+                - option "Dashrath Puri"
+                - option "Delhi Aerocity"
+                - option "Delhi Cantt."
+                - option "Delhi Gate"
+                - option "Delta 1"
+                - option "Depot Station"
+                - option "Dhansa Bus Stand"
+                - option "Dhaula Kuan"
+                - option "Dilli Haat - INA"
+                - option "Dilshad Garden"
+                - option "Durgabai Deshmukh South Campus"
+                - option "Dwarka"
+                - option "Dwarka Mor"
+                - option "Dwarka Sector - 10"
+                - option "Dwarka Sector - 11"
+                - option "Dwarka Sector - 12"
+                - option "Dwarka Sector - 13"
+                - option "Dwarka Sector - 14"
+                - option "Dwarka Sector - 21"
+                - option "Dwarka Sector - 8"
+                - option "Dwarka Sector - 9"
+                - option "ESI Basai Darapur"
+                - option "East Azad Nagar"
+                - option "East Vinod Nagar - Mayur Vihar-II"
+                - option "Escorts Mujesar"
+                - option "GNIDA Office"
+                - option "Ghevra Metro station"
+                - option "Ghitorni"
+                - option "Gokulpuri"
+                - option "Golf Course"
+                - option "Govind Puri"
+                - option "Greater Kailash"
+                - option "Green Park"
+                - option "Guru Tegh Bahadur Nagar"
+                - option "Gurudronacharya"
+                - option "Haiderpur Badli Mor"
+                - option "Harkesh Nagar Okhla"
+                - option "Hauz Khas"
+                - option "Hindon River"
+                - option "Huda City Centre"
+                - option "IFFCO Chowk"
+                - option "IGI Airport"
+                - option "IIT"
+                - option "IP Extension"
+                - option "ITO"
+                - option "Inderlok"
+                - option "Indraprastha"
+                - option "Jafrabad"
+                - option "Jahangirpuri"
+                - option "Jama Masjid"
+                - option "Jamia Millia Islamia"
+                - option "Janak Puri East"
+                - option "Janak Puri West"
+                - option "Jangpura"
+                - option "Janpath"
+                - option "Jasola Vihar Shaheen Bagh"
+                - option "Jasola-Apollo"
+                - option "Jawahar Lal Nehru Stadium"
+                - option "Jhandewalan"
+                - option "Jhilmil"
+                - option "Johri Enclave"
+                - option "Jorbagh"
+                - option "Kailash Colony"
+                - option "Kalindi Kunj"
+                - option "Kalkaji Mandir"
+                - option "Kanhaiya Nagar"
+                - option "Karkarduma"
+                - option "Karkarduma Court"
+                - option "Karol Bagh"
+                - option "Kashmere Gate"
+                - option "Kaushambi"
+                - option "Keshav Puram"
+                - option "Khan Market"
+                - option "Kirti Nagar"
+                - option "Knowledge Park"
+                - option "Kohat Enclave"
+                - option "Krishna Nagar"
+                - option "Lajpat Nagar"
+                - option "Lal Quila"
+                - option "Laxmi Nagar"
+                - option "Lok Kalyan Marg"
+                - option "MG Road"
+                - option "Madipur"
+                - option "Maharaja Surajmal Stadium"
+                - option "Majlis Park"
+                - option "Major Mohit Sharma Rajender Nagar"
+                - option "Malviya Nagar"
+                - option "Mandawali - West Vinod Nagar"
+                - option "Mandi House"
+                - option "Mansrover park"
+                - option "Maujpur - Babarpur"
+                - option "Mayapuri"
+                - option "Mayur Vihar Ext"
+                - option "Mayur Vihar Pocket 1"
+                - option "Mayur Vihar-I"
+                - option "Mewala Maharajpur"
+                - option "Model Town"
+                - option "Mohan Estate"
+                - option "Mohan Nagar"
+                - option "Moolchand"
+                - option "Moti Nagar"
+                - option "Moulsari Avenue (Rapid Metro)"
+                - option "Mundka"
+                - option "Mundka Industrial Area (M.I.A)"
+                - option "Munirka"
+                - option "NHPC Chowk"
+                - option "NSEZ"
+                - option "Najafgarh"
+                - option "Nangli"
+                - option "Nangloi"
+                - option "Nangloi Railway Station"
+                - option "Naraina Vihar"
+                - option "Nawada"
+                - option "Neelam Chowk Ajronda"
+                - option "Nehru Enclave"
+                - option "Nehru Place"
+                - option "Netaji Subash Place"
+                - option "New Ashok Nagar"
+                - option "New Delhi"
+                - option "Nirman Vihar"
+                - option "Noida City Centre"
+                - option "Noida Electronic City"
+                - option "Noida Sec -15"
+                - option "Noida Sec -16"
+                - option "Noida Sec -18"
+                - option "Noida Sec-34"
+                - option "Noida Sec-52"
+                - option "Noida Sec-59"
+                - option "Noida Sec-61"
+                - option "Noida Sec-62"
+                - option "Noida Sector 101"
+                - option "Noida Sector 137"
+                - option "Noida Sector 142"
+                - option "Noida Sector 143"
+                - option "Noida Sector 144"
+                - option "Noida Sector 145"
+                - option "Noida Sector 146"
+                - option "Noida Sector 147"
+                - option "Noida Sector 148"
+                - option "Noida Sector 50"
+                - option "Noida Sector 51"
+                - option "Noida Sector 76"
+                - option "Noida Sector 81"
+                - option "Noida Sector 83"
+                - option "Okhla Bird Sanctuary"
+                - option "Okhla NSIC"
+                - option "Okhla Vihar"
+                - option "Old Faridabad"
+                - option "Palam"
+                - option "Panchsheel Park"
+                - option "Pandit Shree Ram Sharma"
+                - option "Pari Chowk"
+                - option "Paschim Vihar (East)"
+                - option "Paschim Vihar (West)"
+                - option "Patel Chowk"
+                - option "Patel Nagar"
+                - option "Peera Garhi"
+                - option "Phase 2 (Rapid Metro)"
+                - option "Phase 3 (Rapid Metro)"
+                - option "Phase-I (Rapid Metro)"
+                - option "Pitampura"
+                - option "Pratap Nagar"
+                - option "Preet Vihar"
+                - option "Pul Bangash"
+                - option "Punjabi Bagh"
+                - option "Punjabi Bagh West"
+                - option "Qutab Minar"
+                - option "RK Ashram Marg"
+                - option "RK Puram"
+                - option "Raj Bagh"
+                - option "Raja Nahar Singh"
+                - option "Rajdhani Park"
+                - option "Rajendra Place"
+                - option "Rajiv Chowk"
+                - option "Rajouri Garden"
+                - option "Ramesh Nagar"
+                - option "Rithala"
+                - option "Rohini East"
+                - option "Rohini Sector 18-19"
+                - option "Rohini West"
+                - option "Sadar Bazar Contonment"
+                - option "Saket"
+                - option "Samaypur Badli"
+                - option "Sant Surdas (Sihi)"
+                - option "Sarai"
+                - option "Sarai Kale Khan - Nizamuddin"
+                - option "Sarita Vihar"
+                - option "Sarojini Nagar"
+                - option "Satguru Ram Singh Marg"
+                - option "Sector 42-43 (Rapid Metro)"
+                - option "Sector 53-54 (Rapid Metro)"
+                - option "Sector 54 Chowk (Rapid Metro)"
+                - option "Sector 55-56 (Rapid Metro)"
+                - option "Sector-28"
+                - option "Seelam Pur"
+                - option "Shadipur"
+                - option "Shahdara"
+                - option "Shaheed Nagar"
+                - option "Shaheed Sthal (New Bus Adda)"
+                - option "Shakurpur"
+                - option "Shalimar Bagh"
+                - option "Shankar Vihar"
+                - option "Shastri Nagar"
+                - option "Shastri Park"
+                - option "Shiv Vihar"
+                - option "Shivaji Park"
+                - option "Shivaji Stadium"
+                - option "Shyam Park"
+                - option "Sikanderpur"
+                - option "Sikanderpur (Rapid Metro)"
+                - option "Sir Vishweshwaraiah Moti Bagh"
+                - option "South Extension"
+                - option "Subash Nagar"
+                - option "Sukhdev Vihar"
+                - option "Sultanpur"
+                - option "Supreme Court"
+                - option "Tagore Garden"
+                - option "Terminal 1- IGI Airport"
+                - option "Tikri Border"
+                - option "Tikri Kalan"
+                - option "Tilak Nagar"
+                - option "Tis Hazari"
+                - option "Trilokpuri Sanjay Lake"
+                - option "Tughlakabad Station"
+                - option "Udyog Bhawan"
+                - option "Udyog Nagar"
+                - option "Uttam Nagar East"
+                - option "Uttam Nagar West"
+                - option "Vaishali"
+                - option "Vasant Vihar"
+                - option "Vidhan Sabha"
+                - option "Vinobapuri"
+                - option "Vishwavidyalaya"
+                - option "Welcome"
+                - option "Yamuna Bank"
+              - generic [ref=e95]:
+                - button " Tap Out" [disabled]:
+                  - generic: 
+                  - text: Tap Out
+      - generic [ref=e97]:
+        - heading "Secondary Cards" [level=5] [ref=e99]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e106]: SMART METRO
+            - generic [ref=e107]: 
+          - generic [ref=e108]:
+            - generic [ref=e109]: VM-1234
+            - generic [ref=e110]:
+              - generic [ref=e111]: STATUS
+              - generic [ref=e112]: active
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]: CARD HOLDER
+              - generic [ref=e116]: Secondary Card
+            - generic [ref=e117]:
+              - generic [ref=e118]: BALANCE
+              - generic [ref=e119]: ₹25.00
+          - generic [ref=e120]:
+            - button "+ Recharge" [ref=e121] [cursor=pointer]:
+              - generic [ref=e122] [cursor=pointer]: +
+              - text: Recharge
+            - button "Set Primary" [ref=e123] [cursor=pointer]
+            - button " Balance" [ref=e124] [cursor=pointer]:
+              - generic [ref=e125] [cursor=pointer]: 
+              - text: Balance
+            - generic [ref=e126]:
+              - combobox [ref=e128]:
+                - option "Select Tap-In Station" [selected]
+                - option "AIIMS"
+                - option "Adarsh Nagar"
+                - option "Akshardham"
+                - option "Alpha 1"
+                - option "Anand Vihar"
+                - option "Arjan Garh"
+                - option "Arthala"
+                - option "Ashok Park Main"
+                - option "Ashram"
+                - option "Azadpur"
+                - option "Badarpur Border"
+                - option "Badkal Mor"
+                - option "Bahadurgarh City"
+                - option "Barakhamba"
+                - option "Bata Chowk"
+                - option "Belvedere Towers (Rapid Metro)"
+                - option "Bhikaji Cama Place"
+                - option "Botanical Garden"
+                - option "Brigadier Hoshiyar Singh"
+                - option "Central Secretariat"
+                - option "Chandni Chowk"
+                - option "Chawri Bazar"
+                - option "Chhattarpur"
+                - option "Chirag Delhi"
+                - option "Civil Lines"
+                - option "Cyber City (Rapid Metro)"
+                - option "Dabri Mor - Janakpuri South"
+                - option "Dashrath Puri"
+                - option "Delhi Aerocity"
+                - option "Delhi Cantt."
+                - option "Delhi Gate"
+                - option "Delta 1"
+                - option "Depot Station"
+                - option "Dhansa Bus Stand"
+                - option "Dhaula Kuan"
+                - option "Dilli Haat - INA"
+                - option "Dilshad Garden"
+                - option "Durgabai Deshmukh South Campus"
+                - option "Dwarka"
+                - option "Dwarka Mor"
+                - option "Dwarka Sector - 10"
+                - option "Dwarka Sector - 11"
+                - option "Dwarka Sector - 12"
+                - option "Dwarka Sector - 13"
+                - option "Dwarka Sector - 14"
+                - option "Dwarka Sector - 21"
+                - option "Dwarka Sector - 8"
+                - option "Dwarka Sector - 9"
+                - option "ESI Basai Darapur"
+                - option "East Azad Nagar"
+                - option "East Vinod Nagar - Mayur Vihar-II"
+                - option "Escorts Mujesar"
+                - option "GNIDA Office"
+                - option "Ghevra Metro station"
+                - option "Ghitorni"
+                - option "Gokulpuri"
+                - option "Golf Course"
+                - option "Govind Puri"
+                - option "Greater Kailash"
+                - option "Green Park"
+                - option "Guru Tegh Bahadur Nagar"
+                - option "Gurudronacharya"
+                - option "Haiderpur Badli Mor"
+                - option "Harkesh Nagar Okhla"
+                - option "Hauz Khas"
+                - option "Hindon River"
+                - option "Huda City Centre"
+                - option "IFFCO Chowk"
+                - option "IGI Airport"
+                - option "IIT"
+                - option "IP Extension"
+                - option "ITO"
+                - option "Inderlok"
+                - option "Indraprastha"
+                - option "Jafrabad"
+                - option "Jahangirpuri"
+                - option "Jama Masjid"
+                - option "Jamia Millia Islamia"
+                - option "Janak Puri East"
+                - option "Janak Puri West"
+                - option "Jangpura"
+                - option "Janpath"
+                - option "Jasola Vihar Shaheen Bagh"
+                - option "Jasola-Apollo"
+                - option "Jawahar Lal Nehru Stadium"
+                - option "Jhandewalan"
+                - option "Jhilmil"
+                - option "Johri Enclave"
+                - option "Jorbagh"
+                - option "Kailash Colony"
+                - option "Kalindi Kunj"
+                - option "Kalkaji Mandir"
+                - option "Kanhaiya Nagar"
+                - option "Karkarduma"
+                - option "Karkarduma Court"
+                - option "Karol Bagh"
+                - option "Kashmere Gate"
+                - option "Kaushambi"
+                - option "Keshav Puram"
+                - option "Khan Market"
+                - option "Kirti Nagar"
+                - option "Knowledge Park"
+                - option "Kohat Enclave"
+                - option "Krishna Nagar"
+                - option "Lajpat Nagar"
+                - option "Lal Quila"
+                - option "Laxmi Nagar"
+                - option "Lok Kalyan Marg"
+                - option "MG Road"
+                - option "Madipur"
+                - option "Maharaja Surajmal Stadium"
+                - option "Majlis Park"
+                - option "Major Mohit Sharma Rajender Nagar"
+                - option "Malviya Nagar"
+                - option "Mandawali - West Vinod Nagar"
+                - option "Mandi House"
+                - option "Mansrover park"
+                - option "Maujpur - Babarpur"
+                - option "Mayapuri"
+                - option "Mayur Vihar Ext"
+                - option "Mayur Vihar Pocket 1"
+                - option "Mayur Vihar-I"
+                - option "Mewala Maharajpur"
+                - option "Model Town"
+                - option "Mohan Estate"
+                - option "Mohan Nagar"
+                - option "Moolchand"
+                - option "Moti Nagar"
+                - option "Moulsari Avenue (Rapid Metro)"
+                - option "Mundka"
+                - option "Mundka Industrial Area (M.I.A)"
+                - option "Munirka"
+                - option "NHPC Chowk"
+                - option "NSEZ"
+                - option "Najafgarh"
+                - option "Nangli"
+                - option "Nangloi"
+                - option "Nangloi Railway Station"
+                - option "Naraina Vihar"
+                - option "Nawada"
+                - option "Neelam Chowk Ajronda"
+                - option "Nehru Enclave"
+                - option "Nehru Place"
+                - option "Netaji Subash Place"
+                - option "New Ashok Nagar"
+                - option "New Delhi"
+                - option "Nirman Vihar"
+                - option "Noida City Centre"
+                - option "Noida Electronic City"
+                - option "Noida Sec -15"
+                - option "Noida Sec -16"
+                - option "Noida Sec -18"
+                - option "Noida Sec-34"
+                - option "Noida Sec-52"
+                - option "Noida Sec-59"
+                - option "Noida Sec-61"
+                - option "Noida Sec-62"
+                - option "Noida Sector 101"
+                - option "Noida Sector 137"
+                - option "Noida Sector 142"
+                - option "Noida Sector 143"
+                - option "Noida Sector 144"
+                - option "Noida Sector 145"
+                - option "Noida Sector 146"
+                - option "Noida Sector 147"
+                - option "Noida Sector 148"
+                - option "Noida Sector 50"
+                - option "Noida Sector 51"
+                - option "Noida Sector 76"
+                - option "Noida Sector 81"
+                - option "Noida Sector 83"
+                - option "Okhla Bird Sanctuary"
+                - option "Okhla NSIC"
+                - option "Okhla Vihar"
+                - option "Old Faridabad"
+                - option "Palam"
+                - option "Panchsheel Park"
+                - option "Pandit Shree Ram Sharma"
+                - option "Pari Chowk"
+                - option "Paschim Vihar (East)"
+                - option "Paschim Vihar (West)"
+                - option "Patel Chowk"
+                - option "Patel Nagar"
+                - option "Peera Garhi"
+                - option "Phase 2 (Rapid Metro)"
+                - option "Phase 3 (Rapid Metro)"
+                - option "Phase-I (Rapid Metro)"
+                - option "Pitampura"
+                - option "Pratap Nagar"
+                - option "Preet Vihar"
+                - option "Pul Bangash"
+                - option "Punjabi Bagh"
+                - option "Punjabi Bagh West"
+                - option "Qutab Minar"
+                - option "RK Ashram Marg"
+                - option "RK Puram"
+                - option "Raj Bagh"
+                - option "Raja Nahar Singh"
+                - option "Rajdhani Park"
+                - option "Rajendra Place"
+                - option "Rajiv Chowk"
+                - option "Rajouri Garden"
+                - option "Ramesh Nagar"
+                - option "Rithala"
+                - option "Rohini East"
+                - option "Rohini Sector 18-19"
+                - option "Rohini West"
+                - option "Sadar Bazar Contonment"
+                - option "Saket"
+                - option "Samaypur Badli"
+                - option "Sant Surdas (Sihi)"
+                - option "Sarai"
+                - option "Sarai Kale Khan - Nizamuddin"
+                - option "Sarita Vihar"
+                - option "Sarojini Nagar"
+                - option "Satguru Ram Singh Marg"
+                - option "Sector 42-43 (Rapid Metro)"
+                - option "Sector 53-54 (Rapid Metro)"
+                - option "Sector 54 Chowk (Rapid Metro)"
+                - option "Sector 55-56 (Rapid Metro)"
+                - option "Sector-28"
+                - option "Seelam Pur"
+                - option "Shadipur"
+                - option "Shahdara"
+                - option "Shaheed Nagar"
+                - option "Shaheed Sthal (New Bus Adda)"
+                - option "Shakurpur"
+                - option "Shalimar Bagh"
+                - option "Shankar Vihar"
+                - option "Shastri Nagar"
+                - option "Shastri Park"
+                - option "Shiv Vihar"
+                - option "Shivaji Park"
+                - option "Shivaji Stadium"
+                - option "Shyam Park"
+                - option "Sikanderpur"
+                - option "Sikanderpur (Rapid Metro)"
+                - option "Sir Vishweshwaraiah Moti Bagh"
+                - option "South Extension"
+                - option "Subash Nagar"
+                - option "Sukhdev Vihar"
+                - option "Sultanpur"
+                - option "Supreme Court"
+                - option "Tagore Garden"
+                - option "Terminal 1- IGI Airport"
+                - option "Tikri Border"
+                - option "Tikri Kalan"
+                - option "Tilak Nagar"
+                - option "Tis Hazari"
+                - option "Trilokpuri Sanjay Lake"
+                - option "Tughlakabad Station"
+                - option "Udyog Bhawan"
+                - option "Udyog Nagar"
+                - option "Uttam Nagar East"
+                - option "Uttam Nagar West"
+                - option "Vaishali"
+                - option "Vasant Vihar"
+                - option "Vidhan Sabha"
+                - option "Vinobapuri"
+                - option "Vishwavidyalaya"
+                - option "Welcome"
+                - option "Yamuna Bank"
+              - generic [ref=e129]:
+                - button " Tap In" [disabled]:
+                  - generic: 
+                  - text: Tap In
+            - generic [ref=e130]:
+              - combobox [ref=e132]:
+                - option "Select Tap-Out Station" [selected]
+                - option "AIIMS"
+                - option "Adarsh Nagar"
+                - option "Akshardham"
+                - option "Alpha 1"
+                - option "Anand Vihar"
+                - option "Arjan Garh"
+                - option "Arthala"
+                - option "Ashok Park Main"
+                - option "Ashram"
+                - option "Azadpur"
+                - option "Badarpur Border"
+                - option "Badkal Mor"
+                - option "Bahadurgarh City"
+                - option "Barakhamba"
+                - option "Bata Chowk"
+                - option "Belvedere Towers (Rapid Metro)"
+                - option "Bhikaji Cama Place"
+                - option "Botanical Garden"
+                - option "Brigadier Hoshiyar Singh"
+                - option "Central Secretariat"
+                - option "Chandni Chowk"
+                - option "Chawri Bazar"
+                - option "Chhattarpur"
+                - option "Chirag Delhi"
+                - option "Civil Lines"
+                - option "Cyber City (Rapid Metro)"
+                - option "Dabri Mor - Janakpuri South"
+                - option "Dashrath Puri"
+                - option "Delhi Aerocity"
+                - option "Delhi Cantt."
+                - option "Delhi Gate"
+                - option "Delta 1"
+                - option "Depot Station"
+                - option "Dhansa Bus Stand"
+                - option "Dhaula Kuan"
+                - option "Dilli Haat - INA"
+                - option "Dilshad Garden"
+                - option "Durgabai Deshmukh South Campus"
+                - option "Dwarka"
+                - option "Dwarka Mor"
+                - option "Dwarka Sector - 10"
+                - option "Dwarka Sector - 11"
+                - option "Dwarka Sector - 12"
+                - option "Dwarka Sector - 13"
+                - option "Dwarka Sector - 14"
+                - option "Dwarka Sector - 21"
+                - option "Dwarka Sector - 8"
+                - option "Dwarka Sector - 9"
+                - option "ESI Basai Darapur"
+                - option "East Azad Nagar"
+                - option "East Vinod Nagar - Mayur Vihar-II"
+                - option "Escorts Mujesar"
+                - option "GNIDA Office"
+                - option "Ghevra Metro station"
+                - option "Ghitorni"
+                - option "Gokulpuri"
+                - option "Golf Course"
+                - option "Govind Puri"
+                - option "Greater Kailash"
+                - option "Green Park"
+                - option "Guru Tegh Bahadur Nagar"
+                - option "Gurudronacharya"
+                - option "Haiderpur Badli Mor"
+                - option "Harkesh Nagar Okhla"
+                - option "Hauz Khas"
+                - option "Hindon River"
+                - option "Huda City Centre"
+                - option "IFFCO Chowk"
+                - option "IGI Airport"
+                - option "IIT"
+                - option "IP Extension"
+                - option "ITO"
+                - option "Inderlok"
+                - option "Indraprastha"
+                - option "Jafrabad"
+                - option "Jahangirpuri"
+                - option "Jama Masjid"
+                - option "Jamia Millia Islamia"
+                - option "Janak Puri East"
+                - option "Janak Puri West"
+                - option "Jangpura"
+                - option "Janpath"
+                - option "Jasola Vihar Shaheen Bagh"
+                - option "Jasola-Apollo"
+                - option "Jawahar Lal Nehru Stadium"
+                - option "Jhandewalan"
+                - option "Jhilmil"
+                - option "Johri Enclave"
+                - option "Jorbagh"
+                - option "Kailash Colony"
+                - option "Kalindi Kunj"
+                - option "Kalkaji Mandir"
+                - option "Kanhaiya Nagar"
+                - option "Karkarduma"
+                - option "Karkarduma Court"
+                - option "Karol Bagh"
+                - option "Kashmere Gate"
+                - option "Kaushambi"
+                - option "Keshav Puram"
+                - option "Khan Market"
+                - option "Kirti Nagar"
+                - option "Knowledge Park"
+                - option "Kohat Enclave"
+                - option "Krishna Nagar"
+                - option "Lajpat Nagar"
+                - option "Lal Quila"
+                - option "Laxmi Nagar"
+                - option "Lok Kalyan Marg"
+                - option "MG Road"
+                - option "Madipur"
+                - option "Maharaja Surajmal Stadium"
+                - option "Majlis Park"
+                - option "Major Mohit Sharma Rajender Nagar"
+                - option "Malviya Nagar"
+                - option "Mandawali - West Vinod Nagar"
+                - option "Mandi House"
+                - option "Mansrover park"
+                - option "Maujpur - Babarpur"
+                - option "Mayapuri"
+                - option "Mayur Vihar Ext"
+                - option "Mayur Vihar Pocket 1"
+                - option "Mayur Vihar-I"
+                - option "Mewala Maharajpur"
+                - option "Model Town"
+                - option "Mohan Estate"
+                - option "Mohan Nagar"
+                - option "Moolchand"
+                - option "Moti Nagar"
+                - option "Moulsari Avenue (Rapid Metro)"
+                - option "Mundka"
+                - option "Mundka Industrial Area (M.I.A)"
+                - option "Munirka"
+                - option "NHPC Chowk"
+                - option "NSEZ"
+                - option "Najafgarh"
+                - option "Nangli"
+                - option "Nangloi"
+                - option "Nangloi Railway Station"
+                - option "Naraina Vihar"
+                - option "Nawada"
+                - option "Neelam Chowk Ajronda"
+                - option "Nehru Enclave"
+                - option "Nehru Place"
+                - option "Netaji Subash Place"
+                - option "New Ashok Nagar"
+                - option "New Delhi"
+                - option "Nirman Vihar"
+                - option "Noida City Centre"
+                - option "Noida Electronic City"
+                - option "Noida Sec -15"
+                - option "Noida Sec -16"
+                - option "Noida Sec -18"
+                - option "Noida Sec-34"
+                - option "Noida Sec-52"
+                - option "Noida Sec-59"
+                - option "Noida Sec-61"
+                - option "Noida Sec-62"
+                - option "Noida Sector 101"
+                - option "Noida Sector 137"
+                - option "Noida Sector 142"
+                - option "Noida Sector 143"
+                - option "Noida Sector 144"
+                - option "Noida Sector 145"
+                - option "Noida Sector 146"
+                - option "Noida Sector 147"
+                - option "Noida Sector 148"
+                - option "Noida Sector 50"
+                - option "Noida Sector 51"
+                - option "Noida Sector 76"
+                - option "Noida Sector 81"
+                - option "Noida Sector 83"
+                - option "Okhla Bird Sanctuary"
+                - option "Okhla NSIC"
+                - option "Okhla Vihar"
+                - option "Old Faridabad"
+                - option "Palam"
+                - option "Panchsheel Park"
+                - option "Pandit Shree Ram Sharma"
+                - option "Pari Chowk"
+                - option "Paschim Vihar (East)"
+                - option "Paschim Vihar (West)"
+                - option "Patel Chowk"
+                - option "Patel Nagar"
+                - option "Peera Garhi"
+                - option "Phase 2 (Rapid Metro)"
+                - option "Phase 3 (Rapid Metro)"
+                - option "Phase-I (Rapid Metro)"
+                - option "Pitampura"
+                - option "Pratap Nagar"
+                - option "Preet Vihar"
+                - option "Pul Bangash"
+                - option "Punjabi Bagh"
+                - option "Punjabi Bagh West"
+                - option "Qutab Minar"
+                - option "RK Ashram Marg"
+                - option "RK Puram"
+                - option "Raj Bagh"
+                - option "Raja Nahar Singh"
+                - option "Rajdhani Park"
+                - option "Rajendra Place"
+                - option "Rajiv Chowk"
+                - option "Rajouri Garden"
+                - option "Ramesh Nagar"
+                - option "Rithala"
+                - option "Rohini East"
+                - option "Rohini Sector 18-19"
+                - option "Rohini West"
+                - option "Sadar Bazar Contonment"
+                - option "Saket"
+                - option "Samaypur Badli"
+                - option "Sant Surdas (Sihi)"
+                - option "Sarai"
+                - option "Sarai Kale Khan - Nizamuddin"
+                - option "Sarita Vihar"
+                - option "Sarojini Nagar"
+                - option "Satguru Ram Singh Marg"
+                - option "Sector 42-43 (Rapid Metro)"
+                - option "Sector 53-54 (Rapid Metro)"
+                - option "Sector 54 Chowk (Rapid Metro)"
+                - option "Sector 55-56 (Rapid Metro)"
+                - option "Sector-28"
+                - option "Seelam Pur"
+                - option "Shadipur"
+                - option "Shahdara"
+                - option "Shaheed Nagar"
+                - option "Shaheed Sthal (New Bus Adda)"
+                - option "Shakurpur"
+                - option "Shalimar Bagh"
+                - option "Shankar Vihar"
+                - option "Shastri Nagar"
+                - option "Shastri Park"
+                - option "Shiv Vihar"
+                - option "Shivaji Park"
+                - option "Shivaji Stadium"
+                - option "Shyam Park"
+                - option "Sikanderpur"
+                - option "Sikanderpur (Rapid Metro)"
+                - option "Sir Vishweshwaraiah Moti Bagh"
+                - option "South Extension"
+                - option "Subash Nagar"
+                - option "Sukhdev Vihar"
+                - option "Sultanpur"
+                - option "Supreme Court"
+                - option "Tagore Garden"
+                - option "Terminal 1- IGI Airport"
+                - option "Tikri Border"
+                - option "Tikri Kalan"
+                - option "Tilak Nagar"
+                - option "Tis Hazari"
+                - option "Trilokpuri Sanjay Lake"
+                - option "Tughlakabad Station"
+                - option "Udyog Bhawan"
+                - option "Udyog Nagar"
+                - option "Uttam Nagar East"
+                - option "Uttam Nagar West"
+                - option "Vaishali"
+                - option "Vasant Vihar"
+                - option "Vidhan Sabha"
+                - option "Vinobapuri"
+                - option "Vishwavidyalaya"
+                - option "Welcome"
+                - option "Yamuna Bank"
+              - generic [ref=e133]:
+                - button " Tap Out" [disabled]:
+                  - generic: 
+                  - text: Tap Out
+  - contentinfo [ref=e134]:
+    - generic [ref=e135]:
+      - generic [ref=e136]:
+        - generic [ref=e138]:
+          - generic [ref=e139]:
+            - generic [ref=e140]: 
+            - heading "Tapido" [level=5] [ref=e141]
+          - paragraph [ref=e142]: Your smart metro travel companion. Book tickets, manage cards, and track your journeys seamlessly.
+          - generic [ref=e143]:
+            - link "" [ref=e144] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e145] [cursor=pointer]: 
+            - link "" [ref=e146] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e147] [cursor=pointer]: 
+            - link "" [ref=e148] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e149] [cursor=pointer]: 
+            - link "" [ref=e150] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e151] [cursor=pointer]: 
+        - generic [ref=e152]:
+          - heading "Services" [level=6] [ref=e153]
+          - list [ref=e154]:
+            - listitem [ref=e155]:
+              - link " Book Tickets" [ref=e156] [cursor=pointer]:
+                - /url: /tickets
+                - generic [ref=e157] [cursor=pointer]: 
+                - text: Book Tickets
+            - listitem [ref=e158]:
+              - link " Virtual Cards" [ref=e159] [cursor=pointer]:
+                - /url: /cards
+                - generic [ref=e160] [cursor=pointer]: 
+                - text: Virtual Cards
+            - listitem [ref=e161]:
+              - link " Subscription Plans" [ref=e162] [cursor=pointer]:
+                - /url: /plans
+                - generic [ref=e163] [cursor=pointer]: 
+                - text: Subscription Plans
+            - listitem [ref=e164]:
+              - link " Train Schedules" [ref=e165] [cursor=pointer]:
+                - /url: /schedules
+                - generic [ref=e166] [cursor=pointer]: 
+                - text: Train Schedules
+            - listitem [ref=e167]:
+              - link " Journey Tracking" [ref=e168] [cursor=pointer]:
+                - /url: /journey
+                - generic [ref=e169] [cursor=pointer]: 
+                - text: Journey Tracking
+        - generic [ref=e170]:
+          - heading "Support" [level=6] [ref=e171]
+          - list [ref=e172]:
+            - listitem [ref=e173]:
+              - link " Email Support" [ref=e174] [cursor=pointer]:
+                - /url: mailto:support@tapido.com
+                - generic [ref=e175] [cursor=pointer]: 
+                - text: Email Support
+            - listitem [ref=e176]:
+              - link " 24/7 Helpline" [ref=e177] [cursor=pointer]:
+                - /url: tel:+91-1800-123-4567
+                - generic [ref=e178] [cursor=pointer]: 
+                - text: 24/7 Helpline
+            - listitem [ref=e179]:
+              - link " FAQ" [ref=e180] [cursor=pointer]:
+                - /url: /faq
+                - generic [ref=e181] [cursor=pointer]: 
+                - text: FAQ
+            - listitem [ref=e182]:
+              - link " Help Center" [ref=e183] [cursor=pointer]:
+                - /url: /help
+                - generic [ref=e184] [cursor=pointer]: 
+                - text: Help Center
+            - listitem [ref=e185]:
+              - link " Feedback" [ref=e186] [cursor=pointer]:
+                - /url: /feedback
+                - generic [ref=e187] [cursor=pointer]: 
+                - text: Feedback
+        - generic [ref=e188]:
+          - heading "Company" [level=6] [ref=e189]
+          - list [ref=e190]:
+            - listitem [ref=e191]:
+              - link " About Us" [ref=e192] [cursor=pointer]:
+                - /url: /about
+                - generic [ref=e193] [cursor=pointer]: 
+                - text: About Us
+            - listitem [ref=e194]:
+              - link " Careers" [ref=e195] [cursor=pointer]:
+                - /url: /careers
+                - generic [ref=e196] [cursor=pointer]: 
+                - text: Careers
+            - listitem [ref=e197]:
+              - link " Press" [ref=e198] [cursor=pointer]:
+                - /url: /press
+                - generic [ref=e199] [cursor=pointer]: 
+                - text: Press
+            - listitem [ref=e200]:
+              - link " Partners" [ref=e201] [cursor=pointer]:
+                - /url: /partners
+                - generic [ref=e202] [cursor=pointer]: 
+                - text: Partners
+            - listitem [ref=e203]:
+              - link " Contact" [ref=e204] [cursor=pointer]:
+                - /url: /contact
+                - generic [ref=e205] [cursor=pointer]: 
+                - text: Contact
+        - generic [ref=e206]:
+          - heading "Legal" [level=6] [ref=e207]
+          - list [ref=e208]:
+            - listitem [ref=e209]:
+              - link " Privacy Policy" [ref=e210] [cursor=pointer]:
+                - /url: /privacy
+                - generic [ref=e211] [cursor=pointer]: 
+                - text: Privacy Policy
+            - listitem [ref=e212]:
+              - link " Terms of Service" [ref=e213] [cursor=pointer]:
+                - /url: /terms
+                - generic [ref=e214] [cursor=pointer]: 
+                - text: Terms of Service
+            - listitem [ref=e215]:
+              - link " Refund Policy" [ref=e216] [cursor=pointer]:
+                - /url: /refund
+                - generic [ref=e217] [cursor=pointer]: 
+                - text: Refund Policy
+            - listitem [ref=e218]:
+              - link " Cookie Policy" [ref=e219] [cursor=pointer]:
+                - /url: /cookies
+                - generic [ref=e220] [cursor=pointer]: 
+                - text: Cookie Policy
+            - listitem [ref=e221]:
+              - link " Accessibility" [ref=e222] [cursor=pointer]:
+                - /url: /accessibility
+                - generic [ref=e223] [cursor=pointer]: 
+                - text: Accessibility
+      - separator [ref=e224]
+      - generic [ref=e225]:
+        - generic [ref=e227]:
+          - generic [ref=e228]: 2025 Tapido. All rights reserved.
+          - generic [ref=e229]:
+            - img "SSL Secure" [ref=e230]
+            - img "PCI Compliant" [ref=e231]
+        - generic [ref=e233]:
+          - generic [ref=e234]:
+            - generic [ref=e235]: 
+            - text: English (IN)
+          - generic [ref=e236]:
+            - generic [ref=e237]: 
+            - text: India
+          - generic [ref=e238]:
+            - text: Made with
+            - generic [ref=e239]: 
+            - text: for commuters
+  - generic [ref=e241] [cursor=pointer]: 
+```
